@@ -8,6 +8,7 @@ from nact import NAENC
 from io import load_tfd
 
 def train(dataset,
+                data_path,
                 nhid,
                 act_enc,
                 act_dec,
@@ -26,7 +27,7 @@ def train(dataset,
     the reuslts
     """
 
-    train_x, _ = load_data(dataset)
+    train_x, _ = load_data(dataset, data_path)
     data_shape = train_x.get_value(borrow=True).shape
     n_train_batches = data_shape[0] / batch_size
 
@@ -55,10 +56,10 @@ def train(dataset,
 
     return True
 
-def load_data(dataset):
+def load_data(dataset, data_path):
 
     if dataset == 'tfd':
-        return load_tfd(fold = -1)
+        return load_tfd(data_path, fold = -1)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
@@ -75,6 +76,7 @@ def experiment(state, channel):
 
     result = train(
             dataset  = state.dataset,
+            data_path = state.data_path,
             nhid = state.nhid,
             act_enc = state.act_enc,
             act_dec = state.act_dec,
@@ -102,7 +104,8 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.nhid = 1024
+    state.data_path = "/RQexec/mirzameh/data/nact/layer1/"
+    state.nhid = 100
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
