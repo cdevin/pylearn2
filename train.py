@@ -107,7 +107,7 @@ def test_experiment():
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
     state.prob = 0.3
-    state.l1_l = 0.06
+    state.l1_l = 0.6
     state.batch_size = 50
     state.n_epochs = 102
     state.norm = False

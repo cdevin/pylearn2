@@ -112,7 +112,7 @@ def test_experiment():
     state.model_path = "data/tfd_30_model.pkl"
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = numpy.logspace(-3, 6, num = 20)
+    state.c_vals = numpy.logspace(-1, 6, num = 10)
     state.fold = 0
     state.exp_name = 'test_run'
 
