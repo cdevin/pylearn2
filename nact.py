@@ -11,8 +11,6 @@ class NAENC():
 
     def __init__(self, prob, nvis, nhid, act_enc, act_dec):
 
-        self.rng = RandomStreams(seed=234)
-
         self.inputs = tensor.matrix('input_x')
         self.act_enc = act_enc
 

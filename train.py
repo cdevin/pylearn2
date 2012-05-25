@@ -13,7 +13,6 @@ def train(dataset,
                 act_dec,
                 learning_rate,
                 prob,
-                jjt_l,
                 l1_l,
                 batch_size,
                 n_epochs,
@@ -42,9 +41,8 @@ def train(dataset,
     t0 = time()
     train_f = model.train_funcs(train_x, batch_size)
     for epoch in xrange(n_epochs):
-
         cost = [train_f(index = batch_index, lr = learning_rate) for \
-                    batch_index in xrange(n_train_batches)]
+                batch_index in xrange(n_train_batches)]
 
         print "epoch {} cost: {}".format(epoch, numpy.mean(cost))
 
@@ -61,6 +59,8 @@ def load_data(dataset):
 
     if dataset == 'tfd':
         return load_tfd(fold = -1)
+    else:
+        raise NameError("Invalid dataset: {}".format(dataset))
 
 
 def experiment(state, channel):
@@ -80,7 +80,6 @@ def experiment(state, channel):
             act_dec = state.act_dec,
             learning_rate = state.learning_rate,
             prob = state.prob,
-            jjt_l = state.jjt_l,
             l1_l = state.l1_l,
             batch_size = state.batch_size,
             n_epochs = state.n_epochs,
@@ -102,19 +101,19 @@ def test_experiment():
     from jobman import DD
 
     state = DD
-    state.dataset = "/data/lisatmp/mirzamom/data/mnist/mnist.pkl.gz"
-    state.nhid = 10
+    state.dataset = "tfd"
+    state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
-    state.learning_rate = 0.08
+    state.learning_rate = 0.01
     state.prob = 0.3
-    state.jjt_l = 0.06
     state.l1_l = 0.06
-    state.batch_size = 1
+    state.batch_size = 50
     state.n_epochs = 102
     state.norm = False
-    state.save_freq = 5
-    state.exp_name = 'cae_bench'
+    state.save_freq = 2
+    state.exp_name = 'tfd'
+    state.save_path = 'data/'
 
     experiment(state, None)
 
