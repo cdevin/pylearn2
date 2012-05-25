@@ -69,7 +69,7 @@ class NAENC():
         index = tensor.lscalar('index')
 
         return theano.function(inputs = [index],
-                    outputs = self.model.encode(self.inputs),
+                    outputs = self.model.test_encode(self.inputs),
                     givens = {self.inputs :\
                             data[index * batch_size : (index + 1) * batch_size]})
 

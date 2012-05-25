@@ -3,7 +3,7 @@ import pickle
 import theano
 
 
-def load_tfd(fold = 0, ds_type = 'train'):
+def load_tfd(fold = 0, ds_type = 'train', shared = False):
 
     # unserpvised
     if fold == -1:
@@ -12,7 +12,7 @@ def load_tfd(fold = 0, ds_type = 'train'):
     else:
         if ds_type not in ['train', 'valid', 'test']:
             raise NameError("wrong dataset type: {}".format(ds_type))
-        if ds_type == rain:
+        if ds_type == "train":
             ds_type = 'train_labeled'
 
         path = ["/data/lisatmp/rifaisal/TFD/FOLD0/TFD_RAW_FOLD_0_{}{}.pkl".format(ds_type, fold)]
@@ -28,6 +28,10 @@ def load_tfd(fold = 0, ds_type = 'train'):
 
     data_x = data_x.astype(theano.config.floatX) / 255.
     data_x = theano.shared(data_x)
+    data_y = data_y.reshape(data_y.shape[0]) - 1
+    if shared == True:
+        data_y = theano.shared(data_y.astype(theano.config.floatX))
+        data_y = theano.tensor.cast(data_y, 'int32')
 
     return data_x, data_y
 
