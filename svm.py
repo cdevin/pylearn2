@@ -18,7 +18,7 @@ def features_fn(model, data, batch_size = 50):
     index = tensor.lscalar('index')
     x = tensor.matrix('x')
     return theano.function(inputs = [index],
-                    outputs = model.encode(x),
+                    outputs = model.test_encode(x),
                     givens = {x: data[index * batch_size : (index + 1) * batch_size]})
 
 def features(model, data, batch_size, n_samples):
@@ -55,17 +55,20 @@ def classify(model,
     valid_score = 0
     best_model = None
     for item in c_vals:
+        print "checking C: {}".format(item)
         clf = SVC(scale_C = False, C = item)
         clf.fit(train_feats, train_set_y)
         score = clf.score(valid_feats, valid_set_y)
+        print "score for currnet c is: {}".format(score)
         if score > valid_score:
             valid_score = score
             best_model = clf
 
     test_score = clf.score(test_feats, test_set_y)
 
+    print "------\n"
     print best_model
-    print "valid: %f, test: %f" %(valid_score, test_score)
+    print "Final valid: {}, test: {}".format(valid_score, test_score)
     return valid_score, test_score
 
 def load_model(dataset):
