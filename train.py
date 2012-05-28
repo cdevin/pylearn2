@@ -6,6 +6,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from time import time
 from nact import NAENC
 from io import load_tfd
+from util.config import DATA_PATH
 
 def train(dataset,
                 data_path,
@@ -13,7 +14,8 @@ def train(dataset,
                 act_enc,
                 act_dec,
                 learning_rate,
-                prob,
+                input_corruption_level,
+                hidden_corruption_level,
                 l1_l,
                 batch_size,
                 n_epochs,
@@ -31,7 +33,8 @@ def train(dataset,
     data_shape = train_x.get_value(borrow=True).shape
     n_train_batches = data_shape[0] / batch_size
 
-    model = NAENC(prob = prob,
+    model = NAENC(input_corruption_level = input_corruption_level,
+                    hidden_corruption_level = hidden_corruption_level,
                     nvis = data_shape[1],
                     nhid = nhid,
                     act_enc = act_enc,
@@ -81,7 +84,8 @@ def experiment(state, channel):
             act_enc = state.act_enc,
             act_dec = state.act_dec,
             learning_rate = state.learning_rate,
-            prob = state.prob,
+            input_corruption_level = state.input_corruption_level,
+            hidden_corruption_level = state.hidden_corruption_level,
             l1_l = state.l1_l,
             batch_size = state.batch_size,
             n_epochs = state.n_epochs,
@@ -104,12 +108,13 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.data_path = "/RQexec/mirzameh/data/nact/layer1/"
+    state.data_path = DATA_PATH + "TFD/nac_layer1/"
     state.nhid = 100
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
-    state.prob = 0.3
+    state.input_corruption_level = 0.8
+    state.hidden_corruption_level = 0.5
     state.l1_l = 0.06
     state.batch_size = 50
     state.n_epochs = 102

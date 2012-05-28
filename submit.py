@@ -19,13 +19,15 @@ def explore_train():
     state = DD()
 
     state.dataset = "tfd"
-    state.nhid = 1024
+    state.data_path = DATA_PATH + "TFD/nac_layer1/"
+    state.nhid = 100
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
-    state.prob = 0.3
+    state.input_corruption_level = 0.8
+    state.hidden_corruption_level = 0.5
     state.l1_l = 0.06
-    state.batch_size = 20
+    state.batch_size = 50
     state.n_epochs = 102
     state.norm = False
     state.save_freq = 2
@@ -33,12 +35,10 @@ def explore_train():
 
 
     ind = 0
-    for lr in [0.9, 0.6, 0.3, 0.1,  0.09, 0.06, 0.03, 0.01, 0.009, 0.006, 0.003, 0.001]:
-        for prob in [0.1, 0.3, 0.6, 0.9]:
-                state.learning_rate = lr
-                state.prob = prob
-                sql.insert_job(experiment_train, flatten(state), db)
-                ind += 1
+    for lr in numoy.logspace(-5, 2, num = 20):
+        state.learning_rate = lr
+        sql.insert_job(experiment_train, flatten(state), db)
+        ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print ind
@@ -113,5 +113,5 @@ def explore_svm():
 
 
 if __name__ == "__main__":
-    #explore_train()
-    explore_svm()
+    explore_train()
+    #explore_svm()

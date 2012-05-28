@@ -4,7 +4,7 @@ import numpy
 
 """Concatenate all the unlabled TFD data to a single pickle file"""
 
-paths = ["/RQexec/mirzameh/data/TFD/unsupervised/TFD_unsupervised_train_unlabeled{}.pkl".format(ind) for ind in xrange(12)]
+paths = ["/data/lisatmp/rifaisal/TFD/unsupervised/TFD_unsupervised_train_unlabeled{}.pkl".format(ind) for ind in xrange(12)]
 
 
 data_x, data_y = [], []
@@ -16,5 +16,5 @@ for item in paths:
 data_x = numpy.concatenate(data_x)
 data_y = numpy.concatenate(data_y)
 
-with open("/RQexec/mirzameh/data/TFD/unsupervised/TFD_unsupervised_train_unlabeled_all.pkl", "wb") as out:
+with open("/data/lisatmp/mirzamom/data/TFD/pickle/unsupervised/TFD_unsupervised_train_unlabeled_all.pkl", "wb") as out:
     pickle.dump([data_x, data_y], out)

@@ -5,18 +5,26 @@ from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
 from pylearn2.autoencoder import NoisyAutoEncoder
 from pylearn2.costs.autoencoder import MeanSquaredReconstructionError, MeanBinaryCrossEntropy
-from pylearn2.corruption import BinomialNoise
+from pylearn2.corruption import BinomialCorruptorScaled
 
 class NAENC():
 
-    def __init__(self, prob, nvis, nhid, act_enc, act_dec):
+    def __init__(self, input_corruption_level,
+                        hidden_corruption_level,
+                        nvis, nhid,
+                        act_enc,
+                        act_dec):
 
         self.inputs = tensor.matrix('input_x')
         self.act_enc = act_enc
 
-        self.corruptor = BinomialNoise(corruption_level = prob)
+        input_corruptor = \
+                BinomialCorruptorScaled(corruption_level = input_corruption_level)
+        hidden_corruptor = \
+                BinomialCorruptorScaled(corruption_level = hidden_corruption_level)
 
-        self.model = NoisyAutoEncoder(corruptor = self.corruptor,
+        self.model = NoisyAutoEncoder(input_corruptor = input_corruptor,
+                                hidden_corruptor = hidden_corruptor,
                                 nvis = nvis,
                                 nhid = nhid,
                                 act_enc = act_enc,
