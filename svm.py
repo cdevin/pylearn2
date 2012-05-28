@@ -4,28 +4,33 @@ import theano
 from theano import tensor
 from time import time
 from sklearn.svm import SVC
-from io import load_tfd, features
+from util.funcs import load_tfd, features
+from util.config import DATA_PATH
 
-
-def load_data(dataset, ds_type, fold):
+def load_data(dataset, data_path, ds_type, fold, scale):
 
     if dataset == 'tfd':
-        return load_tfd(fold, ds_type)
+        return load_tfd(data_path = data_path,
+                        fold = fold,
+                        ds_type = ds_type,
+                        scale = scale)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
 
 def classify(model,
             dataset,
+            data_path,
+            scale,
             n_in,
             fold,
             c_vals,
             batch_size=600):
 
 
-    train_set_x, train_set_y = load_data(dataset, 'train', fold)
-    valid_set_x, valid_set_y = load_data(dataset, 'valid', fold)
-    test_set_x, test_set_y = load_data(dataset, 'test', fold)
+    train_set_x, train_set_y = load_data(dataset, data_path, 'train', fold, scale)
+    valid_set_x, valid_set_y = load_data(dataset, data_path, 'valid', fold, scale)
+    test_set_x, test_set_y = load_data(dataset, data_path, 'test', fold, scale)
 
     # compute number of minibatches for training, validation and testing
     n_train = train_set_x.get_value(borrow=True).shape[0]
@@ -71,8 +76,10 @@ def experiment(state, channel):
     except (AttributeError, KeyError) as e:
         save_path = './'
 
-    valid_result, test_result, c_score  = classify(model = model_path,
+    valid_result, test_result, c_score  = classify(model = state.model_path,
             dataset = state.dataset,
+            data_path = state.data_path,
+            scale = state.scale,
             n_in = state.nhid,
             fold = state.fold,
             c_vals = state.c_vals,
@@ -95,6 +102,8 @@ def test_experiment():
     state = DD
     state.dataset = "tfd"
     state.model_path = "data/tfd_0_model.pkl"
+    state.data_path = DATA_PATH + "TFD/nac_layer1/"
+    state.scale = False
     state.nhid = 1024
     state.batch_size = 600
     state.c_vals = [-3, 6, 2]

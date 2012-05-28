@@ -4,7 +4,7 @@ import theano
 from theano import tensor
 
 
-def load_tfd(data_path, fold = 0, ds_type = 'train', shared = False):
+def load_tfd(data_path, fold = 0, ds_type = 'train', scale = False, shared = False):
 
     # unserpvised
     if fold == -1:
@@ -23,10 +23,11 @@ def load_tfd(data_path, fold = 0, ds_type = 'train', shared = False):
         data_x.append(x)
         data_y.append(y)
 
-    data_x = numpy.concatenate(data_x)
+    data_x = numpy.concatenate(data_x).astype(theano.config.floatX)
     data_y = numpy.concatenate(data_y)
 
-    data_x = data_x.astype(theano.config.floatX) / 255.
+    if scale == True:
+        data_x = data_x / 255.
     data_x = theano.shared(data_x)
     data_y = data_y.reshape(data_y.shape[0]) - 1
     if shared == True:
@@ -34,8 +35,6 @@ def load_tfd(data_path, fold = 0, ds_type = 'train', shared = False):
         data_y = theano.tensor.cast(data_y, 'int32')
 
     return data_x, data_y
-
-
 
 def features(model, data, batch_size = 100):
 

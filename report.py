@@ -1,5 +1,6 @@
 import psycopg2
 import argparse
+import pylab
 
 class SQL():
 
@@ -24,16 +25,63 @@ class SQL():
         self.cur.execute(command)
         return self.cur.fetchone()
 
+    def get_all(self, command):
 
-def format(results, params):
+        self.cur.execute(command)
+        return self.cur.fetchall()
 
-    str = "{:^10}|{:^10}|{:^10}|{:^10}\n".format("exp_name", "prob", "Learning rate", "result")
-    str+= "---------------------------------------------\n"
-    for res, par in zip(results, params):
 
-        str+= "{:<10} |{:^10}|{:^10}|{:^10} \n".format(par[0], par[1], par[2], float(res) * 100)
+
+def format(results, params, iter_num, job_ids):
+
+    str = "{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}|{:^10}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "Learning rate", "result")
+    str+= "------------------------------------------------------------------------------------------\n"
+
+    for res, par, iter, id in zip(results, params, iter_num, job_ids):
+
+        str+= "{:<10} |{:^10}|{:^10}|{:^10}|{:^10}|{:^20}|{:^10} \n".format(par[0], id,  iter,  par[1], par[2], par[3], float(res) * 100)
 
     return str
+
+
+def plot(performance, learning_rate, name):
+
+
+    pylab.scatter(learning_rate, performance)
+    #pylab.xscale('log')
+    pylab.show()
+    pylab.savefig(name)
+
+
+
+def reterive_data(experiment, version, num):
+
+    db = SQL()
+    # get classification results
+    table = "{}_svm_{}".format(experiment, version)
+
+    if num == -1:
+        data = db.get_all("select {}_view.id, modelpath, {}keyval.fval from {}_view, {}keyval \
+            where {}_view.id = dict_id and name = 'valid_result' order by \
+            fval DESC;".format(table, table, table, table, table))
+    else:
+        data = db.get_many("select {}_view.id, modelpath, {}keyval.fval from {}_view, {}keyval \
+            where {}_view.id = dict_id and name = 'valid_result' order by \
+            fval DESC;".format(table, table, table, table, table), num)
+
+
+    # extract ids and results
+    job_ids = [int(item[1].split('/')[-2]) for item in data]
+    results = [item[-1] for item in data]
+    iter_num = [item[1].split('/')[-1].split('_')[-2] for item in data]
+
+    table = "{}_train_{}".format(experiment, version)
+    commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, learningrate, nhid from {}_view \
+            where id = {}".format(table, id)  for id in job_ids]
+    params = [db.get_one(item) for item in commands]
+
+    return params, results, job_ids, iter_num
+
 
 def main():
 
@@ -44,29 +92,19 @@ def main():
             help = "experiment version")
     parser.add_argument('-n', '--number', default = 10, type = int,
             help = "max number")
+    parser.add_argument('-p', '--plot', default = False, action = 'store_true')
     args = parser.parse_args()
 
-    db = SQL()
-    # get classification results
-    table = "{}_svm_{}".format(args.experiment, args.version)
-    data = db.get_many("select {}_view.id, modelpath, {}keyval.fval from {}_view, {}keyval \
-            where {}_view.id = dict_id and name = 'valid_result' order by \
-            fval DESC;".format(table, table, table, table, table), args.number)
 
-    # extract ids and results
-    job_ids = [int(item[1].split('/')[-2]) for item in data]
-    results = [item[-1] for item in data]
+    # report
+    params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, args.number)
+    print format(results, params, iter_num, job_ids)
 
-    table = "{}_train_{}".format(args.experiment, args.version)
-    commands = ["select expname, prob, learningrate, nhid from {}_view \
-            where id = {}".format(table, id)  for id in job_ids]
-    params = [db.get_one(item) for item in commands]
-
-
-    print format(results, params)
-
-
-
+    # plot
+    if args.plot == True:
+        params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, -1)
+        name = "{}_{}.png".format(args.experiment, args.version)
+        plot(results, [item[-2] for item in params], name)
 
 
 
