@@ -31,6 +31,7 @@ def train(dataset,
     the reuslts
     """
 
+    print "loading data..."
     train_x, _ = load_data(dataset, data_path, scale)
     data_shape = train_x.get_value(borrow=True).shape
     n_train_batches = data_shape[0] / batch_size
@@ -43,16 +44,22 @@ def train(dataset,
                     act_dec = act_dec)
 
     # train cae
-    print "... training the cae"
+    print "training the model..."
     t0 = time()
     train_f = model.train_funcs(train_x, batch_size)
     for epoch in xrange(n_epochs):
-        learning_rate = lr_init * lr_decay / (lr_decay + epoch)
+        # constatn learning rate will used if lr_decay is -1
+        if lr_decay == -1:
+            learning_rate = lr_init
+        else:
+            learning_rate = lr_init * lr_decay / (lr_decay + epoch)
+
         cost = [train_f(index = batch_index, lr = learning_rate) for \
                 batch_index in xrange(n_train_batches)]
 
         print "epoch {} cost: {}".format(epoch, numpy.mean(cost))
-        if numpy.isnan(cost):
+        if numpy.isnan(numpy.mean(cost)):
+            print "Got NAN value"
             break
 
         if numpy.mod(epoch, save_freq) == 0 or epoch == (n_epochs -1):
@@ -115,14 +122,14 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.dataset = "mnist"
+    #state.dataset = "mnist"
     state.data_path = DATA_PATH + "TFD/raw/"
-    state.data_path = DATA_PATH + "mnist/"
+    #state.data_path = DATA_PATH + "mnist/"
     state.scale = True
     state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
-    state.lr_init = 0.1
+    state.lr_init = 0.001
     state.lr_decay = 2
     state.input_corruption_level = 0.8
     state.hidden_corruption_level = 0.5
@@ -131,7 +138,7 @@ def test_experiment():
     state.n_epochs = 200
     state.norm = False
     state.save_freq = 2
-    state.exp_name = 'mnist'
+    state.exp_name = 'tfd3000'
     state.save_path = 'data/'
 
     experiment(state, None)

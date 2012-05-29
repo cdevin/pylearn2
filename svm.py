@@ -103,14 +103,14 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.dataset = "mnist"
-    state.model_path = "data/mnist_196_model.pkl"
-    state.data_path = DATA_PATH + "TFD/nac_layer1/"
-    state.data_path = DATA_PATH + "mnist/"
+    #state.dataset = "mnist"
+    state.model_path = "data/tfd3000_30_model.pkl"
+    state.data_path = DATA_PATH + "TFD/raw/"
+    #state.data_path = DATA_PATH + "mnist/"
     state.scale = False
-    state.nhid = 1024
+    state.nhid = 3000
     state.batch_size = 600
-    state.c_vals = [-3, 6, 5]
+    state.c_vals = [-1, 6, 5]
     state.fold = 0
     state.exp_name = 'test_run'
 

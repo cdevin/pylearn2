@@ -26,8 +26,16 @@ def load_tfd(data_path, fold = 0, ds_type = 'train', scale = False, shared = Fal
     data_x = numpy.concatenate(data_x).astype(theano.config.floatX)
     data_y = numpy.concatenate(data_y)
 
+    def norm(X):
+        s = X.std(0)
+        m = X.mean(0)
+        s = s + 0.0001*(s==0)
+        return (X-m)/s
+
     if scale == True:
-        data_x = data_x / 255.
+        data_x = numpy.vstack([norm(x) for x in data_x]).astype(theano.config.floatX)
+        #data_x = data_x / 255.
+
     data_x = theano.shared(data_x)
     data_y = data_y.reshape(data_y.shape[0]) - 1
     if shared == True:
