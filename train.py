@@ -5,7 +5,7 @@ from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
 from time import time
 from nact import NAENC
-from util.funcs import load_tfd
+from util.funcs import load_tfd, load_mnist
 from util.config import DATA_PATH
 
 def train(dataset,
@@ -14,7 +14,8 @@ def train(dataset,
                 nhid,
                 act_enc,
                 act_dec,
-                learning_rate,
+                lr_init,
+                lr_decay,
                 input_corruption_level,
                 hidden_corruption_level,
                 l1_l,
@@ -46,10 +47,13 @@ def train(dataset,
     t0 = time()
     train_f = model.train_funcs(train_x, batch_size)
     for epoch in xrange(n_epochs):
+        learning_rate = lr_init * lr_decay / (lr_decay + epoch)
         cost = [train_f(index = batch_index, lr = learning_rate) for \
                 batch_index in xrange(n_train_batches)]
 
         print "epoch {} cost: {}".format(epoch, numpy.mean(cost))
+        if numpy.isnan(cost):
+            break
 
         if numpy.mod(epoch, save_freq) == 0 or epoch == (n_epochs -1):
             # save params and model
@@ -63,7 +67,9 @@ def train(dataset,
 def load_data(dataset, data_path, scale):
 
     if dataset == 'tfd':
-        return load_tfd(data_path, fold = -1, scale = scale)
+        return load_tfd(data_path, fold = -1, scale = scale, shared = True)
+    if dataset == 'mnist':
+        return load_mnist(data_path, ds_type = 'train', shared = True)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
@@ -84,7 +90,8 @@ def experiment(state, channel):
             nhid = state.nhid,
             act_enc = state.act_enc,
             act_dec = state.act_dec,
-            learning_rate = state.learning_rate,
+            lr_init = state.lr_init,
+            lr_decay = state.lr_decay,
             input_corruption_level = state.input_corruption_level,
             hidden_corruption_level = state.hidden_corruption_level,
             l1_l = state.l1_l,
@@ -99,7 +106,6 @@ def experiment(state, channel):
 
     return channel.COMPLETE
 
-
 def test_experiment():
     """
     dummy function to test the module without jobman
@@ -109,20 +115,23 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.data_path = DATA_PATH + "TFD/nac_layer1/"
-    state.scale = False
-    state.nhid = 100
+    state.dataset = "mnist"
+    state.data_path = DATA_PATH + "TFD/raw/"
+    state.data_path = DATA_PATH + "mnist/"
+    state.scale = True
+    state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
-    state.learning_rate = 0.01
+    state.lr_init = 0.1
+    state.lr_decay = 2
     state.input_corruption_level = 0.8
     state.hidden_corruption_level = 0.5
     state.l1_l = 0.06
     state.batch_size = 50
-    state.n_epochs = 102
+    state.n_epochs = 200
     state.norm = False
     state.save_freq = 2
-    state.exp_name = 'tfd'
+    state.exp_name = 'mnist'
     state.save_path = 'data/'
 
     experiment(state, None)

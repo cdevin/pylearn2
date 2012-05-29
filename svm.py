@@ -4,7 +4,7 @@ import theano
 from theano import tensor
 from time import time
 from sklearn.svm import SVC
-from util.funcs import load_tfd, features
+from util.funcs import load_tfd, load_mnist, features
 from util.config import DATA_PATH
 
 def load_data(dataset, data_path, ds_type, fold, scale):
@@ -14,6 +14,8 @@ def load_data(dataset, data_path, ds_type, fold, scale):
                         fold = fold,
                         ds_type = ds_type,
                         scale = scale)
+    if dataset == 'mnist':
+        return load_mnist(data_path, ds_type = ds_type)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
@@ -101,12 +103,14 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.model_path = "data/tfd_0_model.pkl"
+    state.dataset = "mnist"
+    state.model_path = "data/mnist_196_model.pkl"
     state.data_path = DATA_PATH + "TFD/nac_layer1/"
+    state.data_path = DATA_PATH + "mnist/"
     state.scale = False
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [-3, 6, 2]
+    state.c_vals = [-3, 6, 5]
     state.fold = 0
     state.exp_name = 'test_run'
 

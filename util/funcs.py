@@ -1,5 +1,5 @@
 import numpy
-import pickle
+import pickle, gzip
 import theano
 from theano import tensor
 
@@ -35,6 +35,60 @@ def load_tfd(data_path, fold = 0, ds_type = 'train', scale = False, shared = Fal
         data_y = theano.tensor.cast(data_y, 'int32')
 
     return data_x, data_y
+
+
+def load_mnist(data_path, ds_type, shared = False, norm = False):
+    ''' Loads the dataset
+
+    :type dataset: string
+    :param dataset: the path to the dataset (here MNIST)
+    '''
+    print '... loading data'
+
+    # Load the dataset
+    f = gzip.open(data_path + "mnist.pkl.gz",'rb')
+    train_set, valid_set, test_set = pickle.load(f)
+    f.close()
+    if ds_type == "train":
+        data_x, data_y = train_set
+    elif ds_type == "valid":
+        data_x, data_y = valid_set
+    elif ds_type == "test":
+        data_x, data_y = test_set
+    else:
+        raise NamError("Invalid set type %s" %(set_type))
+
+    def norm(X):
+        s = X.std(0)
+        m = X.mean(0)
+        s = s + 0.0001*(s==0)
+        return (X-m)/s
+
+    def shared_dataset(data_x, data_y, shared):
+        """ Function that loads the dataset into shared variables
+
+        The reason we store our dataset in shared variables is to allow
+        Theano to copy it into the GPU memory (when code is run on GPU).
+        Since copying data into the GPU is slow, copying a minibatch everytime
+        is needed (the default behaviour if the data is not in a shared
+        variable) would lead to a large decrease in performance.
+        """
+        data_x = theano.shared(numpy.asarray(data_x, dtype=theano.config.floatX))
+        if shared == True:
+            data_y = theano.shared(numpy.asarray(data_y, dtype=theano.config.floatX))
+            data_y = tensor.cast(shared_y, 'int32')
+
+        return data_x, data_y
+
+    if norm == True:
+        data_x = norm(data_x)
+
+
+    data_x, data_y = shared_dataset(data_x, data_y, shared)
+
+    return data_x, data_y
+
+
 
 def features(model, data, batch_size = 100):
 
