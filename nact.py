@@ -37,6 +37,7 @@ class NAENC():
 
         # reconstruction cost
         cost = MeanBinaryCrossEntropy()(self.model, self.inputs)
+        cost = cost + abs(self.model.weights).sum()
 
         grads = tensor.grad(cost, self.model._params)
         updates = {}

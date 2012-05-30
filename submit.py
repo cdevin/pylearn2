@@ -12,7 +12,7 @@ from util.config import DATA_PATH
 def explore_train():
 
     #Database
-    TABLE_NAME = 'nac_train_2'
+    TABLE_NAME = 'nac_train_3'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -21,7 +21,7 @@ def explore_train():
     state.dataset = "tfd"
     state.data_path = DATA_PATH + "TFD/raw/"
     state.scale = True
-    state.nhid = 1024
+    state.nhid = 2034
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
@@ -72,7 +72,7 @@ def explore_train():
 def explore_svm():
 
     #Database
-    TABLE_NAME = 'nacl2_svm_1'
+    TABLE_NAME = 'nac_svm_3'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -80,14 +80,14 @@ def explore_svm():
 
 
     state.dataset = "tfd"
-    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nacl2_train_1/"
-    state.data_path = DATA_PATH + "TFD/nac_layer1/"
+    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_3/"
+    state.data_path = DATA_PATH + "TFD/raw/"
     state.scale = False
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [-3,9, 20]
+    state.c_vals = [-3,8, 20]
     state.fold = 0
-    state.exp_name = 'layer2'
+    state.exp_name = 'layer1'
 
     matches = []
     for root, dirnames, filenames in os.walk(state.model_path):
@@ -107,5 +107,5 @@ def explore_svm():
 
 
 if __name__ == "__main__":
-    explore_train()
-    #explore_svm()
+    #explore_train()
+    explore_svm()

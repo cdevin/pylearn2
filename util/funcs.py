@@ -30,11 +30,11 @@ def load_tfd(data_path, fold = 0, ds_type = 'train', scale = False, shared = Fal
         s = X.std(0)
         m = X.mean(0)
         s = s + 0.0001*(s==0)
-        return (X-m)/s
+        return (X-m)
 
     if scale == True:
-        data_x = numpy.vstack([norm(x) for x in data_x]).astype(theano.config.floatX)
-        #data_x = data_x / 255.
+        data_x = data_x / 255.
+        #data_x = numpy.vstack([norm(x) for x in data_x]).astype(theano.config.floatX)
 
     data_x = theano.shared(data_x)
     data_y = data_y.reshape(data_y.shape[0]) - 1
@@ -84,7 +84,7 @@ def load_mnist(data_path, ds_type, shared = False, norm = False):
         data_x = theano.shared(numpy.asarray(data_x, dtype=theano.config.floatX))
         if shared == True:
             data_y = theano.shared(numpy.asarray(data_y, dtype=theano.config.floatX))
-            data_y = tensor.cast(shared_y, 'int32')
+            data_y = tensor.cast(data_y, 'int32')
 
         return data_x, data_y
 
@@ -118,7 +118,17 @@ def features(model, data, batch_size = 100):
                     numpy.mod(n_samples, batch_size))
         feats.append(func(0))
 
-    return numpy.concatenate(feats)
+
+    def norm(X):
+        s = X.std(0)
+        m = X.mean(0)
+        s = s + 0.0001*(s==0)
+        return (X-m)/s
+
+
+
+    res = numpy.concatenate(feats)
+    return numpy.vstack([norm(x) for x in res])
 
 
 
