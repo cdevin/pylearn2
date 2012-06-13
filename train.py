@@ -121,24 +121,24 @@ def test_experiment():
     from jobman import DD
 
     state = DD
-    #state.dataset = "tfd"
-    state.dataset = "mnist"
-    #state.data_path = DATA_PATH + "TFD/nac_layer1_5000/"
-    state.data_path = DATA_PATH + "mnist/"
+    state.dataset = "tfd"
+    #state.dataset = "mnist"
+    state.data_path = DATA_PATH + "TFD/raw/"
+    #state.data_path = DATA_PATH + "mnist/"
     state.scale = True
     state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.lr_init = 0.01
     state.lr_decay = 2
-    state.input_corruption_level = 0.5
-    state.hidden_corruption_level = 0.3
-    state.l1_l = 0.06
-    state.batch_size = 2
-    state.n_epochs = 100
+    state.input_corruption_level = 0.0
+    state.hidden_corruption_level = 0.0
+    state.l1_l = 0.09
+    state.batch_size = 50
+    state.n_epochs = 300
     state.norm = False
-    state.save_freq = 2
-    state.exp_name = 'mnist_l1'
+    state.save_freq = 3
+    state.exp_name = 'tfd_l1_1024'
     state.save_path = 'data/'
 
     experiment(state, None)

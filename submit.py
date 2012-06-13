@@ -12,7 +12,7 @@ from util.config import DATA_PATH
 def explore_train():
 
     #Database
-    TABLE_NAME = 'nac_train_3'
+    TABLE_NAME = 'nac_train_5'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -21,25 +21,30 @@ def explore_train():
     state.dataset = "tfd"
     state.data_path = DATA_PATH + "TFD/raw/"
     state.scale = True
-    state.nhid = 2034
+    state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
-    state.learning_rate = 0.01
+    state.lr_init = 0.09
+    state.lr_decay = 2
     state.input_corruption_level = 0.8
     state.hidden_corruption_level = 0.5
     state.l1_l = 0.06
-    state.batch_size = 50
-    state.n_epochs = 102
+    state.batch_size = 10
+    state.n_epochs = 200
     state.norm = False
-    state.save_freq = 2
-    state.exp_name = 'tfd_l1'
+    state.save_freq = 3
+    state.exp_name = 'tfd_l1_1024'
 
 
     ind = 0
-    for lr in numpy.logspace(-5, -1, num = 20):
-        state.learning_rate = lr
-        sql.insert_job(experiment_train, flatten(state), db)
-        ind += 1
+    for lr in [0.1, 0.01]:
+        for in_cr in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+            for hid_cr in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+                state.lr_init = lr
+                state.input_corruption_level = in_cr
+                state.hidden_corruption_level = hid_cr
+                sql.insert_job(experiment_train, flatten(state), db)
+                ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print ind
@@ -72,7 +77,7 @@ def explore_train():
 def explore_svm():
 
     #Database
-    TABLE_NAME = 'nac_svm_3'
+    TABLE_NAME = 'nac_svm_5'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -80,14 +85,15 @@ def explore_svm():
 
 
     state.dataset = "tfd"
-    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_3/"
+    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_5/"
+    #state.model_path = "/home/mirzameh/projects/noisy_encoder/data/"
     state.data_path = DATA_PATH + "TFD/raw/"
-    state.scale = False
+    state.scale = True
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [-3,8, 20]
+    state.c_vals = [3,10, 20]
     state.fold = 0
-    state.exp_name = 'layer1'
+    state.exp_name = 'layer1_1024'
 
     matches = []
     for root, dirnames, filenames in os.walk(state.model_path):

@@ -29,7 +29,7 @@ def load_plot(data, output):
 
 def batch(data, output):
 
-    files = glob.glob(data + '*.pkl')
+    files = glob.glob(data + '*_params.pkl')
     for file in files:
         fname =  file.split('/')[-1].split('.')[-2]
         if fname == None:
