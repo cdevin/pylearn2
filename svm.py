@@ -102,15 +102,15 @@ def test_experiment():
     from jobman import DD
 
     state = DD
-    state.dataset = "tfd"
-    #state.dataset = "mnist"
-    state.model_path = "data/tfd5_124_model.pkl"
-    state.data_path = DATA_PATH + "TFD/raw/"
-    #state.data_path = DATA_PATH + "mnist/"
+    #state.dataset = "tfd"
+    state.dataset = "mnist"
+    state.model_path = "data/mnist_2_12_model.pkl"
+    #state.data_path = DATA_PATH + "TFD/raw/"
+    state.data_path = '/RQexec/mirzameh/data/mnist/'
     state.scale = True
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [3, 10, 25]
+    state.c_vals = [3, 10, 10]
     state.fold = 0
     state.exp_name = 'test_run'
 

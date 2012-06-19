@@ -1,6 +1,7 @@
 import psycopg2
 import argparse
 import pylab
+import numpy
 
 class SQL():
 
@@ -34,17 +35,17 @@ class SQL():
 
 def format(results, params, iter_num, job_ids):
 
-    str = "{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}|{:^10}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "Learning rate", "result")
-    str+= "------------------------------------------------------------------------------------------\n"
+    str = "{:^15}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "Lr init", "Lr decay", "result")
+    str+= "-------------------------------------------------------------------------------------------------------\n"
 
     for res, par, iter, id in zip(results, params, iter_num, job_ids):
 
-        str+= "{:<10} |{:^10}|{:^10}|{:^10}|{:^10}|{:^20}|{:^10} \n".format(par[0], id,  iter,  par[1], par[2], par[3], float(res) * 100)
+        str+= "{:<14} |{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20} \n".format(par[0], id,  iter,  par[1], par[2], par[3], par[4], float(res) * 100)
 
     return str
 
 
-def plot(performance, learning_rate, name):
+def plot_lr(performance, learning_rate, name):
 
 
     pylab.scatter(learning_rate, performance)
@@ -52,7 +53,16 @@ def plot(performance, learning_rate, name):
     pylab.show()
     pylab.savefig(name)
 
+def plot_scatter(performance, input_corr, hidd_corr):
 
+    fig = pylab.figure()
+    ax = fig.add_subplot(2,1,1)
+    ax.scatter(input_corr, performance)
+    ax.set_xlabel('Input Corruption')
+    ax = fig.add_subplot(2,1,2)
+    ax.scatter(hidd_corr, performance)
+    ax.set_xlabel('Hidden Corruption')
+    pylab.show()
 
 def reterive_data(experiment, version, num):
 
@@ -76,7 +86,7 @@ def reterive_data(experiment, version, num):
     iter_num = [item[1].split('/')[-1].split('_')[-2] for item in data]
 
     table = "{}_train_{}".format(experiment, version)
-    commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, learningrate, nhid from {}_view \
+    commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, lrinit, lrdecay, nhid from {}_view \
             where id = {}".format(table, id)  for id in job_ids]
     params = [db.get_one(item) for item in commands]
 
@@ -104,6 +114,7 @@ def main():
     if args.plot == True:
         params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, -1)
         name = "{}_{}.png".format(args.experiment, args.version)
+        plot_scatter(results, [item[1] for item in params], [item[2] for item in params])
         plot(results, [item[-2] for item in params], name)
 
 
