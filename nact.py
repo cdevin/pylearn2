@@ -5,12 +5,13 @@ from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
 from pylearn2.autoencoder import NoisyAutoEncoder
 from pylearn2.costs.autoencoder import MeanSquaredReconstructionError, MeanBinaryCrossEntropy
-from pylearn2.corruption import BinomialCorruptorScaled
+from pylearn2.corruption import BinomialCorruptorScaled, BinomialCorruptorScaledGroup
 
 class NAENC():
 
     def __init__(self, input_corruption_level,
                         hidden_corruption_level,
+                        group_size,
                         nvis, nhid,
                         act_enc,
                         act_dec):
@@ -20,8 +21,13 @@ class NAENC():
 
         input_corruptor = \
                 BinomialCorruptorScaled(corruption_level = input_corruption_level)
-        hidden_corruptor = \
-                BinomialCorruptorScaled(corruption_level = hidden_corruption_level)
+        if group_size > 0:
+            hidden_corruptor = \
+                    BinomialCorruptorScaledGroup(corruption_level = hidden_corruption_level,
+                                                    group_size = group_size)
+        else:
+            hidden_corruptor = \
+                    BinomialCorruptorScaled(corruption_level = hidden_corruption_level)
 
         self.model = NoisyAutoEncoder(input_corruptor = input_corruptor,
                                 hidden_corruptor = hidden_corruptor,
@@ -30,14 +36,16 @@ class NAENC():
                                 act_enc = act_enc,
                                 act_dec = act_dec)
 
-    def cost_updates(self, learning_rate):
+    def cost_updates(self, learning_rate, l1_reg, l2_reg):
         """
         Return sgd cost and updates
         """
 
         # reconstruction cost
         cost = MeanBinaryCrossEntropy()(self.model, self.inputs)
-        cost = cost + abs(self.model.weights).sum()
+        l1 = l1_reg * abs(self.model.weights).sum()
+        l2 = l2_reg * (self.model.weights ** 2).sum()
+        cost = cost + l1 + l2
 
         grads = tensor.grad(cost, self.model._params)
         updates = {}
@@ -46,7 +54,7 @@ class NAENC():
 
         return updates, cost
 
-    def train_funcs(self, data, batch_size):
+    def train_funcs(self, data, batch_size, l1_reg, l2_reg):
         """
         return theano functions
 
@@ -59,7 +67,7 @@ class NAENC():
         index = tensor.lscalar('index')
         learning_rate = tensor.scalar('lr')
 
-        cost_updates, cost = self.cost_updates(learning_rate)
+        cost_updates, cost = self.cost_updates(learning_rate, l1_reg, l2_reg)
 
         cost_fn = theano.function(inputs = [index,
                     theano.Param(learning_rate)],

@@ -6,9 +6,13 @@ from theano import tensor
 
 def load_tfd(data_path, fold = 0, ds_type = 'train', scale = False, shared = False):
 
+    # patches
+    if type(fold) == type('str'):
+        path = ["{}patches/{}.pkl".format(data_path, fold)]
     # unserpvised
-    if fold == -1:
+    elif fold == -1:
         path = ["{}unsupervised/TFD_unsupervised_train_unlabeled_all.pkl".format(data_path)]
+    # folds
     else:
         if ds_type not in ['train', 'valid', 'test']:
             raise NameError("wrong dataset type: {}".format(ds_type))
@@ -131,4 +135,18 @@ def features(model, data, batch_size = 100):
     return numpy.vstack([norm(x) for x in res])
 
 
+def learning_rate_adjuster(current_cost, previous_cost, lr):
 
+    if current_cost > previous_cost:
+        rval = lr * .5
+        print "Shrinking learning rate to: {}".format(rval)
+    elif current_cost < previous_cost:
+        rval = lr * 1.5
+        print "Expanding learning rate to: {}".format(rval)
+    else:
+        rval = lr
+
+    rval = max(rval, 1e-7)
+    rval = min(rval, 1)
+
+    return rval
