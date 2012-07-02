@@ -7,13 +7,14 @@ from sklearn.svm import SVC
 from util.funcs import load_tfd, load_mnist, features
 from util.config import DATA_PATH
 
-def load_data(dataset, data_path, ds_type, fold, scale):
+def load_data(dataset, data_path, ds_type, fold, scale, scaler = None):
 
     if dataset == 'tfd':
         return load_tfd(data_path = data_path,
                         fold = fold,
                         ds_type = ds_type,
-                        scale = scale)
+                        scale = scale,
+                        scaler = scaler)
     if dataset == 'mnist':
         return load_mnist(data_path, ds_type = ds_type)
     else:
@@ -30,18 +31,18 @@ def classify(model,
             batch_size=600):
 
 
-    train_set_x, train_set_y = load_data(dataset, data_path, 'train', fold, scale)
-    valid_set_x, valid_set_y = load_data(dataset, data_path, 'valid', fold, scale)
-    test_set_x, test_set_y = load_data(dataset, data_path, 'test', fold, scale)
+    train_set_x, train_set_y, scaler = load_data(dataset, data_path, 'train', fold, scale)
+    valid_set_x, valid_set_y, _ = load_data(dataset, data_path, 'valid', fold, scale, scaler)
+    test_set_x, test_set_y, _ = load_data(dataset, data_path, 'test', fold, scale, scaler)
 
     # compute number of minibatches for training, validation and testing
     n_train = train_set_x.get_value(borrow=True).shape[0]
     n_valid = valid_set_x.get_value(borrow=True).shape[0]
     n_test = test_set_x.get_value(borrow=True).shape[0]
 
-    train_feats = features(model, train_set_x, batch_size)
-    valid_feats = features(model, valid_set_x, batch_size)
-    test_feats = features(model, test_set_x, batch_size)
+    train_feats, scaler = features(model, train_set_x, batch_size)
+    valid_feats, _ = features(model, valid_set_x, batch_size, scaler)
+    test_feats, _ = features(model, test_set_x, batch_size, scaler)
 
     valid_score = 0
     best_model = None

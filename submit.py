@@ -12,7 +12,7 @@ from util.config import DATA_PATH
 def explore_train():
 
     #Database
-    TABLE_NAME = 'nac_train_tfd_group_1'
+    TABLE_NAME = 'nac_train_tfd_3'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -24,32 +24,31 @@ def explore_train():
     state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
-    state.learning_rate = 0.00001
-    state.lr_change_tr = 0.005
+    state.learning_rate = 0.01
+    state.lr_change_tr = 0.05
     state.input_corruption_level = 0.0
     state.hidden_corruption_level = 0.7
     state.group_size = -1
-    state.l1_reg = 0.5
-    state.l2_reg = 0.5
+    state.l1_reg = 1
+    state.l2_reg = 1
     state.batch_size = 50
     state.n_epochs = 5
     state.norm = False
-    state.save_freq = 5
-    state.exp_name = 'tfd_l2_1024'
+    state.save_freq = 0
+    state.exp_name = 'tfd_l1_1024'
 
 
     ind = 0
 
     for in_cr in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         for hid_cr in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-            for lr in [0.0001]:
-                for group in [8, 16, 32, 64, 128]:
-                    state.hidden_corruption_level = hid_cr
-                    state.input_corruption_level = in_cr
-                    state.learning_rate = lr
-                    state.group_size = group
-                    sql.insert_job(experiment_train, flatten(state), db)
-                    ind += 1
+            for lr, lr_tr in zip([0.01, 0.001], [0.05, 0.005]):
+                state.hidden_corruption_level = hid_cr
+                state.input_corruption_level = in_cr
+                state.learning_rate = lr
+                state.lr_change_tr = lr_tr
+                sql.insert_job(experiment_train, flatten(state), db)
+                ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print ind
@@ -82,7 +81,7 @@ def explore_train():
 def explore_svm():
 
     #Database
-    TABLE_NAME = 'nac_svm_tfd_2'
+    TABLE_NAME = 'nac_svm_tfd_3'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -90,15 +89,15 @@ def explore_svm():
 
 
     state.dataset = "tfd"
-    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_tfd_2/"
-    state.data_path = DATA_PATH + "faces/TFD/nac_layer1_1024/"
+    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_tfd_3/"
+    state.data_path = DATA_PATH + "faces/TFD/raw/"
     #state.data_path = DATA_PATH + "mnist/"
     state.scale = False
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [1,10, 10]
+    state.c_vals = [2,8, 5]
     state.fold = 0
-    state.exp_name = 'tfd_layer2_1024'
+    state.exp_name = 'tfd_layer1_1024'
 
     matches = []
     for root, dirnames, filenames in os.walk(state.model_path):
@@ -118,5 +117,5 @@ def explore_svm():
 
 
 if __name__ == "__main__":
-    explore_train()
-    #explore_svm()
+    #explore_train()
+    explore_svm()
