@@ -16,6 +16,7 @@ def train(dataset,
                 act_enc,
                 act_dec,
                 learning_rate,
+                lr_change_tr,
                 input_corruption_level,
                 hidden_corruption_level,
                 group_size,
@@ -62,7 +63,7 @@ def train(dataset,
             break
 
         # adjust lr
-        learning_rate = learning_rate_adjuster(cost, previous_cost, learning_rate)
+        learning_rate = learning_rate_adjuster(cost, previous_cost, learning_rate, lr_change_tr)
         previous_cost = cost
 
         # save params
@@ -78,11 +79,13 @@ def train(dataset,
 def load_data(dataset, data_path, scale, fold):
 
     if dataset == 'tfd':
-        return load_tfd(data_path, fold = fold, scale = scale, shared = True)
-    if dataset == 'mnist':
-        return load_mnist(data_path, ds_type = 'train', shared = True)
+        data_x, data_y, _ = load_tfd(data_path, fold = fold, scale = scale, shared = True)
+    elif dataset == 'mnist':
+        data_x, data_y, _ = load_mnist(data_path, ds_type = 'train', shared = True)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
+
+    return data_x, data_y
 
 def experiment(state, channel):
     """
@@ -103,6 +106,7 @@ def experiment(state, channel):
             act_enc = state.act_enc,
             act_dec = state.act_dec,
             learning_rate = state.learning_rate,
+            lr_change_tr = state.lr_change_tr,
             input_corruption_level = state.input_corruption_level,
             hidden_corruption_level = state.hidden_corruption_level,
             group_size = state.group_size,
@@ -128,7 +132,7 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.data_path = DATA_PATH + "TFD/raw/"
+    state.data_path = DATA_PATH + "faces/TFD/raw/"
     #state.data_path = '/RQexec/mirzameh/data/mnist/'
     #state.fold = "tfd_unlabled_14x14_patches"
     state.fold = -1
@@ -137,15 +141,16 @@ def test_experiment():
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
-    state.input_corruption_level = 0.0
-    state.hidden_corruption_level = 0.7
+    state.lr_change_tr = 0.05
+    state.input_corruption_level = 0.4
+    state.hidden_corruption_level = 0.9
     state.group_size = -1
-    state.l1_reg = 0.5
-    state.l2_reg = 0.5
+    state.l1_reg = 1
+    state.l2_reg = 1
     state.batch_size = 50
     state.n_epochs = 100
     state.norm = False
-    state.save_freq = 3
+    state.save_freq = 0
     state.exp_name = 'tfd_test'
     state.save_path = 'data/'
 

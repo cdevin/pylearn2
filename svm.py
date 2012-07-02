@@ -104,12 +104,12 @@ def test_experiment():
     state = DD
     state.dataset = "tfd"
     #state.dataset = "mnist"
-    state.model_path = "data/tfd_test_3_model.pkl"
-    state.data_path = DATA_PATH + "TFD/raw/"
+    state.model_path = "data/tfd_test_0_model.pkl"
+    state.data_path = DATA_PATH + "faces/TFD/raw/"
     state.scale = True
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = [-1, 10, 10]
+    state.c_vals = [1, 7, 5]
     state.fold = 0
     state.exp_name = 'test_run'
 

@@ -37,12 +37,12 @@ class SQL():
 
 def format(results, params, iter_num, job_ids):
 
-    str = "{:^15}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "Lr init", "Lr decay", "result")
+    str = "{:^15}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "learning rate", "result")
     str+= "-------------------------------------------------------------------------------------------------------\n"
 
     for res, par, iter, id in zip(results, params, iter_num, job_ids):
 
-        str+= "{:<14} |{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20} \n".format(par[0], id,  iter,  par[1], par[2], par[3], par[4], float(res) * 100)
+        str+= "{:<14} |{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20} \n".format(par[0], id,  iter,  par[1], par[2], par[3], float(res) * 100)
 
     return str
 
@@ -68,34 +68,9 @@ def plot_scatter(performance, input_corr, hidd_corr, name):
     ax.set_xlabel('Hidden Corruption')
     ax.set_xlim((0, 1))
 
-
-    # max vals
-    x_in_l = numpy.linspace(0,1, 11)
-    x_in = numpy.zeros(11)
-    for x, y in zip(input_corr, performance):
-        if x_in[numpy.where(x_in_l == x)] < y:
-            x_in[numpy.where(x_in_l == x)] = y
-
-    x_hid_l = numpy.linspace(0,1, 11)
-    x_hid = numpy.zeros(11)
-    for x, y in zip(hidd_corr, performance):
-        if x_hid[numpy.where(x_hid_l == x)] < y:
-            x_hid[numpy.where(x_in_l == x)] = y
-
-    ax = fig.add_subplot(3,2,2)
-    ax.plot(x_in_l, x_in)
-    ax.set_xlim((0, 1))
-    ax.set_xlabel('Input Corruption')
-    ax = fig.add_subplot(3,2,4)
-    ax.plot(x_hid_l, x_hid)
-    ax.set_xlim((0, 1))
-    ax.set_xlabel('Hidden Corruption')
-
-
-    # heat map
-    x_l = numpy.linspace(0,1, 11)
-    y_l = numpy.linspace(0,1, 11)
-    z_l = numpy.zeros((11,11))
+    x_l = numpy.linspace(0,0.9, 10)
+    y_l = numpy.linspace(0,0.9, 10)
+    z_l = numpy.zeros((10,10))
 
     for x_ind, x in enumerate(x_l):
         for y_ind, y in enumerate(y_l):
@@ -104,6 +79,16 @@ def plot_scatter(performance, input_corr, hidd_corr, name):
                 if numpy.allclose(in_c, x) and numpy.allclose(hid_c, y):
                     per.append(perf)
             z_l[x_ind, y_ind] = numpy.max(per)
+
+
+    ax = fig.add_subplot(3,2,2)
+    ax.plot(x_l, z_l.max(1))
+    ax.set_xlim((0, 0.9))
+    ax.set_xlabel('Input Corruption')
+    ax = fig.add_subplot(3,2,4)
+    ax.plot(y_l, z_l.max(0))
+    ax.set_xlim((0, 0.9))
+    ax.set_xlabel('Hidden Corruption')
 
 
     x_l, y_l = numpy.meshgrid(x_l, y_l)
@@ -117,20 +102,6 @@ def plot_scatter(performance, input_corr, hidd_corr, name):
     ax.set_ylabel('Input Corruption')
     ax.set_xlim((0, 1))
     ax.set_xlabel('Hidden Corruption')
-
-    #fig = pylab.figure()
-    #ax = fig.gca(projection='3d')
-    #surf = ax.plot_surface(x_l, y_l, z_l, rstride=1, cstride=1, cmap=cm.jet,
-                    #linewidth=0, antialiased=False)
-
-    ##import ipdb
-    ##ipdb.set_trace()
-    #ax.set_xlim((0, 1))
-    #ax.set_ylim((0, 1))
-    #ax.set_zlim3d((0, 1))
-    #ax.set_xlabel('Input Corruption')
-    #ax.set_ylabel('Hidden Corruption')
-    ##ax.zaxis.set_major_locator(LinearLocator(10))
 
     pylab.show()
     pylab.savefig(name)
@@ -157,7 +128,7 @@ def reterive_data(experiment, version, num):
     iter_num = [item[1].split('/')[-1].split('_')[-2] for item in data]
 
     table = "{}_train_{}".format(experiment, version)
-    commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, lrinit, lrdecay, nhid from {}_view \
+    commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, learningrate, nhid from {}_view \
             where id = {}".format(table, id)  for id in job_ids]
     params = [db.get_one(item) for item in commands]
 
