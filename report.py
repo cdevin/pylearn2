@@ -55,18 +55,11 @@ def plot_lr(performance, learning_rate, name):
     pylab.show()
     pylab.savefig(name)
 
+
 def plot_scatter(performance, input_corr, hidd_corr, name):
 
     # scatter
     fig = pylab.figure()
-    ax = fig.add_subplot(3,2,1)
-    ax.scatter(input_corr, performance)
-    ax.set_xlabel('Input Corruption')
-    ax.set_xlim((0, 1))
-    ax = fig.add_subplot(3,2,3)
-    ax.scatter(hidd_corr, performance)
-    ax.set_xlabel('Hidden Corruption')
-    ax.set_xlim((0, 1))
 
     x_l = numpy.linspace(0,0.9, 10)
     y_l = numpy.linspace(0,0.9, 10)
@@ -81,30 +74,83 @@ def plot_scatter(performance, input_corr, hidd_corr, name):
             z_l[x_ind, y_ind] = numpy.max(per)
 
 
-    ax = fig.add_subplot(3,2,2)
+    ax = fig.add_subplot(2,1,1)
     ax.plot(x_l, z_l.max(1))
     ax.set_xlim((0, 0.9))
+    #ax.set_ylim(0.9814, .984)
     ax.set_xlabel('Input Corruption')
-    ax = fig.add_subplot(3,2,4)
+    ax = fig.add_subplot(2,1,2)
     ax.plot(y_l, z_l.max(0))
     ax.set_xlim((0, 0.9))
     ax.set_xlabel('Hidden Corruption')
 
 
-    x_l, y_l = numpy.meshgrid(x_l, y_l)
-    x_l = x_l.ravel()
-    y_l = y_l.ravel()
-    z_l = z_l.ravel()
+    #x_l, y_l = numpy.meshgrid(x_l, y_l)
+    #x_l = x_l.ravel()
+    #y_l = y_l.ravel()
+    #z_l = z_l.ravel()
 
-    ax = fig.add_subplot(3,2, 5)
-    ax.hexbin(x_l, y_l, C = z_l, cmap=cm.jet, bins=None)
-    ax.set_ylim((0, 1))
-    ax.set_ylabel('Input Corruption')
-    ax.set_xlim((0, 1))
-    ax.set_xlabel('Hidden Corruption')
+    #ax = fig.add_subplot(3,2, 5)
+    #ax.hexbin(x_l, y_l, C = z_l, cmap=cm.jet, bins=None)
+    #ax.set_ylim((0, 1))
+    #ax.set_ylabel('Input Corruption')
+    #ax.set_xlim((0, 1))
+    #ax.set_xlabel('Hidden Corruption')
 
     pylab.show()
     pylab.savefig(name)
+
+
+#def plot_scatter(performance, input_corr, hidd_corr, name):
+
+    ## scatter
+    #fig = pylab.figure()
+    #ax = fig.add_subplot(3,2,1)
+    #ax.scatter(input_corr, performance)
+    #ax.set_xlabel('Input Corruption')
+    #ax.set_xlim((0, 1))
+    #ax = fig.add_subplot(3,2,3)
+    #ax.scatter(hidd_corr, performance)
+    #ax.set_xlabel('Hidden Corruption')
+    #ax.set_xlim((0, 1))
+
+    #x_l = numpy.linspace(0,0.9, 10)
+    #y_l = numpy.linspace(0,0.9, 10)
+    #z_l = numpy.zeros((10,10))
+
+    #for x_ind, x in enumerate(x_l):
+        #for y_ind, y in enumerate(y_l):
+            #per = [0.]
+            #for in_c, hid_c, perf in zip(input_corr, hidd_corr, performance):
+                #if numpy.allclose(in_c, x) and numpy.allclose(hid_c, y):
+                    #per.append(perf)
+            #z_l[x_ind, y_ind] = numpy.max(per)
+
+
+    #ax = fig.add_subplot(3,2,2)
+    #ax.plot(x_l, z_l.max(1))
+    #ax.set_xlim((0, 0.9))
+    #ax.set_xlabel('Input Corruption')
+    #ax = fig.add_subplot(3,2,4)
+    #ax.plot(y_l, z_l.max(0))
+    #ax.set_xlim((0, 0.9))
+    #ax.set_xlabel('Hidden Corruption')
+
+
+    #x_l, y_l = numpy.meshgrid(x_l, y_l)
+    #x_l = x_l.ravel()
+    #y_l = y_l.ravel()
+    #z_l = z_l.ravel()
+
+    #ax = fig.add_subplot(3,2, 5)
+    #ax.hexbin(x_l, y_l, C = z_l, cmap=cm.jet, bins=None)
+    #ax.set_ylim((0, 1))
+    #ax.set_ylabel('Input Corruption')
+    #ax.set_xlim((0, 1))
+    #ax.set_xlabel('Hidden Corruption')
+
+    #pylab.show()
+    #pylab.savefig(name)
 
 def reterive_data(experiment, version, num):
 
