@@ -83,7 +83,7 @@ def explore_train():
 def explore_svm():
 
     #Database
-    TABLE_NAME = 'nac_svm_tfd_3'
+    TABLE_NAME = 'nac_svm_tfd_group_2'
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
 
     #Default values
@@ -91,7 +91,7 @@ def explore_svm():
 
 
     state.dataset = "tfd"
-    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_tfd_3/"
+    state.model_path = "/RQexec/mirzameh/jobs/mirzamom_db/nac_train_tfd_group_2/"
     state.data_path = DATA_PATH + "faces/TFD/raw/"
     #state.data_path = DATA_PATH + "mnist/"
     state.scale = False
@@ -99,7 +99,7 @@ def explore_svm():
     state.batch_size = 600
     state.c_vals = [2,8, 5]
     state.fold = 0
-    state.exp_name = 'tfd_layer1_1024'
+    state.exp_name = 'tfd_layer1_1024_group'
 
     matches = []
     for root, dirnames, filenames in os.walk(state.model_path):
@@ -119,5 +119,5 @@ def explore_svm():
 
 
 if __name__ == "__main__":
-    explore_train()
-    #explore_svm()
+    #explore_train()
+    explore_svm()
