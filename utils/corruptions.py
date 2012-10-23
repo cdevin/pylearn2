@@ -85,5 +85,56 @@ class BinomialCorruptorScaledGroup(Corruptor):
         else:
             return [self._corrupt(inp) for inp in inputs]
 
+class GaussianCorruptor(Corruptor):
+    """
+    A Gaussian corruptor transforms inputs by adding zero
+    mean isotropic Gaussian noise.
+    """
+
+    def __init__(self, stdev, avg = 0., rng=2001):
+        self.avg = avg
+        super(GaussianCorruptor, self).__init__(corruption_level=stdev, rng=rng)
+
+    def _corrupt(self, x):
+        noise = self.s_rng.normal(
+            size=x.shape,
+            avg=self.avg,
+            std=self.corruption_level,
+            dtype=theano.config.floatX
+        )
+
+        rval = noise + x
+
+        return rval
+
+    def __call__(self, inputs):
+        """
+        (Symbolically) corrupt the inputs with Gaussian noise.
+
+        Parameters
+        ----------
+        inputs : tensor_like, or list of tensor_likes
+            Theano symbolic(s) representing a (list of) (mini)batch of inputs
+            to be corrupted, with the first dimension indexing training
+            examples and the second indexing data dimensions.
+
+        Returns
+        -------
+        corrupted : tensor_like, or list of tensor_likes
+            Theano symbolic(s) representing the corresponding corrupted inputs,
+            where individual inputs have been corrupted by zero mean Gaussian
+            noise with standard deviation equal to `self.corruption_level`.
+        """
+        if isinstance(inputs, tensor.Variable):
+            return self._corrupt(inputs)
+        return [self._corrupt(inp) for inp in inputs]
+
+    def corruption_free_energy(self, corrupted_X, X):
+        axis = range(1, len(X.type.broadcastable))
+
+        rval = (T.sum(T.sqr(corrupted_X - X), axis=axis) /
+                (2. * (self.corruption_level ** 2.)))
+        assert len(rval.type.broadcastable) == 1
+        return rval
 
 
