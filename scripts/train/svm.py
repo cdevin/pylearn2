@@ -26,14 +26,17 @@ def kfold(train_set, test_set, n_folds, C_vals, seed = 23007):
 
     for fold in xrange(n_folds):
         print "Runnin fold {}/{}".format(fold, n_folds)
-        rand_idx = rng.permutation(60000)
+        if n_folds > 1:
+            rand_idx = rng.permutation(60000)
+        else:
+            rand_idx = range(60000)
         train_x = train_set.X[rand_idx][:48000]
         train_y = train_set.y[rand_idx][:48000]
         valid_x = train_set.X[rand_idx][48000:]
         valid_y = train_set.y[rand_idx][48000:]
 
-        best_model = None
         best_acc = -1.
+        best_C = None
 
         for C in C_vals:
             svm_model,  valid_acc = train((train_x, train_y), (valid_x, valid_y), C)
@@ -41,8 +44,10 @@ def kfold(train_set, test_set, n_folds, C_vals, seed = 23007):
 
             if valid_acc > best_acc:
                 best_acc = valid_acc
-                best_model = svm_model
+                best_C = C
 
+        best_model = DenseMulticlassSVM(best_C)
+        best_model.fit(train_set.X, train_set.y)
         test_pred = best_model.predict(test_set.X)
         test_acc.append((test_pred == test_set.y).mean())
 
@@ -64,12 +69,12 @@ def main(model_f, n_folds, C_vals):
     rep = serial.load(model_f)
     rep.fn = theano.function([x], rep(x))
 
-    train_set.X = rep.perform(train_set.X)
-    test_set.X  = rep.perform(test_set.X)
+    #train_set.X = rep.perform(train_set.X)
+    #test_set.X  = rep.perform(test_set.X)
 
     kfold(train_set, test_set, n_folds, C_vals)
 
 if __name__ == "__main__":
 
     model_f = "/RQexec/mirzameh/tmp/dln/tmp/dln_1.pkl"
-    main(model_f, 3, [100])
+    main(model_f, 1, [100])
