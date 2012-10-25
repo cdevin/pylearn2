@@ -81,27 +81,28 @@ def train_1layer(submit = False):
 
     state = DD()
 
-    state.data_path = os.path.join(DATA_PATH, "mnist/pylearn2/train.pkl")
-    state.nvis = 784
+    state.data_path = os.path.join(DATA_PATH, "cifar10_bw/pylearn2_2/train.pkl")
+    state.nvis = 32*32
     state.nhid = 1000
-    state.learning_rate = 0.0001
+    state.learning_rate = 0.00001
     state.grow_amt = 1.001
     state.shrink_amt = 0.009
     state.init_momentum = 0.5
     state.final_momentum = 0.9
     state.start_momentum = 10
     state.saturate_momentum = 30
-    state.w_l1_ratio = 0.001
+    state.w_l1_ratio = 0.0
     #state.act_enc = "!obj:DLN.models.dln.Rectifier {}"
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.input_corruption_level = 0.2
     state.hidden_corruption_level = 0.5
     state.batch_size = 20
-    state.monitoring_batches = 3000
+    state.monitoring_batches = 2500
     state.normal_penalty = 1
     state.max_epochs = 300
-    state.save_name = os.path.join(RESULT_PATH, "naenc/mnist/l1_")
+    #state.save_name = os.path.join(RESULT_PATH, "naenc/mnist/l1_")
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/l1_2_")
     state.save_freq = 1
     state.yaml_string = train_1layer_yaml_string
 
