@@ -49,7 +49,7 @@ def convert(train_x, test_x, model_f, dataset, scale, normalize):
         print "Transforming data..."
         x = tensor.matrix()
         rep = serial.load(model_f)
-        rep.fn = theano.function([x], rep(x))
+        rep.fn = theano.function([x], rep.test_encode(x))
 
         train_feat = rep.perform(train_x)
         test_feat = rep.perform(test_x)
@@ -65,7 +65,6 @@ def convert(train_x, test_x, model_f, dataset, scale, normalize):
         print "Normalizing..."
         train_feat = numpy.vstack([norm(x) for x in train_feat])
         test_feat = numpy.vstack([norm(x) for x in test_feat])
-
 
     return train_feat, test_feat
 
