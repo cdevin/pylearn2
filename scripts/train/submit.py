@@ -5,6 +5,7 @@ from jobman import DD, flatten, api0, sql
 from train import DATA_PATH, RESULT_PATH, train_1layer_yaml_string
 from train import experiment as train_experiment
 from classify import experiment as classify_experiment
+from l2_svm import experiment as l2_svm_experiment
 from utils.config import get_experiment_path
 
 def train_layer1_mnist():
@@ -101,7 +102,6 @@ def train_layer1_cifar():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-
 def classify_mnist():
 
     state = DD()
@@ -130,18 +130,49 @@ def classify_mnist():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def classify_mnist_l2_svm():
+
+    state = DD()
+
+    search_path = os.path.join(get_experiment_path(), "smooth_dropout_mnist_l1")
+    state.labels_path = os.path.join(get_experiment_path(), "smooth_dropout_mnist_l1/labels.mat")
+    state.standardize = 'False'
+    state.dataset = 'mnist'
+    state.method = 'svm'
+    state.c_vals = '[1000 10000 100000 1000000 10000000]'
+
+    matches = []
+    for root, dirnames, filenames in os.walk(search_path):
+        for filename in fnmatch.filter(filenames, '*.mat'):
+            matches.append(os.path.join(root, filename))
+
+    ind = 0
+    TABLE_NAME = "smooth_dropout_mnist_l1_svm_l2"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for item in matches:
+        state.data_path = item
+        sql.insert_job(l2_svm_experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
-                    'layer1_cifar', 'classify_cifar'])
+                    'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
         train_layer1_mnist()
     elif args.task == 'classify_mnist':
         classify_mnist()
+    elif args.task == 'classify_mnist_l2_svm':
+        classify_mnist_l2_svm()
     elif args.task == 'layer1_cifar':
         train_layer1_cifar()
     elif args.task == 'classify_cifar':
