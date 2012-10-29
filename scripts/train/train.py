@@ -81,10 +81,10 @@ def train_1layer(submit = False):
 
     state = DD()
 
-    state.data_path = os.path.join(DATA_PATH, "cifar10_bw/pylearn2_2/train.pkl")
-    state.nvis = 32*32
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/train.pkl")
+    state.nvis = 32*32*3
     state.nhid = 1000
-    state.learning_rate = 0.00001
+    state.learning_rate = 0.001
     state.grow_amt = 1.001
     state.shrink_amt = 0.009
     state.init_momentum = 0.5

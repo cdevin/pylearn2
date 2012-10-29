@@ -8,6 +8,7 @@ from scipy.io import savemat
 from theano import tensor
 from pylearn2.utils import serial
 from pylearn2.datasets.mnist import MNIST
+from pylearn2.datasets.cifar10 import CIFAR10
 from utils.datasets.cifar10_bw import CIFAR10_BW
 from sklearn.preprocessing import Scaler
 
@@ -23,9 +24,12 @@ def load_data(dataset):
     if dataset == 'mnist':
         train_set = MNIST('train')
         test_set = MNIST('test')
-    elif sdataset == 'cifar10_bw':
+    elif dataset == 'cifar10_bw':
         train_set = CIFAR10_BW('train')
         test_set = CIFAR10_BW('test')
+    elif dataset == 'cifar10':
+        train_set = CIFAR10('train')
+        test_set = CIFAR10('test')
     else:
         raise NameError('Unknown dataset: {}').format(dataset)
 
@@ -78,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument('--pattern', help = "pattern of files", default = "*.pkl")
     parser.add_argument('-s', '--scale', action = "store_true", default = False, help = "scale data")
     parser.add_argument('-n', '--norm', action = "store_true", default = False, help = "normalize data")
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10_bw'], required = True)
+    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10_bw', 'cifar10'], required = True)
     parser.add_argument('-f', '--format', choices = ['mat'], default = 'mat')
     args = parser.parse_args()
 

@@ -59,8 +59,8 @@ def train_layer1_cifar():
 
     state = DD()
 
-    state.data_path = os.path.join(DATA_PATH, "cifar10_bw/pylearn2/train.pkl")
-    state.nvis = 32 * 32
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/train.pkl")
+    state.nvis = 32 * 32 * 3
     state.nhid = 1000
     state.learning_rate = 0.0001
     state.grow_amt = 1.001
@@ -79,7 +79,7 @@ def train_layer1_cifar():
     state.normal_penalty = 1
     state.max_epochs = 300
     state.save_name = "cifar_l1_"
-    state.save_freq = 10
+    state.save_freq = 20
     state.yaml_string = train_1layer_yaml_string
 
 
@@ -87,9 +87,9 @@ def train_layer1_cifar():
     TABLE_NAME = "smooth_dropout_cifar_l1"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [0.01, 0.001, 0.0001]:
-        for wl1 in [0, 0.0001]:
-            for in_corr in [0.2, 0.5]:
-                for hid_corr in [0.2, 0.5, 0.7]:
+        for wl1 in [0, 0.001]:
+            for in_corr in [0.0,  0.2, 0.5]:
+                for hid_corr in [0.0, 0.2, 0.5, 0.7]:
                         state.learning_rate = lr
                         state.grow_amt = 1. + 10. ** numpy.log10(lr)
                         state.shrink_amt = 1. - 10. ** numpy.log10(lr)
