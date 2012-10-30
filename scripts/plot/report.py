@@ -34,25 +34,15 @@ class SQL():
         return self.cur.fetchall()
 
 
+def format(results):
 
-def format(results, params, iter_num, job_ids, group = False):
-
-    if group == True:
-        str = "{:^15}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "num of groups", "learning rate", "result")
-    else:
-        str = "{:^15}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20}\n".format("exp_name", "job_id", "iter num", "input corr", "hidden corr", "learning rate", "result")
-    str+= "-------------------------------------------------------------------------------------------------------\n"
-
-    for res, par, iter, id in zip(results, params, iter_num, job_ids):
-        if group == True:
-            str+= "{:<14} |{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20} \n".format(par[0], id,  iter,  par[1], par[2], par[3], par[4],  float(res) * 100)
-        else:
-            str+= "{:<14} |{:^10}|{:^10}|{:^10}|{:^10}|{:^10}|{:^20} \n".format(par[0], id,  iter,  par[1], par[2], par[3], float(res) * 100)
+    str = "{:^10}|{:^15}|{:^10}|{:^30}|{:^20}\n".format("ID", "Learning rate", "L1 ratio", "Corruption Levels", "Test Error")
+    for data in results:
+        str += "{:^10}|{:^15}|{:^10}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['L1'], data['corruptions'], data['test error'])
     return str
 
 
 def plot_lr(performance, learning_rate, name):
-
 
     pylab.scatter(learning_rate, performance)
     #pylab.xscale('log')
@@ -154,37 +144,37 @@ def plot_group(performance, input_corr, hidd_corr, group_nums, name):
     pylab.show()
     pylab.savefig(name)
 
-def reterive_data(experiment, version, num, group = False):
+def reterive_data(experiment, num, group = False):
 
     db = SQL()
     # get classification results
-    table = "{}_svm_{}".format(experiment, version)
 
+    valid_query = "select {}_view.id, lr, l1ratio, l1ratio_i,\
+            corruptionlevels,  {}keyval.fval\
+            from {}_view, {}keyval where {}_view.id = dict_id and\
+            name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
+    test_query = "select {}_view.id, {}keyval.fval from {}_view, {}keyval \
+            where {}_view.id = dict_id and name = 'test_score';".format(experiment, experiment, experiment, experiment, experiment)
     if num == -1:
-        data = db.get_all("select {}_view.id, modelpath, {}keyval.fval from {}_view, {}keyval \
-            where {}_view.id = dict_id and name = 'valid_result' order by \
-            fval DESC;".format(table, table, table, table, table))
+        valid_data= db.get_all(valid_query)
+        test_data =db.get_all(test_query)
     else:
-        data = db.get_many("select {}_view.id, modelpath, {}keyval.fval from {}_view, {}keyval \
-            where {}_view.id = dict_id and name = 'valid_result' order by \
-            fval DESC;".format(table, table, table, table, table), num)
+        valid_data = db.get_many(valid_query, num)
+        test_data = db.get_many(test_query, num)
 
+    results = []
+    for item in valid_data:
+        L1 = item[2] if item[2] != None else item[3]
+        results.append({'id' : item[0], 'lr' : item[1], 'L1' : L1, 'corruptions' : item[4], 'valid error' : item[5]})
 
-    # extract ids and results
-    job_ids = [int(item[1].split('/')[-2]) for item in data]
-    results = [item[-1] for item in data]
-    iter_num = [item[1].split('/')[-1].split('_')[-2] for item in data]
+    for test in test_data:
+        for res in results:
+            if test[0] == res['id']:
+                res['test error'] = test[1]
 
-    table = "{}_train_{}".format(experiment, version)
-    if group == True:
-        commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, groupsize, learningrate, nhid from {}_view \
-                where id = {}".format(table, id)  for id in job_ids]
-    else:
-        commands = ["select expname, inputcorruptionlevel, hiddencorruptionlevel, learningrate, nhid from {}_view \
-                where id = {}".format(table, id)  for id in job_ids]
-    params = [db.get_one(item) for item in commands]
+    results = sorted(results, key = lambda k : k['test error'])
 
-    return params, results, job_ids, iter_num
+    return results
 
 
 def main():
@@ -192,8 +182,6 @@ def main():
     parser = argparse.ArgumentParser(description = "Pretty print experiment results")
     parser.add_argument('-e', '--experiment', required = True,
             help = "Table name")
-    parser.add_argument('-v', '--version', required = True,
-            help = "experiment version")
     parser.add_argument('-n', '--number', default = 10, type = int,
             help = "max number")
     parser.add_argument('-p', '--plot', default = False, action = 'store_true')
@@ -202,8 +190,8 @@ def main():
 
 
     # report
-    params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, args.number, args.group)
-    print format(results, params, iter_num, job_ids, args.group)
+    results = reterive_data(args.experiment, args.number, args.group)
+    print format(results)
 
     # plot
     if args.plot == True:
