@@ -6,6 +6,7 @@ from train import DATA_PATH, RESULT_PATH, train_1layer_yaml_string
 from train import experiment as train_experiment
 from classify import experiment as classify_experiment
 from l2_svm import experiment as l2_svm_experiment
+from deepmlp import experiment as mlp_experiment
 from utils.config import get_experiment_path
 
 def train_layer1_mnist():
@@ -157,6 +158,66 @@ def classify_mnist_l2_svm():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def classify_cifar_l1_svm():
+
+    state = DD()
+
+    search_path = os.path.join(get_experiment_path(), "smooth_dropout_cifar_l1")
+    state.standardize = 'False'
+    state.dataset = 'cifar'
+    state.c_vals = '[10000 100000 1000000 10000000]'
+
+    matches = []
+    for root, dirnames, filenames in os.walk(search_path):
+        for filename in fnmatch.filter(filenames, '*.pkl'):
+            matches.append(os.path.join(root, filename))
+
+    ind = 0
+    TABLE_NAME = "smooth_dropout_cifar_l1_svm"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for item in matches:
+        state.data_path = item
+        sql.insert_job(l2_svm_experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+def mlp_cifar():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
+    state.dataset = 'cifar10'
+    state.scale = True
+    state.norm = False
+    state.nepochs = 1000
+    state.lr = 0.05
+    state.lr_shrink_time = 30
+    state.lr_dc_rate = 0.001
+    state.batch_size = 50
+    state.l1_ratio = 0.01
+    state.n_units = [32*32*3, 1000, 1000]
+    state.corruption_levels = [0.2, 0.3, 0.3]
+    state.save_frequency = 50
+    state.save_name = "cifar_l2.pkl"
+
+    ind = 0
+    TABLE_NAME = "sd_mlp_cifar_2l"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.05, 0.005]:
+        for wl1 in [0, 0.001]:
+            for in_corr in [0.0, 0.2, 0.5, 0.7]:
+                for l1_corr in [0.0, 0.2, 0.5, 0.7]:
+                    for l2_corr in [0.0, 0.2, 0.5, 0.7]:
+                        state.lr = lr
+                        state.l1_ratio = wl1
+                        state.corruption_levels = [in_corr, l1_corr, l2_corr]
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 
@@ -164,7 +225,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
-                    'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm'])
+                    'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm',
+                    'classify_cifar_l1_svm', 'mlp_cifar'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -173,10 +235,14 @@ if __name__ == "__main__":
         classify_mnist()
     elif args.task == 'classify_mnist_l2_svm':
         classify_mnist_l2_svm()
+    elif args.task == 'classify_cifar_l1_svm':
+        classify_cifar_l1_svm()
     elif args.task == 'layer1_cifar':
         train_layer1_cifar()
     elif args.task == 'classify_cifar':
         classify_cifar()
+    elif args.task == 'mlp_cifar':
+        mlp_cifar()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

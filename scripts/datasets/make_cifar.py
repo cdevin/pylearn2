@@ -10,7 +10,7 @@ train = CIFAR10(which_set="train", rescale = True)
 print "Preparing output directory..."
 DATA_PATH = get_data_path()
 data_dir = DATA_PATH + "cifar10_local"
-output_dir = data_dir + '/pylearn2'
+output_dir = data_dir + '/pylearn3'
 serial.mkdir( output_dir )
 
 
@@ -18,11 +18,10 @@ pipeline = preprocessing.Pipeline()
 #pipeline.items.append(
     #preprocessing.ExtractPatches(patch_shape=(8, 8), num_patches=150000)
 #)
-#pipeline.items.append(preprocessing.GlobalContrastNormalization())
-#pipeline.items.append(preprocessing.ZCA())
+pipeline.items.append(preprocessing.GlobalContrastNormalization())
+pipeline.items.append(preprocessing.ZCA())
 #pipeline.items.append(preprocessing.Standardize())
-pipeline.items.append(preprocessing.RemapInterval([0.0, 2.0], [0.0, 1.0]))
-
+#pipeline.items.append(preprocessing.RemapInterval([-10, 10], [0.0, 1.0]))
 train.apply_preprocessor(preprocessor=pipeline, can_fit=True)
 train.use_design_loc(output_dir + '/train.npy')
 serial.save(output_dir + '/train.pkl', train)
