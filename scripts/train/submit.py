@@ -186,7 +186,7 @@ def classify_cifar_l1_svm():
 def mlp_cifar():
 
     state = DD()
-    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
     state.shuffle = False
     state.dataset = 'cifar10'
     state.act_enc = "rectifier"
@@ -205,13 +205,13 @@ def mlp_cifar():
     state.save_name = "cifar_l2.pkl"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l_2"
+    TABLE_NAME = "sd_mlp_cifar_2l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [0.1, 0.01]:
-        for act_enc in ["rectifier"]:
-            for in_corr in [0.0, 0.2, 0.5, 0.7]:
-                for l1_corr in [0.0, 0.2, 0.5, 0.7]:
-                    for l2_corr in [0.0, 0.2, 0.5, 0.7]:
+        for act_enc in ["rectifier", "sigmoid"]:
+            for in_corr in [0.0, 0.5]:
+                for l1_corr in [0.0, 0.5]:
+                    for l2_corr in [0.0, 0.5]:
                         state.lr = lr
                         state.act_enc = act_enc
                         state.corruption_levels = [in_corr, l1_corr, l2_corr]

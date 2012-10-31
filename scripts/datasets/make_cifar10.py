@@ -5,7 +5,7 @@ from utils.config import get_data_path
 from DLN.datasets.preprocessing import Scale
 
 print 'Loading CIFAR_10 train set...'
-train = CIFAR10(which_set="train", rescale = True)
+train = CIFAR10(which_set="train", rescale = True, center = True)
 
 print "Preparing output directory..."
 DATA_PATH = get_data_path()
@@ -27,7 +27,7 @@ train.use_design_loc(output_dir + '/train.npy')
 serial.save(output_dir + '/train.pkl', train)
 
 # Test
-test = CIFAR10(which_set="test")
+test = CIFAR10(which_set="test", rescale = True, center = True)
 test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
 test.use_design_loc(output_dir + '/test.npy')
 serial.save(output_dir + '/test.pkl', test)
