@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     state = DD()
     #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
     state.scale = args.scale
     state.dataset = args.dataset
     state.norm = args.norm

@@ -10,7 +10,7 @@ train = CIFAR10(which_set="train", rescale = True)
 print "Preparing output directory..."
 DATA_PATH = get_data_path()
 data_dir = DATA_PATH + "cifar10_local"
-output_dir = data_dir + '/pylearn3'
+output_dir = data_dir + '/pylearn2'
 serial.mkdir( output_dir )
 
 
