@@ -187,30 +187,33 @@ def mlp_cifar():
 
     state = DD()
     state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
+    state.shuffle = False
     state.dataset = 'cifar10'
+    state.act_enc = "rectifier"
     state.scale = True
     state.norm = False
     state.nepochs = 1000
     state.lr = 0.05
-    state.lr_shrink_time = 30
+    state.lr_shrink_time = 100
     state.lr_dc_rate = 0.001
     state.batch_size = 50
-    state.l1_ratio = 0.01
+    state.l1_ratio = 0.0
+    state.gaussian_avg = 0.0
     state.n_units = [32*32*3, 1000, 1000]
     state.corruption_levels = [0.2, 0.3, 0.3]
     state.save_frequency = 50
     state.save_name = "cifar_l2.pkl"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l"
+    TABLE_NAME = "sd_mlp_cifar_2l_2"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.05, 0.005, 0.5]:
-        for wl1 in [0, 0.001]:
+    for lr in [0.1, 0.01]:
+        for act_enc in ["rectifier"]:
             for in_corr in [0.0, 0.2, 0.5, 0.7]:
                 for l1_corr in [0.0, 0.2, 0.5, 0.7]:
                     for l2_corr in [0.0, 0.2, 0.5, 0.7]:
                         state.lr = lr
-                        state.l1_ratio = wl1
+                        state.act_enc = act_enc
                         state.corruption_levels = [in_corr, l1_corr, l2_corr]
                         sql.insert_job(mlp_experiment, flatten(state), db)
                         ind += 1
@@ -228,7 +231,7 @@ def mlp_mnist():
     state.norm = False
     state.nepochs = 1000
     state.lr = 0.05
-    state.lr_shrink_time = 100
+    state.lr_shrink_time = 60
     state.lr_dc_rate = 0.001
     state.batch_size = 50
     state.l1_ratio = 0.01
@@ -240,7 +243,7 @@ def mlp_mnist():
     ind = 0
     TABLE_NAME = "sd_mlp_mnist_2l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.9, 0.1]:
+    for lr in [0.5, 0.05, 0.009]:
         for wl1 in [0, 0.01]:
             for in_corr in [0.0, 0.2, 0.5, 0.7]:
                 for l1_corr in [0.0, 0.2, 0.5, 0.7]:

@@ -28,6 +28,6 @@ serial.save(output_dir + '/train.pkl', train)
 test = CIFAR10_BW(which_set="test")
 test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
 train.use_design_loc(output_dir + '/test.npy')
-serial.save(output_dir + '/test.pkl', train)
+serial.save(output_dir + '/test.pkl', test)
 
 serial.save(output_dir + '/preprocessor.pkl',pipeline)
