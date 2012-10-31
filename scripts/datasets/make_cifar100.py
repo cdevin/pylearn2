@@ -28,7 +28,7 @@ test = CIFAR100(which_set="test")
 print "Pre-processin test set..."
 test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
 test.y = test.y_fine
-train.use_design_loc(output_dir + '/test.npy')
+test.use_design_loc(output_dir + '/test.npy')
 serial.save(output_dir + '/test.pkl', test)
 
 serial.save(output_dir + '/preprocessor.pkl',pipeline)
