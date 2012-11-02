@@ -9,10 +9,12 @@ import theano
 import argparse
 from theano import tensor
 from pylearn2.utils import serial
-from noisy_encoder.models.mlp import MLP
+from noisy_encoder.models.mlp_new import MLP
 from sklearn.preprocessing import Scaler
 from jobman.tools import DD
 from utils.config import get_data_path, get_result_path
+from DLN.utils.costs import WeightsL1Cost
+from pylearn2.costs.supervised_cost import NegativeLogLikelihood
 
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -22,8 +24,80 @@ from classify import shared_dataset, norm
 RESULT_PATH = get_result_path()
 DATA_PATH = get_data_path()
 
+class DeepMLP(object):
+    """ Very temp while not using pylearn training alg"""
+    def __init__(self, numpy_rng, n_units, corruption_levels, n_outs, act_enc, gaussian_avg):
+
+        self.x = T.matrix('x')
+        self.y = T.ivector('y')
+        mlp = MLP(n_units, corruption_levels, n_outs, act_enc, gaussian_avg)
+        self.cost = NegativeLogLikelihood()(mlp, self.x, self.y)
+        self.errors = T.neq(mlp.predict_y(self.x), self.y).mean()
+        self.params = mlp._params
+        self.model = mlp
+
+    def build_finetune_functions(self, datasets, batch_size, l1_ratio):
+
+        (train_set_x, train_set_y) = datasets[0]
+        (valid_set_x, valid_set_y) = datasets[1]
+        (test_set_x, test_set_y) = datasets[2]
+
+        # compute number of minibatches for training, validation and testing
+        n_valid_batches = valid_set_x.get_value(borrow=True).shape[0]
+        n_valid_batches /= batch_size
+        n_test_batches = test_set_x.get_value(borrow=True).shape[0]
+        n_test_batches /= batch_size
+
+        index = T.lscalar('index')  # index to a [mini]batch
+        learning_rate = T.scalar('lr')
+
+        # compute the gradients with respect to the model parameters
+        # TODO The L1 causes float64 error for some reason
+        L1 = WeightsL1Cost(l1_ratio)(self.model, self.x)
+        gparams = T.grad(self.cost , self.params)
+
+        # compute list of fine-tuning updates
+        updates = {}
+        for param, gparam in zip(self.params, gparams):
+            updates[param] = param - gparam * learning_rate
+
+        train_fn = theano.function(inputs=[index,
+                theano.Param(learning_rate)],
+              outputs=self.cost,
+              updates=updates,
+              givens={
+                self.x: train_set_x[index * batch_size:
+                                    (index + 1) * batch_size],
+                self.y: train_set_y[index * batch_size:
+                                    (index + 1) * batch_size]})
+
+        test_score_i = theano.function([index], self.errors,
+                 givens={
+                   self.x: test_set_x[index * batch_size:
+                                      (index + 1) * batch_size],
+                   self.y: test_set_y[index * batch_size:
+                                      (index + 1) * batch_size]})
+
+        valid_score_i = theano.function([index], self.errors,
+              givens={
+                 self.x: valid_set_x[index * batch_size:
+                                     (index + 1) * batch_size],
+                 self.y: valid_set_y[index * batch_size:
+                                     (index + 1) * batch_size]})
+
+        # Create a function that scans the entire validation set
+        def valid_score():
+            return [valid_score_i(i) for i in xrange(n_valid_batches)]
+
+        # Create a function that scans the entire test set
+        def test_score():
+            return [test_score_i(i) for i in xrange(n_test_batches)]
+
+        return train_fn, valid_score, test_score
+
+
 def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
-            group_sizes, n_outs, act_enc, l1_ratio, gaussian_avg, training_epochs,
+            n_outs, act_enc, l1_ratio, gaussian_avg, training_epochs,
             batch_size, lr_shrink_time , lr_dc_rate, save_frequency, save_name):
 
     train_set_x, train_set_y = datasets[0]
@@ -38,7 +112,7 @@ def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
     numpy_rng = numpy.random.RandomState(89677)
     print '... building the model'
     # construct the stacked denoising autoencoder class
-    mlp = MLP(numpy_rng, n_units, corruption_levels, group_sizes, n_outs, act_enc, gaussian_avg)
+    mlp = DeepMLP(numpy_rng, n_units, corruption_levels, n_outs, act_enc, gaussian_avg)
 
     ########################
     # FINETUNING THE MODEL #
@@ -174,11 +248,10 @@ def experiment(state, channel):
 
 
     state.test_score, state.valid_score  = run_mlp((train, valid, test),
-                    state.lr, state.n_units, state.corruption_levels,
-                    state.group_sizes, nouts, state.act_enc, state.l1_ratio,
-                    state.gaussian_avg, state.nepochs, state.batch_size,
-                    state.lr_shrink_time, state.lr_dc_rate,
-                    state.save_frequency, state.save_name)
+                    state.lr, state.n_units, state.corruption_levels, nouts,
+                    state.act_enc, state.l1_ratio, state.gaussian_avg,
+                    state.nepochs, state.batch_size, state.lr_shrink_time,
+                    state.lr_dc_rate, state.save_frequency, state.save_name)
 
     return channel.COMPLETE
 
@@ -206,9 +279,8 @@ if __name__ == "__main__":
     state.l1_ratio = 0.0
     state.gaussian_avg = 0.0
     state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024]
+    state.n_units = [32*32*3, 1000, 10000]
     state.corruption_levels = [0.5, 0.5, 0.5]
-    state.group_sizes = [128, 128]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/mlp.pkl")
 

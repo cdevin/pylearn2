@@ -138,6 +138,8 @@ class Conv(object):
             self.L1 += abs(conv_layer.weights).sum()
 
 
+        hidden = NoisyAutoencoder(input_)
+
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
                          input_clean=output_clean,

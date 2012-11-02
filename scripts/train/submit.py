@@ -194,6 +194,52 @@ def mlp_cifar():
     state.norm = False
     state.nepochs = 1000
     state.lr = 0.05
+    state.lr_shrink_time = 50
+    state.lr_dc_rate = 0.001
+    state.batch_size = 50
+    state.l1_ratio = 0.0
+    state.gaussian_avg = 0.0
+    state.n_units = [32*32*3, 1024, 1024]
+    state.group_sizes = [128, 128]
+    state.corruption_levels = [0.2, 0.3, 0.3]
+    state.save_frequency = 50
+    state.save_name = "cifar_l2.pkl"
+
+    ind = 0
+    TABLE_NAME = "sd_mlp_cifar_2l_g"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.05, 0.001, 0.1]:
+        for act_enc in ["rectifier"]:
+            for in_corr in [0.0, 0.5]:
+                for l1_corr in [0.0, 0.05]:
+                    for l2_corr in [0.0,  0.5]:
+                        for gr1 in [128, 256, 64]:
+                            for gr2 in [128, 256, 64]:
+                                if l1_corr == 0.0:
+                                    gr1 = 128
+                                if l2_corr == 0.0:
+                                    gr2 = 128
+                                state.lr = lr
+                                state.act_enc = act_enc
+                                state.corruption_levels = [in_corr, l1_corr, l2_corr]
+                                state.group_sizes = [gr1, gr2]
+                                sql.insert_job(mlp_experiment, flatten(state), db)
+                                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+def mlp_cifar100():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.shuffle = False
+    state.dataset = 'cifar100'
+    state.act_enc = "rectifier"
+    state.scale = True
+    state.norm = False
+    state.nepochs = 1000
+    state.lr = 0.05
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.001
     state.batch_size = 50
@@ -205,10 +251,10 @@ def mlp_cifar():
     state.save_name = "cifar_l2.pkl"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l"
+    TABLE_NAME = "sd_mlp_cifar100_2l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.1, 0.01]:
-        for act_enc in ["rectifier", "sigmoid"]:
+    for lr in [0.1, 0.01, 0.001]:
+        for act_enc in ["rectifier"]:
             for in_corr in [0.0, 0.5]:
                 for l1_corr in [0.0, 0.5]:
                     for l2_corr in [0.0, 0.5]:
@@ -219,12 +265,15 @@ def mlp_cifar():
                         ind += 1
 
     db.createView(TABLE_NAME + '_view')
-    print "{} jobs submitted".format(ind)
+    print "{} jo bs submitted".format(ind)
+
+
 
 def mlp_mnist():
 
     state = DD()
     state.data_path = os.path.join(DATA_PATH, "mnist/pylearn2/")
+    state.shuffle = False
     state.dataset = 'mnist'
     state.act_enc = "rectifier"
     state.scale = True
@@ -235,19 +284,20 @@ def mlp_mnist():
     state.lr_dc_rate = 0.001
     state.batch_size = 50
     state.l1_ratio = 0.01
+    state.gaussian_avg = 0.0
     state.n_units = [28*28, 1000, 1000]
     state.corruption_levels = [0.2, 0.3, 0.3]
     state.save_frequency = 50
-    state.save_name = "cifar_l2.pkl"
+    state.save_name = "mnist_l2.pkl"
 
     ind = 0
     TABLE_NAME = "sd_mlp_mnist_2l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.5, 0.05, 0.009]:
-        for wl1 in [0, 0.01]:
-            for in_corr in [0.0, 0.2, 0.5, 0.7]:
-                for l1_corr in [0.0, 0.2, 0.5, 0.7]:
-                    for l2_corr in [0.0, 0.2, 0.5, 0.7]:
+    for lr in [0.1, 0.01, 0.001]:
+        for wl1 in [0.0]:
+            for in_corr in [0.0, 0.5]:
+                for l1_corr in [0.0, 0.5]:
+                    for l2_corr in [0.0, 0.5]:
                         state.lr = lr
                         state.l1_ratio = wl1
                         state.corruption_levels = [in_corr, l1_corr, l2_corr]
@@ -265,7 +315,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm',
-                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_mnist'])
+                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar100', 'mlp_mnist'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -282,6 +332,8 @@ if __name__ == "__main__":
         classify_cifar()
     elif args.task == 'mlp_cifar':
         mlp_cifar()
+    elif args.task == 'mlp_cifar100':
+        mlp_cifar100()
     elif args.task == 'mlp_mnist':
         mlp_mnist()
     else:

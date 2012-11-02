@@ -16,7 +16,7 @@ from utils.config import get_data_path, get_result_path
 DATA_PATH = get_data_path()
 RESULT_PATH = get_result_path()
 
-# 1 layer Albedian model
+# 1 layer drop-out unsupervised
 train_1layer_yaml_string = """
 !obj:pylearn2.train.Train {
     "dataset": !pkl: %(data_path)s,
@@ -53,6 +53,48 @@ train_1layer_yaml_string = """
     "save_freq": %(save_freq)i
 }
 """
+
+# multi-layer drop-out supervised
+train_1layer_yaml_string = """
+!obj:pylearn2.train.Train {
+    "dataset": !pkl: %(data_path)s,
+    "model": !obj:noisy_encoder.models.naenc.NoisyAutoencoder {
+        "nvis" : %(nvis)i,
+        "nhid" : %(nhid)i,
+        "act_enc": %(act_enc)s,
+        "act_dec": %(act_dec)s,
+        "input_corruptor": !obj:noisy_encoder.utils.corruptions.GaussianCorruptor {
+            "stdev" : %(input_corruption_level)f, "avg": 0.5},
+        "hidden_corruptor": !obj:noisy_encoder.utils.corruptions.BinomialCorruptorScaled {
+            "corruption_level" : %(hidden_corruption_level)f}
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : %(learning_rate)f,
+        "batch_size" : %(batch_size)i,
+        "monitoring_batches" : %(monitoring_batches)i,
+        "monitoring_dataset" : {"train" : !pkl: %(train_set)s,
+            "valid" : !pkl: %(valid_set), "test" : !pkl: %(test_set)}
+        "init_momentum" : %(init_momentum)f,
+        "cost" : !obj:pylearn2.costs.cost.SumOfCosts {
+                "costs" : [!obj:pylearn2.costs.autoencoder.MeanBinaryCrossEntropy {},
+                !obj:DLN.utils.costs.WeightsL1Cost {ratio: %(w_l1_ratio)d}]},
+        "termination_criterion" : !obj:pylearn2.training_algorithms.sgd.EpochCounter {
+            "max_epochs": %(max_epochs)i,
+        },
+    },
+    "callbacks" : [!obj:pylearn2.training_algorithms.sgd.MonitorBasedLRAdjuster {
+                    "shrink_amt": %(shrink_amt)f, grow_amt: %(grow_amt)f},
+                    !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+                    "final_momentum" : %(final_momentum)f,
+                    "start" : %(start_momentum)f,
+                    "saturate" : %(saturate_momentum)f}],
+    "save_path": %(save_name)s,
+    "save_freq": %(save_freq)i
+}
+"""
+
+
+
 
 def experiment(state, channel):
     # update base yaml config with jobman commands

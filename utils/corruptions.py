@@ -96,14 +96,17 @@ class GaussianCorruptor(Corruptor):
         super(GaussianCorruptor, self).__init__(corruption_level=stdev, rng=rng)
 
     def _corrupt(self, x):
-        noise = self.s_rng.normal(
-            size=x.shape,
-            avg=self.avg,
-            std=self.corruption_level,
-            dtype=theano.config.floatX
-        )
+        if self.corruption_level != 0.:
+            noise = self.s_rng.normal(
+                size=x.shape,
+                avg=self.avg,
+                std=self.corruption_level,
+                dtype=theano.config.floatX
+            )
 
-        rval = noise + x
+            rval = noise + x
+        else:
+            rval = x
 
         return rval
 

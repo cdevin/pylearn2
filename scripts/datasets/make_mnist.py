@@ -11,7 +11,7 @@ from pylearn2.utils import string_utils
 from utils.config import get_data_path
 
 print 'Loading MNIST train set...'
-train = MNIST('train')
+train = MNIST('train', center = True)
 
 print "Preparing output directory..."
 DATA_PATH = get_data_path()
@@ -29,7 +29,7 @@ serial.save(output_dir + '/train.pkl', train)
 
 # Train
 print "Loading test data"
-test = MNIST('test')
+test = MNIST('test', center = True)
 #test.apply_preprocessor(preprocessor = pipeline, can_fit = True)
 test.use_design_loc(output_dir + '/test.npy')
 serial.save(output_dir + '/test.pkl', test)

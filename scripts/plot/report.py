@@ -36,9 +36,9 @@ class SQL():
 
 def format(results):
 
-    str = "{:^10}|{:^15}|{:^10}|{:^30}|{:^20}\n".format("ID", "Learning rate", "L1 ratio", "Corruption Levels", "Test Error")
+    str = "{:^10}|{:^15}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Corruption Levels", "Test Error")
     for data in results:
-        str += "{:^10}|{:^15}|{:^10}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['L1'], data['corruptions'], data['test error'])
+        str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['corruptions'], data['test error'])
     return str
 
 
@@ -149,7 +149,7 @@ def reterive_data(experiment, num, group = False):
     db = SQL()
     # get classification results
 
-    valid_query = "select {}_view.id, lr, l1ratio, l1ratio_i,\
+    valid_query = "select {}_view.id, lr, actenc,\
             corruptionlevels,  {}keyval.fval\
             from {}_view, {}keyval where {}_view.id = dict_id and\
             name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
@@ -164,8 +164,7 @@ def reterive_data(experiment, num, group = False):
 
     results = []
     for item in valid_data:
-        L1 = item[2] if item[2] != None else item[3]
-        results.append({'id' : item[0], 'lr' : item[1], 'L1' : L1, 'corruptions' : item[4], 'valid error' : item[5]})
+        results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'corruptions' : item[3], 'valid error' : item[4]})
 
     for test in test_data:
         for res in results:

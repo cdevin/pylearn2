@@ -3,7 +3,7 @@ import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 from classify import shared_dataset, norm
-from noisy_encoder.utils.corruptions import GaussianCorruptor, BinomialCorruptorScaled
+from noisy_encoder.utils.corruptions import GaussianCorruptor, BinomialCorruptorScaledGroup
 from noisy_encoder.models.naenc import NoisyAutoencoder
 
 
@@ -51,7 +51,7 @@ def rectifier(X):
     return X * (X > 0.0)
 
 class MLP(object):
-    def __init__(self, numpy_rng, n_units, corruption_levels, n_outs, act_enc, gaussian_avg):
+    def __init__(self, numpy_rng, n_units, corruption_levels, group_sizes, n_outs, act_enc, gaussian_avg):
 
         self.hidden_layers = []
         self.params = []
@@ -76,7 +76,8 @@ class MLP(object):
             output_corrupted = self.x
         self.L1 = 0
         for i in xrange(self.n_layers):
-            hidden_corruptor = BinomialCorruptorScaled(corruption_level = corruption_levels[i + 1])
+            hidden_corruptor = BinomialCorruptorScaledGroup(corruption_level = corruption_levels[i + 1],
+                                group_size = group_sizes[i])
 
             hidden_layer = NoisyAutoencoder(None,
                                         hidden_corruptor,
