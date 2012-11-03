@@ -22,9 +22,12 @@ from classify import shared_dataset, norm
 RESULT_PATH = get_result_path()
 DATA_PATH = get_data_path()
 
-def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
-            group_sizes, n_outs, act_enc, l1_ratio, gaussian_avg, training_epochs,
-            batch_size, lr_shrink_time , lr_dc_rate, save_frequency, save_name):
+def run_mlp(datasets, learning_rate_init, n_units, gaussian_corruption_levels,
+            binomial_corruption_levels, group_sizes, n_outs, act_enc,
+            w_l1_ratio, act_l1_ratio, training_epochs, batch_size,
+            lr_shrink_time , lr_dc_rate, save_frequency, save_name,
+            enable_momentum, init_momentum, final_momentum, momentum_inc_start,
+            momentum_inc_end, irange):
 
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
@@ -38,7 +41,9 @@ def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
     numpy_rng = numpy.random.RandomState(89677)
     print '... building the model'
     # construct the stacked denoising autoencoder class
-    mlp = MLP(numpy_rng, n_units, corruption_levels, group_sizes, n_outs, act_enc, gaussian_avg)
+    mlp = MLP(numpy_rng, n_units, gaussian_corruption_levels,
+                binomial_corruption_levels, group_sizes,
+                n_outs, act_enc, irange)
 
     ########################
     # FINETUNING THE MODEL #
@@ -48,7 +53,8 @@ def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
     print '... getting the finetuning functions'
     train_fn, validate_model, test_model = mlp.build_finetune_functions(
                 datasets=datasets, batch_size=batch_size,
-                l1_ratio = l1_ratio)
+                w_l1_ratio = w_l1_ratio, act_l1_ratio = act_l1_ratio,
+                enable_momentum = enable_momentum)
 
     print '... finetunning the model'
     # early-stopping parameters
@@ -73,19 +79,29 @@ def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
 
     while (epoch < training_epochs) and (not done_looping):
         for minibatch_index in xrange(n_train_batches):
+            # Adjust learning rate
             if epoch > lr_shrink_time:
                 learning_rate = learning_rate_init / (1. + lr_dc_rate * epoch)
             else:
                 learning_rate = learning_rate_init
-            minibatch_avg_cost = train_fn(minibatch_index, learning_rate)
+            # Adjust Momentum
+            if epoch < momentum_inc_start:
+                momentum = init_momentum
+            elif epoch < momentum_inc_end:
+                momentum = init_momentum + ((final_momentum - init_momentum) / (momentum_inc_end - momentum_inc_start)) * (epoch - momentum_inc_start)
+            else:
+                momentum = final_momentum
+
+            minibatch_avg_cost = train_fn(minibatch_index, learning_rate, momentum)
             iter = epoch * n_train_batches + minibatch_index
 
             if (iter + 1) % validation_frequency == 0:
                 validation_losses = validate_model()
                 this_validation_loss = numpy.mean(validation_losses)
-                print('epoch %i, minibatch %i/%i, validation error %f %%' %
-                      (epoch, minibatch_index + 1, n_train_batches,
-                       this_validation_loss * 100.))
+                print('epoch %i, cost %f, learning rate %f, momentum %1.3f, validation error %f %%' %
+                      (epoch, minibatch_avg_cost, learning_rate, momentum, this_validation_loss * 100.))
+                #import ipdb
+                #ipdb.set_trace()
 
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:
@@ -102,7 +118,7 @@ def run_mlp(datasets, learning_rate_init, n_units, corruption_levels,
                     # test it on the test set
                     test_losses = test_model()
                     test_score = numpy.mean(test_losses)
-                    print(('     epoch %i, minibatch %i/%i, test error of '
+                    print(('\t\t\t\t\tepoch %i, minibatch %i/%i, test error of '
                            'best model %f %%') %
                           (epoch, minibatch_index + 1, n_train_batches,
                            test_score * 100.))
@@ -174,11 +190,15 @@ def experiment(state, channel):
 
 
     state.test_score, state.valid_score  = run_mlp((train, valid, test),
-                    state.lr, state.n_units, state.corruption_levels,
-                    state.group_sizes, nouts, state.act_enc, state.l1_ratio,
-                    state.gaussian_avg, state.nepochs, state.batch_size,
+                    state.lr, state.n_units, state.gaussian_corruption_levels,
+                    state.binomial_corruption_levels,
+                    state.group_sizes, nouts, state.act_enc, state.w_l1_ratio,
+                    state.act_l1_ratio, state.nepochs, state.batch_size,
                     state.lr_shrink_time, state.lr_dc_rate,
-                    state.save_frequency, state.save_name)
+                    state.save_frequency, state.save_name, state.enable_momentum,
+                    state.init_momentum, state.final_momentum,
+                    state.momentum_inc_start, state.momentum_inc_end,
+                    state.irange)
 
     return channel.COMPLETE
 
@@ -202,13 +222,20 @@ if __name__ == "__main__":
     state.lr = args.lr
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.001
-    state.batch_size = 50
-    state.l1_ratio = 0.0
-    state.gaussian_avg = 0.0
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 20
+    state.momentum_inc_end = 50
+    state.batch_size = 20
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.3
     state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024]
-    state.corruption_levels = [0.5, 0.5, 0.5]
-    state.group_sizes = [128, 128]
+    state.n_units = [32*32*3, 1000, 1000, 1000, 1000, 1000]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.5]
+    state.group_sizes = [1024, 1023, 1025]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/mlp.pkl")
 

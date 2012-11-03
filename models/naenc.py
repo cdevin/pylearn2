@@ -1,5 +1,6 @@
 from theano import tensor
 from pylearn2.autoencoder import Autoencoder
+from pylearn2.corruption import Corruptor
 
 
 class NoisyAutoencoder(Autoencoder):
@@ -56,3 +57,41 @@ class NoisyAutoencoder(Autoencoder):
 
     def test_reconstruct(self, inputs):
         return super(NoisyAutoencoder, self).reconstruct(inputs)
+
+
+class DropOutHiddenLayer(Autoencoder):
+
+    def __init__(self, corruptors,
+            nvis, nhid, act_enc,
+            irange=1e-3, rng=9001):
+
+        super(DropOutHiddenLayer, self).__init__(
+        nvis = nvis,
+        nhid = nhid,
+        act_enc = act_enc,
+        act_dec = None,
+        tied_weights = True,
+        irange = irange,
+        rng = rng)
+
+        self.corruptors = corruptors
+        self._params = [self.hidbias, self.weights]
+
+    def _hidden_activation(self, x):
+
+        hidden = super(DropOutHiddenLayer, self)._hidden_activation(x)
+        if isinstance(self.corruptors, Corruptor):
+            hidden = self.corruptors(hidden)
+        else:
+            for item in self.corruptors:
+                hidden = item(hidden)
+        return hidden
+
+    def test_encode(self, inputs):
+
+        if isinstance(inputs, tensor.Variable):
+            return super(DropOutHiddenLayer, self)._hidden_activation(inputs)
+        else:
+            return [self.encode(v) for v in inputs]
+
+

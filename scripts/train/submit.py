@@ -196,33 +196,35 @@ def mlp_cifar():
     state.lr = 0.05
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.001
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 20
+    state.momentum_inc_end = 50
     state.batch_size = 50
-    state.l1_ratio = 0.0
-    state.gaussian_avg = 0.0
-    state.n_units = [32*32*3, 1024, 1024]
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.5
+    state.n_units = [32*32*3, 1024, 1024, 1024, 1024, 1024]
     state.group_sizes = [128, 128]
-    state.corruption_levels = [0.2, 0.3, 0.3]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.5]
     state.save_frequency = 50
-    state.save_name = "cifar_l2.pkl"
+    state.save_name = "cifar_l5.pkl"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l_g"
+    TABLE_NAME = "sd_mlp_cifar_5l_s"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.05, 0.001, 0.1]:
-        for act_enc in ["rectifier"]:
-            for in_corr in [0.0, 0.5]:
-                for l1_corr in [0.0, 0.05]:
-                    for l2_corr in [0.0,  0.5]:
-                        for gr1 in [128, 256, 64]:
-                            for gr2 in [128, 256, 64]:
-                                if l1_corr == 0.0:
-                                    gr1 = 128
-                                if l2_corr == 0.0:
-                                    gr2 = 128
+    for lr in [0.0001, 0.00001]:
+        for gauss in [[0.5, 0.5, 0.5, 0.5, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]:
+            for l1_corr in [0.0, 0.05]:
+                for l2_corr in [0.0, 0.5]:
+                    for l3_corr in [0.0, 0.5]:
+                        for l4_corr in [0.0, 0.5]:
+                            for l5_corr in [0.0, 0.5]:
                                 state.lr = lr
-                                state.act_enc = act_enc
-                                state.corruption_levels = [in_corr, l1_corr, l2_corr]
-                                state.group_sizes = [gr1, gr2]
+                                state.binomial_corruption_levels = [l1_corr, l2_corr, l3_corr, l4_corr, l5_corr]
+                                state.gaussian_corruption_levels = gauss
                                 sql.insert_job(mlp_experiment, flatten(state), db)
                                 ind += 1
 

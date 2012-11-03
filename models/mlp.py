@@ -3,8 +3,10 @@ import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 from classify import shared_dataset, norm
-from noisy_encoder.utils.corruptions import GaussianCorruptor, BinomialCorruptorScaledGroup
-from noisy_encoder.models.naenc import NoisyAutoencoder
+from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
+from noisy_encoder.models.naenc import NoisyAutoencoder, DropOutHiddenLayer
+from pylearn2.corruption import GaussianCorruptor
+from pylearn2.utils import sharedX
 
 
 class LogisticRegression(object):
@@ -51,7 +53,9 @@ def rectifier(X):
     return X * (X > 0.0)
 
 class MLP(object):
-    def __init__(self, numpy_rng, n_units, corruption_levels, group_sizes, n_outs, act_enc, gaussian_avg):
+    def __init__(self, numpy_rng, n_units, gaussian_corruption_levels,
+                    binomial_corruption_levels, group_sizes, n_outs, act_enc,
+                    irange):
 
         self.hidden_layers = []
         self.params = []
@@ -69,28 +73,29 @@ class MLP(object):
             act_enc = rectifier
 
         output_clean = self.x
-        if corruption_levels[0] != 0:
-            input_corruptor = GaussianCorruptor(stdev = corruption_levels[0], avg = gaussian_avg)
-            output_corrupted = input_corruptor(self.x)
-        else:
-            output_corrupted = self.x
-        self.L1 = 0
-        for i in xrange(self.n_layers):
-            hidden_corruptor = BinomialCorruptorScaledGroup(corruption_level = corruption_levels[i + 1],
-                                group_size = group_sizes[i])
+        output_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[0])(self.x)
 
-            hidden_layer = NoisyAutoencoder(None,
-                                        hidden_corruptor,
+        self.w_l1 = 0.
+        self.act_l1 = 0.
+        for i in xrange(self.n_layers):
+            #hidden_corruptor = BinomialCorruptorScaledGroup(corruption_level = corruption_levels[i + 1],
+                                #group_size = group_sizes[i])
+            binomial_corruptor = BinomialCorruptorScaled(
+                    corruption_level = binomial_corruption_levels[i])
+            gaussian_corruptor = GaussianCorruptor(
+                    stdev = gaussian_corruption_levels[i+1])
+
+            hidden_layer = DropOutHiddenLayer([gaussian_corruptor, binomial_corruptor],
                                         nvis = n_units[i],
                                         nhid = n_units[i+1],
                                         act_enc = act_enc,
-                                        act_dec = None,
-                                        tied_weights = True)
+                                        irange = irange)
             self.hidden_layers.append(hidden_layer)
-            self.params.extend([hidden_layer.hidbias, hidden_layer.weights])
+            self.params.extend(hidden_layer._params)
             output_corrupted = hidden_layer(output_corrupted)
             output_clean = hidden_layer.test_encode(output_clean)
-            self.L1 += abs(hidden_layer.weights).sum()
+            self.w_l1 += abs(hidden_layer.weights).sum()
+            self.act_l1 += abs(output_corrupted).sum()
 
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
@@ -98,12 +103,13 @@ class MLP(object):
                          input_corrupted = output_corrupted,
                          n_in=n_units[-1], n_out=n_outs)
 
+
         self.params.extend(self.logLayer.params)
-        self.L1 += abs(self.logLayer.W).sum()
-        self.finetune_cost = self.logLayer.negative_log_likelihood(self.y)
+        #self.L1 += abs(self.logLayer.W).sum()
+        self.cost = self.logLayer.negative_log_likelihood(self.y)
         self.errors = self.logLayer.errors(self.y)
 
-    def build_finetune_functions(self, datasets, batch_size, l1_ratio):
+    def build_finetune_functions(self, datasets, batch_size, w_l1_ratio, act_l1_ratio, enable_momentum):
 
         (train_set_x, train_set_y) = datasets[0]
         (valid_set_x, valid_set_y) = datasets[1]
@@ -117,18 +123,32 @@ class MLP(object):
 
         index = T.lscalar('index')  # index to a [mini]batch
         learning_rate = T.scalar('lr')
+        if enable_momentum is None:
+            momentum = None
+        else:
+            momentum = T.scalar('momentum')
 
         # compute the gradients with respect to the model parameters
-        gparams = T.grad(self.finetune_cost + l1_ratio * self.L1, self.params)
+        cost = self.cost + w_l1_ratio * self.w_l1 + act_l1_ratio * self.act_l1
+        gparams = T.grad(cost, self.params)
 
         # compute list of fine-tuning updates
         updates = {}
-        for param, gparam in zip(self.params, gparams):
-            updates[param] = param - gparam * learning_rate
+        if momentum is None:
+            for param, gparam in zip(self.params, gparams):
+                updates[param] = param - gparam * learning_rate
+        else:
+            for param, gparam in zip(self.params, gparams):
+                inc = sharedX(param.get_value() * 0.)
+                updated_inc = momentum * inc - learning_rate * gparam
+                updates[inc] = updated_inc
+                updates[param] = param + updated_inc
+
 
         train_fn = theano.function(inputs=[index,
-                theano.Param(learning_rate)],
-              outputs=self.finetune_cost,
+                theano.Param(learning_rate),
+                theano.Param(momentum)],
+              outputs=cost,
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
