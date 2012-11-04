@@ -34,11 +34,16 @@ class SQL():
         return self.cur.fetchall()
 
 
-def format(results):
+def format(results, smooth):
+    if smooth:
+        str = "{:^10}|{:^15}|{:^30}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Gaussian Corruption", "Binomial Corruption", "Test Error")
+        for data in results:
+            str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['gauss_corr'], data['bi_corr'], data['test error'])
+    else:
+        str = "{:^10}|{:^15}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Corruption Levels", "Test Error")
+        for data in results:
+            str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['corruptions'], data['test error'])
 
-    str = "{:^10}|{:^15}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Corruption Levels", "Test Error")
-    for data in results:
-        str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['corruptions'], data['test error'])
     return str
 
 
@@ -144,12 +149,18 @@ def plot_group(performance, input_corr, hidd_corr, group_nums, name):
     pylab.show()
     pylab.savefig(name)
 
-def reterive_data(experiment, num, group = False):
+def reterive_data(experiment, num, smooth = False):
 
     db = SQL()
     # get classification results
 
-    valid_query = "select {}_view.id, lr, actenc,\
+    if smooth:
+        valid_query = "select {}_view.id, lr, actenc,\
+            gaussiancorruptionlevels, binomialcorruptionlevels, {}keyval.fval\
+            from {}_view, {}keyval where {}_view.id = dict_id and\
+            name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
+    else:
+        valid_query = "select {}_view.id, lr, actenc,\
             corruptionlevels,  {}keyval.fval\
             from {}_view, {}keyval where {}_view.id = dict_id and\
             name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
@@ -164,7 +175,7 @@ def reterive_data(experiment, num, group = False):
 
     results = []
     for item in valid_data:
-        results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'corruptions' : item[3], 'valid error' : item[4]})
+        results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'gauss_corr' : item[3], 'bi_corr': item[4], 'valid error' : item[5]})
 
     for test in test_data:
         for res in results:
@@ -185,12 +196,13 @@ def main():
             help = "max number")
     parser.add_argument('-p', '--plot', default = False, action = 'store_true')
     parser.add_argument('-g', '--group', default = False, action = 'store_true')
+    parser.add_argument('-s', '--smooth', default = False, action = 'store_true')
     args = parser.parse_args()
 
 
     # report
-    results = reterive_data(args.experiment, args.number, args.group)
-    print format(results)
+    results = reterive_data(args.experiment, args.number, args.smooth)
+    print format(results, args.smooth)
 
     # plot
     if args.plot == True:

@@ -230,11 +230,11 @@ if __name__ == "__main__":
     state.batch_size = 20
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.3
+    state.irange = 0.01
     state.shuffle = False
-    state.n_units = [32*32*3, 1000, 1000, 1000, 1000, 1000]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.5]
+    state.n_units = [32*32*3, 1000,  1000]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.5]
     state.group_sizes = [1024, 1023, 1025]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/mlp.pkl")
