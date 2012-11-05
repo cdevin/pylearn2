@@ -23,9 +23,9 @@ RESULT_PATH = get_result_path()
 DATA_PATH = get_data_path()
 
 def run_mlp(datasets, learning_rate_init, n_units, gaussian_corruption_levels,
-            binomial_corruption_levels, group_sizes, n_outs, act_enc,
-            w_l1_ratio, act_l1_ratio, training_epochs, batch_size,
-            lr_shrink_time , lr_dc_rate, save_frequency, save_name,
+            binomial_corruption_levels, group_corruption_levels, group_sizes,
+            n_outs, act_enc, w_l1_ratio, act_l1_ratio, training_epochs,
+            batch_size, lr_shrink_time , lr_dc_rate, save_frequency, save_name,
             enable_momentum, init_momentum, final_momentum, momentum_inc_start,
             momentum_inc_end, irange):
 
@@ -43,7 +43,7 @@ def run_mlp(datasets, learning_rate_init, n_units, gaussian_corruption_levels,
     # construct the stacked denoising autoencoder class
     mlp = MLP(numpy_rng, n_units, gaussian_corruption_levels,
                 binomial_corruption_levels, group_sizes,
-                n_outs, act_enc, irange)
+                n_outs, act_enc, irange, group_corruption_levels)
 
     ########################
     # FINETUNING THE MODEL #
@@ -191,7 +191,7 @@ def experiment(state, channel):
 
     state.test_score, state.valid_score  = run_mlp((train, valid, test),
                     state.lr, state.n_units, state.gaussian_corruption_levels,
-                    state.binomial_corruption_levels,
+                    state.binomial_corruption_levels, state.group_corruption_levels,
                     state.group_sizes, nouts, state.act_enc, state.w_l1_ratio,
                     state.act_l1_ratio, state.nepochs, state.batch_size,
                     state.lr_shrink_time, state.lr_dc_rate,
@@ -225,17 +225,19 @@ if __name__ == "__main__":
     state.enable_momentum = True
     state.init_momentum = 0.5
     state.final_momentum = 0.9
-    state.momentum_inc_start = 20
-    state.momentum_inc_end = 50
+    state.momentum_inc_start = 50
+    state.momentum_inc_end = 70
     state.batch_size = 20
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.01
+    state.irange = 0.1
     state.shuffle = False
-    state.n_units = [32*32*3, 1000,  1000]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.5]
-    state.group_sizes = [1024, 1023, 1025]
+    state.n_units = [32*32*3, 1024,  1024, 1024]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.5, 0.5]
+    state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
+    #state.group_corruption_levels = None
+    state.group_sizes = [128, 128, 128]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/mlp.pkl")
 

@@ -3,7 +3,7 @@ import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 from classify import shared_dataset, norm
-from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
+from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroupCombined, BinomialCorruptorScaled
 from noisy_encoder.models.naenc import NoisyAutoencoder, DropOutHiddenLayer
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX
@@ -55,7 +55,7 @@ def rectifier(X):
 class MLP(object):
     def __init__(self, numpy_rng, n_units, gaussian_corruption_levels,
                     binomial_corruption_levels, group_sizes, n_outs, act_enc,
-                    irange):
+                    irange, group_corruption_levels = None):
 
         self.hidden_layers = []
         self.params = []
@@ -78,9 +78,13 @@ class MLP(object):
         self.w_l1 = 0.
         self.act_l1 = 0.
         for i in xrange(self.n_layers):
-            #hidden_corruptor = BinomialCorruptorScaledGroup(corruption_level = corruption_levels[i + 1],
-                                #group_size = group_sizes[i])
-            binomial_corruptor = BinomialCorruptorScaled(
+            if group_corruption_levels is not None:
+                binomial_corruptor = BinomialCorruptorScaledGroupCombined(
+                        corruption_level_group = group_corruption_levels[i],
+                        corruption_level_individual = binomial_corruption_levels[i],
+                        group_size = group_sizes[i])
+            else:
+                binomial_corruptor = BinomialCorruptorScaled(
                     corruption_level = binomial_corruption_levels[i])
             gaussian_corruptor = GaussianCorruptor(
                     stdev = gaussian_corruption_levels[i+1])

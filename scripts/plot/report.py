@@ -34,15 +34,25 @@ class SQL():
         return self.cur.fetchall()
 
 
-def format(results, smooth):
-    if smooth:
+def format(results, which):
+    if which == 'smooth':
         str = "{:^10}|{:^15}|{:^30}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Gaussian Corruption", "Binomial Corruption", "Test Error")
         for data in results:
             str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['gauss_corr'], data['bi_corr'], data['test error'])
-    else:
+    elif which == 'group':
+        str = "{:^10}|{:^15}|{:^30}|{:^30}|{:^30}|{:^30}|{:^30}|{:^20}|{:^20}\n".format("ID",
+                "Learning rate", "Activation", "Activation L1", "Gaussian Corruption",
+                "Binomial Corruption", "Group Corruption", "Group Size", "Test Error")
+        for data in results:
+            str += "{:^10}|{:^15}|{:^30}|{:^30}|{:^30}|{:^30}|{:^30}|{:^20}|{:^20}\n".format(data['id'],
+                    data['lr'], data['act_enc'], data['act_l1'], data['gauss_corr'], data['bi_corr'],
+                    data['group_corr'], data['group_size'], data['test error'])
+    elif which == 'normal':
         str = "{:^10}|{:^15}|{:^30}|{:^20}|{:^20}\n".format("ID", "Learning rate", "Activation", "Corruption Levels", "Test Error")
         for data in results:
             str += "{:^10}|{:^15}|{:^20}|{:^30}|{:^20}\n".format(data['id'], data['lr'], data['act_enc'], data['corruptions'], data['test error'])
+    else:
+        raise NameError('Unknown experiment type: {}'.format(which))
 
     return str
 
@@ -149,17 +159,22 @@ def plot_group(performance, input_corr, hidd_corr, group_nums, name):
     pylab.show()
     pylab.savefig(name)
 
-def reterive_data(experiment, num, smooth = False):
+def reterive_data(experiment, num, which):
 
     db = SQL()
     # get classification results
 
-    if smooth:
+    if which == 'smooth':
         valid_query = "select {}_view.id, lr, actenc,\
             gaussiancorruptionlevels, binomialcorruptionlevels, {}keyval.fval\
             from {}_view, {}keyval where {}_view.id = dict_id and\
             name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
-    else:
+    elif which == 'group':
+        valid_query = "select {}_view.id, lr, actenc, actl1ratio,\
+            gaussiancorruptionlevels, binomialcorruptionlevels, groupcorruptionlevels,\
+            groupsizes, {}keyval.fval from {}_view, {}keyval where {}_view.id = dict_id and\
+            name = 'valid_score';".format(experiment, experiment, experiment, experiment, experiment)
+    elif which == 'normal':
         valid_query = "select {}_view.id, lr, actenc,\
             corruptionlevels,  {}keyval.fval\
             from {}_view, {}keyval where {}_view.id = dict_id and\
@@ -175,7 +190,12 @@ def reterive_data(experiment, num, smooth = False):
 
     results = []
     for item in valid_data:
-        results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'gauss_corr' : item[3], 'bi_corr': item[4], 'valid error' : item[5]})
+        if which == 'smooth':
+            results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'gauss_corr' : item[3], 'bi_corr': item[4], 'valid error' : item[5]})
+        elif which == 'group':
+            results.append({'id' : item[0], 'lr' : item[1], 'act_enc' : item[2], 'act_l1' : item[3],
+                'gauss_corr' : item[4], 'bi_corr': item[5], 'group_corr': item[6], 'group_size': item[7], 'valid error' : item[8]})
+
 
     for test in test_data:
         for res in results:
@@ -195,28 +215,13 @@ def main():
     parser.add_argument('-n', '--number', default = 10, type = int,
             help = "max number")
     parser.add_argument('-p', '--plot', default = False, action = 'store_true')
-    parser.add_argument('-g', '--group', default = False, action = 'store_true')
-    parser.add_argument('-s', '--smooth', default = False, action = 'store_true')
+    parser.add_argument('-w', '--which', help = "Which experimnet type", choices = ['normal', 'smooth', 'group'])
     args = parser.parse_args()
 
 
     # report
-    results = reterive_data(args.experiment, args.number, args.smooth)
-    print format(results, args.smooth)
-
-    # plot
-    if args.plot == True:
-        if args.group == True:
-            params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, -1, args.group)
-            name = "{}_{}_corr.png".format(args.experiment, args.version)
-            plot_group(results, [item[1] for item in params], [item[2] for item in params], [item[3] for item in params], name)
-        else:
-            params, results, job_ids, iter_num = reterive_data(args.experiment, args.version, -1, False)
-            name = "{}_{}_corr.png".format(args.experiment, args.version)
-            plot_scatter(results, [item[1] for item in params], [item[2] for item in params], name)
-            name = "{}_{}_lr.png".format(args.experiment, args.version)
-            plot_lr(results, [item[-2] for item in params], name)
-
+    results = reterive_data(args.experiment, args.number, args.which)
+    print format(results, args.which)
 
 
 if __name__ == "__main__":

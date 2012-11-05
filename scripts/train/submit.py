@@ -232,6 +232,55 @@ def mlp_cifar():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def mlp_cifar_g():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
+    state.shuffle = False
+    state.dataset = 'cifar10'
+    state.act_enc = "rectifier"
+    state.scale = True
+    state.norm = False
+    state.nepochs = 1000
+    state.lr = 0.05
+    state.lr_shrink_time = 60
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 50
+    state.momentum_inc_end = 100
+    state.batch_size = 50
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.1
+    state.n_units = [32*32*3, 1024, 1024, 1024]
+    state.group_sizes = [128, 128, 128]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.3, 0.3]
+    state.group_corruption_levels = [0.0, 0.2]
+    state.save_frequency = 50
+    state.save_name = "cifar_l5.pkl"
+
+    ind = 0
+    TABLE_NAME = "sd_mlp_cifar_2l_g"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.001]:
+        for g_0 in [0.0, 0.3]:
+            for g_1 in [0.0, 0.3]:
+                for g_2 in [0.0, 0.3]:
+                    for act_l1 in [0.0, 0.1]:
+                        state.lr = lr
+                        #state.binomial_corruption_levels = [i_0, i_1]
+                        state.group_corruption_levels = [g_0, g_1, g_2]
+                        state.act_l1_ratio = act_l1
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
 def mlp_cifar100():
 
     state = DD()
@@ -318,7 +367,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm',
-                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar100', 'mlp_mnist'])
+                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100', 'mlp_mnist'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -335,6 +384,8 @@ if __name__ == "__main__":
         classify_cifar()
     elif args.task == 'mlp_cifar':
         mlp_cifar()
+    elif args.task == 'mlp_cifar_g':
+        mlp_cifar_g()
     elif args.task == 'mlp_cifar100':
         mlp_cifar100()
     elif args.task == 'mlp_mnist':
