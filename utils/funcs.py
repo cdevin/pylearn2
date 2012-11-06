@@ -159,3 +159,12 @@ def learning_rate_adjuster(current_cost, previous_cost, lr, lr_change_tr):
     rval = min(rval, 1)
 
     return rval
+
+
+def corr(x, y):
+
+    x_ = x.mean()
+    y_ = y.mean()
+    return ((x - x_ * (y - y_).sum() / tensor.sqrt(((x - x_) ** 2.).sum() * ((y - y_)** 2.).sum())
+
+
