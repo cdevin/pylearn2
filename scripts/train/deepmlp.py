@@ -145,48 +145,72 @@ def run_mlp(datasets, learning_rate_init, n_units, gaussian_corruption_levels,
 
 def experiment(state, channel):
     print "Loading data..."
-    train_set = serial.load(state.data_path + 'train.pkl')
-    test_set = serial.load(state.data_path + 'test.pkl')
-    if state.dataset == 'mnist':
-        train_size = 50000
-        nouts = 10
-    elif state.dataset == 'cifar10':
-        train_size = 40000
-        nouts = 10
-    elif state.dataset == 'cifar100':
-        train_size = 40000
-        nouts = 100
+    if state.dataset in ['mnist', 'cifar10', 'cifar100']:
+        train_set = serial.load(state.data_path + 'train.pkl')
+        test_set = serial.load(state.data_path + 'test.pkl')
+        if state.dataset == 'mnist':
+            train_size = 50000
+            nouts = 10
+        elif state.dataset == 'cifar10':
+            train_size = 40000
+            nouts = 10
+        elif state.dataset == 'cifar100':
+            train_size = 40000
+            nouts = 100
+        else:
+            raise NameError('Unknown dataset: {}').format(state.dataset)
+
+        if state.shuffle:
+            rng = numpy.random.RandomState(23027)
+            rand_idx = rng.permutation(train_set.X.shape[0])
+            train_x = train_set.X[rand_idx][:train_size]
+            train_y = train_set.y[rand_idx][:train_size]
+            valid_x = train_set.X[rand_idx][train_size:]
+            valid_y = train_set.y[rand_idx][train_size:]
+        else:
+            train_x = train_set.X[:train_size]
+            train_y = train_set.y[:train_size]
+            valid_x = train_set.X[train_size:]
+            valid_y = train_set.y[train_size:]
+
+        test_x = test_set.X
+        test_y = test_set.y
+        del train_set, test_set
+
+    elif state.dataset == 'timit':
+        train_set = serial.load(state.data_path + 'train.pkl')
+        valid_set = serial.load(state.data_path + 'valid.pkl')
+        test_set = serial.load(state.data_path + 'test.pkl')
+        nouts = 61
+        train_x = train_set.X
+        train_y = train_set.y
+        valid_x = valid_set.X
+        valid_y = valid_set.y
+        test_x = test_set.X
+        test_y = test_set.y
+        del train_set, valid_set, test_set
     else:
         raise NameError('Unknown dataset: {}').format(state.dataset)
+
 
     if state.scale:
         print "Scaling data..."
         scaler = Scaler()
-        scaler.fit(train_set.X)
-        train_set.X = scaler.transform(train_set.X)
-        test_set.X = scaler.transform(test_set.X)
+        scaler.fit(train_x)
+        train_x = scaler.transform(train_x)
+        valid_x = scaler.transform(valid_x)
+        test_x = scaler.transform(test_x)
 
     if state.norm:
         print "Normalizing..."
-        train_set.X = numpy.vstack([norm(x) for x in train_set.X])
-        test_set.X = numpy.vstack([norm(x) for x in test_set.X])
+        train_x = numpy.vstack([norm(x) for x in train_x])
+        valdd_x = numpy.vstack([norm(x) for x in valid_x])
+        test_x = numpy.vstack([norm(x) for x in test_x])
 
-    if state.shuffle:
-        rng = numpy.random.RandomState(23027)
-        rand_idx = rng.permutation(train_set.X.shape[0])
-        train_x = train_set.X[rand_idx][:train_size]
-        train_y = train_set.y[rand_idx][:train_size]
-        valid_x = train_set.X[rand_idx][train_size:]
-        valid_y = train_set.y[rand_idx][train_size:]
-        train = shared_dataset(train_x, train_y)
-        valid = shared_dataset(valid_x, valid_y)
 
-        del train_set, train_x, train_y, valid_x, valid_y
-    else:
-        train = shared_dataset(train_set.X[:train_size], train_set.y[:train_size])
-        valid = shared_dataset(train_set.X[train_size:-2], train_set.y[train_size:-2])
-
-    test = shared_dataset(test_set.X, test_set.y)
+    train = shared_dataset(train_x, train_y)
+    valid = shared_dataset(valid_x, valid_y)
+    test = shared_dataset(test_x, test_y)
 
 
     state.test_score, state.valid_score  = run_mlp((train, valid, test),
@@ -207,12 +231,14 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--scale', action = "store_true", default = False, help = "scale data")
     parser.add_argument('-n', '--norm', action = "store_true", default = False, help = "normalize data")
     parser.add_argument('-l', '--lr', help = "learning rates/C list", default = 0.01, type = float)
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100'], required = True)
+    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit'], required = True)
     args = parser.parse_args()
 
     state = DD()
     #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
-    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
+    #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    #state.data_path = os.path.join(DATA_PATH, "timit/pylearn2/")
     state.scale = args.scale
     state.dataset = args.dataset
     state.norm = args.norm
@@ -227,19 +253,20 @@ if __name__ == "__main__":
     state.final_momentum = 0.9
     state.momentum_inc_start = 50
     state.momentum_inc_end = 70
-    state.batch_size = 20
+    state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.irange = 0.1
     state.shuffle = False
-    state.n_units = [32*32*3, 1024,  1024, 1024]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.5, 0.5]
-    state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
-    #state.group_corruption_levels = None
+    state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
+    #state.n_units = [384, 1024,  1024]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.5, 0.5]
+    #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
+    state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
     state.save_frequency = 100
-    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/mlp.pkl")
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
 
     experiment(state, None)
 

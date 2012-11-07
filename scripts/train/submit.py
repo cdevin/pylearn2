@@ -288,33 +288,44 @@ def mlp_cifar100():
     state.shuffle = False
     state.dataset = 'cifar100'
     state.act_enc = "rectifier"
-    state.scale = True
+    state.scale = False
     state.norm = False
     state.nepochs = 1000
     state.lr = 0.05
-    state.lr_shrink_time = 100
-    state.lr_dc_rate = 0.001
-    state.batch_size = 50
-    state.l1_ratio = 0.0
-    state.gaussian_avg = 0.0
-    state.n_units = [32*32*3, 1000, 1000]
-    state.corruption_levels = [0.2, 0.3, 0.3]
+    state.lr_shrink_time = 60
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 50
+    state.momentum_inc_end = 100
+    state.batch_size = 200
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.1
+    state.n_units = [32*32*3, 1024, 1024, 1024]
+    state.group_sizes = [128, 128, 128, 128]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.3, 0.3]
+    state.group_corruption_levels = None
     state.save_frequency = 50
-    state.save_name = "cifar_l2.pkl"
+    state.save_name = "cifar100_l3.pkl"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar100_2l"
+    TABLE_NAME = "sd_mlp_cifar100_3l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [0.1, 0.01, 0.001]:
-        for act_enc in ["rectifier"]:
-            for in_corr in [0.0, 0.5]:
-                for l1_corr in [0.0, 0.5]:
-                    for l2_corr in [0.0, 0.5]:
-                        state.lr = lr
-                        state.act_enc = act_enc
-                        state.corruption_levels = [in_corr, l1_corr, l2_corr]
-                        sql.insert_job(mlp_experiment, flatten(state), db)
-                        ind += 1
+        for act in [0.0, 0.1]:
+            for gauss in [[0.5, 0.5, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0]]:
+                for l1 in [0.0, 0.5]:
+                    for l2 in [0.0, 0.5]:
+                        for l3 in [0.0, 0.5]:
+                            state.lr = lr
+                            state.act_l1_ratio = act
+                            state.gaussian_corruption_levels = gauss
+                            state.binomial_corruption_levels = [l1, l2, l3]
+                            sql.insert_job(mlp_experiment, flatten(state), db)
+                            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jo bs submitted".format(ind)
@@ -359,6 +370,55 @@ def mlp_mnist():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def mlp_timit():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "timit/pylearn2/")
+    state.shuffle = False
+    state.dataset = 'timit'
+    state.act_enc = "rectifier"
+    state.scale = False
+    state.norm = False
+    state.nepochs = 1000
+    state.lr = 0.05
+    state.lr_shrink_time = 50
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 20
+    state.momentum_inc_end = 50
+    state.batch_size = 50
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.01
+    state.n_units = [384, 1024, 1024]
+    state.group_sizes = [128, 128]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.5]
+    state.group_corruption_levels = None
+    state.save_frequency = 50
+    state.save_name = "timit_l2.pkl"
+
+    ind = 0
+    TABLE_NAME = "sd_mlp_timit_2l"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.1, 0.01]:
+        for g_0 in [0.0, 0.5]:
+            for g_1 in [0.0, 0.5]:
+                for g_2 in [0.0, 0.5]:
+                    for l1_corr in [0.0, 0.5]:
+                        for l2_corr in [0.0, 0.5]:
+                            for act_l1 in [0.0, 0.1]:
+                                state.lr = lr
+                                state.binomial_corruption_levels = [l1_corr, l2_corr]
+                                state.gaussian_corruption_levels = [g_0, g_1, g_2]
+                                state.act_l1_ratio = act_l1
+                                sql.insert_job(mlp_experiment, flatten(state), db)
+                                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
 
 
 
@@ -366,7 +426,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
-                    'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm',
+                    'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100', 'mlp_mnist'])
     args = parser.parse_args()
 
@@ -390,6 +450,8 @@ if __name__ == "__main__":
         mlp_cifar100()
     elif args.task == 'mlp_mnist':
         mlp_mnist()
+    elif args.task == 'mlp_timit':
+        mlp_timit()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

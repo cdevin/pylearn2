@@ -95,3 +95,54 @@ class DropOutHiddenLayer(Autoencoder):
             return [self.encode(v) for v in inputs]
 
 
+
+class BalancedDropOutHiddenLayer(Autoencoder):
+
+    def __init__(self,
+            nvis, nhid, act_enc, gaussian_corruption_level = None,
+            irange=1e-3, rng=9001):
+
+        super(DropOutHiddenLayer, self).__init__(
+        nvis = nvis,
+        nhid = nhid,
+        act_enc = act_enc,
+        act_dec = None,
+        tied_weights = True,
+        irange = irange,
+        rng = rng)
+
+        if gaussian_corruption_level is not None:
+            self.gaussian_corruptor = GaussianCorruptor(corruption_levl = gaussian_corruption_level)
+        else:
+            self.gaussian_corruptor = None
+        self._params = [self.hidbias, self.weights]
+
+    def _jjt(self, x):
+
+        hidden_input = self._hidden_input(x)
+        hidden = super(DropOutHiddenLayer, self)._hidden_activation(x)
+        act_grad = tensor.grad(hidden.sum(), hidden_input)
+        return tensor.dot(selg.weights.T, self.weights) * (act_grad.dimshuffle(0, 'x', 1) ** 2.)
+
+    def _binomial_corruptor(x)
+
+        return BinomialCorruptor(corruption_level = self.jjt(x))
+
+    def _hidden_activation(self, x):
+
+        hidden = super(DropOutHiddenLayer, self)._hidden_activation(x)
+        if self.gaussian_corruptor is not None:
+            hidden = self.gaussian_corruptor(hidden)
+
+        binomial_corruptor = self._binomial_corruptor(x)
+        hidden = binomial_corruptor(hidden)
+
+
+    def test_encode(self, inputs):
+
+        if isinstance(inputs, tensor.Variable):
+            return super(DropOutHiddenLayer, self)._hidden_activation(inputs)
+        else:
+            return [self.encode(v) for v in inputs]
+
+

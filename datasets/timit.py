@@ -31,6 +31,9 @@ class TIMIT(dense_design_matrix.DenseDesignMatrix):
 
         data_x = load(x_path)
         data_y = load(y_path)
+        data_x = np.cast['float32'](data_x)
+        data_y = np.cast['int32'](data_y)
+        data_y = np.argmax(data_y, axis = 1)
 
         m = data_x.shape[0]
         if which_set == 'train':
