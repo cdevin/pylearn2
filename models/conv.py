@@ -42,8 +42,16 @@ from pylearn2.corruption import GaussianCorruptor
 import jobman
 
 class HiddenLayer(object):
-    def __init__(self, rng, input_clean, input_corrupted, n_in, n_out, W=None, b=None,
-                 activation=T.tanh):
+    def __init__(self,
+                rng,
+                input_clean,
+                input_corrupted,
+                n_in,
+                n_out,
+                W=None,
+                b=None,
+                activation=T.tanh):
+
         self.input_clean = input_clean
         self.input_corrupted = input_corrupted
 
@@ -177,7 +185,6 @@ class LeNetConvPoolLayer(object):
         # store parameters of this layer
         self.params = [self.W, self.b]
 
-
 def load_data(dataset, fold = 0, center = False, scale = True):
     if dataset == 'tfd':
         return tfd_load_data('train', fold, center, scale),\
@@ -185,7 +192,6 @@ def load_data(dataset, fold = 0, center = False, scale = True):
             tfd_load_data('test', fold, center, scale)
     else:
         return mnist_load_data('/RQexec/mirzameh/data/mnist/mnist.pkl.gz')
-
 
 def eval_activation(activation):
     if activation == 'tanh':
@@ -197,23 +203,20 @@ def eval_activation(activation):
             return X * (X > 0.0)
         return rectifier
 
-
-
 class Conv(object):
-    def __init__(self, image_shapes,
-                    filter_shapes, poolsizes,
+    def __init__(self,
+                    rng,
+                    image_shapes,
+                    nkenrs,
+                    filter_shapes,
+                    poolsizes,
                     binomial_corruption_levels,
                     gaussian_corruption_levels,
                     nhid,
                     nout,
                     activation,
-                    dataset='mnist',
-                    fold = 0,
-                    center = False,
-                    scale = True,
-                    nkerns=[20, 50], batch_size=500, n_epochs = 200):
+                    batch_size=500):
 
-        rng = numpy.random.RandomState(23455)
         activation = eval_activation(activation)
 
         x = T.matrix('x')   # the data is presented as rasterized images

@@ -23,6 +23,18 @@ def load_model(state, numpy_rng):
                 act_enc = state.act_enc,
                 irange = state.irange,
                 group_corruption_levels = state.group_corruption_levels)
+    elif state.model == 'conv':
+        return Conv(rng = numpy_rng,
+                image_shapes = state.image_shapes,
+                nkerns = state.nkerns,
+                filter_shapes = state.filter_shapes,
+                poolsizes = state.poolsizes,
+                binomial_corruption_levels = state.binomial_corruption_levels,
+                gaussian_corruption_levels = state.gaussian_corruption_levels,
+                nhid = state.nhid,
+                nout = state.nout,
+                activation = state.activation,
+                batch_size = state.batch_size)
 
 def experiment(state, channel):
 
@@ -67,7 +79,7 @@ def cifar10_experiment():
     state.scale = args.scale
     state.dataset = args.dataset
     state.norm = args.norm
-    state.nepochs = 1000
+    state.nepochs = 10
     state.model = 'mlp'
     #state.act_enc = "sigmoid"
     state.act_enc = "rectifier"
@@ -91,7 +103,7 @@ def cifar10_experiment():
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
-    state.save_frequency = 100
+    state.save_frequency = 5
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
     state.fold = 0
 
@@ -105,14 +117,14 @@ def cifar100_experiment():
     state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
     #state.data_path = os.path.join(DATA_PATH, "timit/pylearn2/")
     state.nouts = 100
-    state.scale = args.scale
-    state.dataset = args.dataset
-    state.norm = args.norm
-    state.nepochs = 1000
+    state.scale = False
+    state.dataset = 'cifar100'
+    state.norm = False
+    state.nepochs = 10
     state.model = 'mlp'
     #state.act_enc = "sigmoid"
     state.act_enc = "rectifier"
-    state.lr = args.lr
+    state.lr = 0.01
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.001
     state.enable_momentum = True
@@ -132,7 +144,7 @@ def cifar100_experiment():
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
-    state.save_frequency = 100
+    state.save_frequency = 5
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
     state.fold = 0
 
@@ -141,15 +153,15 @@ def cifar100_experiment():
 def tfd_experiment():
 
     state = DD()
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
-    state.nouts = 100
-    state.scale = args.scale
+
+    # train params
     state.dataset = args.dataset
+    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.fold = 0
+    state.scale = args.scale
     state.norm = args.norm
+    state.shuffle = False
     state.nepochs = 1000
-    state.model = 'mlp'
-    #state.act_enc = "sigmoid"
-    state.act_enc = "rectifier"
     state.lr = args.lr
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.001
@@ -161,33 +173,34 @@ def tfd_experiment():
     state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.1
-    state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
-    #state.n_units = [384, 1024,  1024]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.5, 0.5]
-    #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
-    state.group_corruption_levels = None
-    state.group_sizes = [128, 128, 128]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
-    state.fold = 0
+
+    # model params
+    state.model = 'conv'
+    state.activation = "tanh"
+    state.nouts = 7
+    state.image_shapes = [(48, 48), (22, 22), (9, 9), (3, 3)]
+    state.nkerns =  [20, 50, 50]
+    state.filter_shapes =  [(20, 1, 5, 5), (50, 20, 5, 5), (50, 50, 4, 4)]
+    state.poolsizes =  [(2, 2), (2, 2), (2, 2)]
+    state.gaussian_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.5, 0.5]
+    state.nhid = 500
+    state.irange = 0.1
 
     experiment(state, None)
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit'], required = True)
+    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit', 'tfd'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
         mnist_experiment()
-    elif args.dataset = 'cifar10':
+    elif args.dataset == 'cifar10':
         cifar10_experiment()
-    elif args.dataset = 'cifar100':
+    elif args.dataset == 'cifar100':
         cifar100_experiment()
-    elif args.dataset = 'tfd':
+    elif args.dataset == 'tfd':
         tfd_experiment()

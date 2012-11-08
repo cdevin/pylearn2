@@ -1,5 +1,6 @@
+import time, sys
 import numpy
-import time
+from pylearn2.utils import serial
 
 
 def sgd(model,
