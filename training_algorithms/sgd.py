@@ -1,4 +1,4 @@
-import time, sys
+import time, sys, os
 import numpy
 from pylearn2.utils import serial
 

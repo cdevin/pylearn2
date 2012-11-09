@@ -6,62 +6,41 @@ import numpy as np
 from pylearn2.datasets.tfd import TFD
 from DLN.datasets.preprocessing import Scale
 from DLN.config.config import get_data_path
-from invarac.utils.funcs import lcn_numpy
+#from invarac.utils.funcs import lcn_numpy
+from lcn import lcn
+from theano import tensor
+import theano
+import numpy
 
-print 'Loading TFD unsupervised dataset...'
-unsupervised = TFD(which_set = 'unlabeled')
-import ipdb
 
-def lcn(data):
+def apply_lcn(data):
+
+    # TODO Clean it up, it's a mess
+    x = tensor.matrix()
+    f = theano.function(inputs=[x],outputs=lcn(x.reshape((1,48,48)),(48,48)))
 
     topo = data.get_topological_view() / 255.
-    res = lcn_numpy(topo.reshape(topo.shape[:3]))
-    ipdb.set_trace()
-
-lcn(unsupervised)
-print "Preparing output directory..."
-DATA_PATH = get_data_path()
-data_dir = DATA_PATH + "/faces/TFD"
-output_dir = data_dir + '/pylearn2'
-serial.mkdir( output_dir )
+    res = numpy.concatenate([f(item.reshape((48, 48))) for item in topo])
+    data.X = res.reshape((topo.shape[0], topo.shape[1] * topo.shape[1]))
+    return data
 
 
-pipeline = preprocessing.Pipeline()
-pipeline.items.append(Scale(255.))
-#pipeline.items.append(preprocessing.GlobalContrastNormalization())
-unsupervised.apply_preprocessor(preprocessor = pipeline, can_fit = True)
+def make_data(which):
 
-print 'Saving the unsupervised data'
-unsupervised.use_design_loc(output_dir+'/unlabeled.npy')
-serial.save(output_dir + '/unlabeled.pkl', unsupervised)
+    print "Prcoessing {}...".format(which)
+    DATA_PATH = get_data_path()
+    data_dir = DATA_PATH + "/faces/TFD"
+    output_dir = data_dir + '/pylearn2'
+    serial.mkdir( output_dir )
 
-# Train
-print "Loading train data"
-train = TFD(which_set = 'train')
-print "Preprocessing the test data"
-train.apply_preprocessor(preprocessor = pipeline, can_fit = False)
-print "Saving the test data"
-train.use_design_loc(output_dir+'/train.npy')
-serial.save(output_dir+'/train.pkl', train)
+    data= TFD(which_set = which)
+    data = apply_lcn(data)
 
-# Valid
-print "Loading valid data"
-valid = TFD(which_set = 'valid')
-print "Preprocessing the test data"
-valid.apply_preprocessor(preprocessor = pipeline, can_fit = False)
-print "Saving the test data"
-valid.use_design_loc(output_dir+'/valid.npy')
-serial.save(output_dir+'/valid.pkl', valid)
-
-# Test
-print "Loading the test data"
-test = TFD(which_set = 'test')
-print "Preprocessing the test data"
-test.apply_preprocessor(preprocessor = pipeline, can_fit = False)
-print "Saving the test data"
-test.use_design_loc(output_dir+'/test.npy')
-serial.save(output_dir+'/test.pkl', test)
-
-serial.save(output_dir + '/preprocessor.pkl',pipeline)
+    data.use_design_loc(output_dir + '/{}.npy'.format(which))
+    serial.save(output_dir + '/{}.pkl'.format(which), data)
 
 
+if __name__ == "__main__":
+    make_data('train')
+    make_data('valid')
+    make_data('test')

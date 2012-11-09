@@ -74,6 +74,7 @@ class MLP(object):
 
         output_clean = self.x
         output_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[0])(self.x)
+        output_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[0])(output_corrupted)
 
         self.w_l1 = 0.
         self.act_l1 = 0.
@@ -85,7 +86,7 @@ class MLP(object):
                         group_size = group_sizes[i])
             else:
                 binomial_corruptor = BinomialCorruptorScaled(
-                    corruption_level = binomial_corruption_levels[i])
+                    corruption_level = binomial_corruption_levels[i+1])
             gaussian_corruptor = GaussianCorruptor(
                     stdev = gaussian_corruption_levels[i+1])
 

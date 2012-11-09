@@ -39,7 +39,7 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_y = test_set.y
         del train_set, test_set
 
-    elif dataset == 'timit':
+    elif dataset in ['tfd', 'timit']:
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
         test_set = serial.load(data_path + 'test.pkl')
