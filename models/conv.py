@@ -34,10 +34,9 @@ import theano.tensor as T
 from theano.tensor.signal import downsample
 from theano.tensor.nnet import conv
 
-from logistic_sgd import load_data as mnist_load_data
-from EmotionDetector.util.funcs import load_data as tfd_load_data
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from pylearn2.corruption import GaussianCorruptor
+from pylearn2.utils import sharedX
 
 import jobman
 
@@ -207,7 +206,7 @@ class Conv(object):
     def __init__(self,
                     rng,
                     image_shapes,
-                    nkenrs,
+                    nkerns,
                     filter_shapes,
                     poolsizes,
                     binomial_corruption_levels,
@@ -219,8 +218,8 @@ class Conv(object):
 
         activation = eval_activation(activation)
 
-        x = T.matrix('x')   # the data is presented as rasterized images
-        y = T.ivector('y')  # the labels are presented as 1D vector of
+        self.x = T.matrix('x')   # the data is presented as rasterized images
+        self.y = T.ivector('y')  # the labels are presented as 1D vector of
 
 
         print '... building the model'
@@ -232,9 +231,9 @@ class Conv(object):
         self.params = []
         for i in range(n_layers):
             if i == 0:
-                input_clean = x.reshape((batch_size, 1, image_shapes[0][1], image_shapes[0][1]))
+                input_clean = self.x.reshape((batch_size, 1, image_shapes[0][1], image_shapes[0][1]))
                 input_corrupted = GaussianCorruptor(stdev = \
-                        gaussian_corruption_levels[0])(x.reshape((batch_size, 1,
+                        gaussian_corruption_levels[0])(self.x.reshape((batch_size, 1,
                                 image_shapes[0][0], image_shapes[0][1])))
             else:
                 input_clean = self.layers[-1].output_clean
@@ -263,17 +262,20 @@ class Conv(object):
                     input_corrupted = input_corrupted,
                     n_in=nkerns[-1] * numpy.prod(image_shapes[-1]),
                     n_out=nhid, activation= activation)
+        self.params.extend(self.hid_layer.params)
 
         # Logistic layer
         input_corrupted = GaussianCorruptor(stdev = \
-                gaussian_corruption_levels[-1])(hid_layer.output_corrupted)
+                gaussian_corruption_levels[-1])(self.hid_layer.output_corrupted)
         input_corrupted = BinomialCorruptorScaled(corruption_level = \
                 binomial_corruption_levels[-1])(input_corrupted)
-        self.log_layer = LogisticRegression(input_clean=hid_layer.output_clean,
+        self.log_layer = LogisticRegression(input_clean=self.hid_layer.output_clean,
                 input_corrupted = input_corrupted, n_in=nhid, n_out=nout)
+        self.params.extend(self.log_layer.params)
 
+        self.errors = self.log_layer.errors(self.y)
 
-    def build_fintune_function(self, datasets, batch_size, enable_momnetum):
+    def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
 
         train_set_x, train_set_y = datasets[0]
         valid_set_x, valid_set_y = datasets[1]
@@ -288,11 +290,11 @@ class Conv(object):
 
         index = T.lscalar()  # index to a [mini]batch
         learning_rate = T.scalar('lr')
-        if enable_momnetum is None:
+        if enable_momentum is None:
             momentum = None
         else:
             momentum = T.scalar('momentum')
-        cost = self.log_layer.negative_log_likelihood(y)
+        cost = self.log_layer.negative_log_likelihood(self.y)
         gparams = T.grad(cost, self.params)
 
         # compute list of fine-tuning updates

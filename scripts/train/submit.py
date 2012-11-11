@@ -210,26 +210,25 @@ def mlp_cifar():
     state.n_units = [32*32*3, 1024, 1024]
     state.group_sizes = [128, 128]
     state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.5]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
     state.group_corruption_levels = None
     state.save_frequency = 50
     state.save_name = "cifar_l5.pkl"
-    state.save_name = "cifar100_l3.pkl"
+    state.save_name = "cifar10_l2.pkl"
     state.fold = 0
 
     ind = 0
     TABLE_NAME = "sd_mlp_cifar_2l_s_2"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.001]:
-        for gauss in [[0.5, 0.5, 0.5], [0.0, 0.0, 0.0]]:
-            for l0_corr in [0.0, 0.5]:
-                for l1_corr in [0.0, 0.5]:
-                    for l2_corr in [0.0, 0.5]:
-                        state.lr = lr
-                        state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
-                        state.gaussian_corruption_levels = gauss
-                        sql.insert_job(mlp_experiment, flatten(state), db)
-                        ind += 1
+    for lr in [0.01]:
+        for g0 in [0.1, 0.3, 0.5, 0.7, 0.9]:
+            for g1 in [0.1, 0.3, 0.5, 0.7 ,0.9]:
+                for g2 in [0.1, 0.3, 0.5, 0.7, 0.9]:
+                    state.lr = lr
+                    #state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
+                    state.gaussian_corruption_levels = [g0, g1, g2]
+                    sql.insert_job(mlp_experiment, flatten(state), db)
+                    ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)

@@ -76,6 +76,10 @@ def sgd(model,
 
             minibatch_avg_cost = train_fn(minibatch_index, learning_rate, momentum)
             iter = epoch * n_train_batches + minibatch_index
+            if numpy.isnan(minibatch_avg_cost):
+                done_looping = True
+                break
+
 
             if (iter + 1) % validation_frequency == 0:
                 validation_losses = validate_model()

@@ -6,6 +6,7 @@ from utils.config import get_data_path, get_result_path
 from noisy_encoder.utils.io import load_data
 from noisy_encoder.training_algorithms.sgd import sgd
 from noisy_encoder.models.mlp import MLP
+from noisy_encoder.models.conv import Conv
 from theano.tensor.shared_randomstreams import RandomStreams
 
 
@@ -32,7 +33,7 @@ def load_model(state, numpy_rng):
                 binomial_corruption_levels = state.binomial_corruption_levels,
                 gaussian_corruption_levels = state.gaussian_corruption_levels,
                 nhid = state.nhid,
-                nout = state.nout,
+                nout = state.nouts,
                 activation = state.activation,
                 batch_size = state.batch_size)
 
@@ -71,40 +72,35 @@ def experiment(state, channel):
 def cifar10_experiment():
 
     state = DD()
-    #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
-    #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
-    #state.data_path = os.path.join(DATA_PATH, "timit/pylearn2/")
-    state.nouts = 100
-    state.scale = args.scale
-    state.dataset = args.dataset
-    state.norm = args.norm
-    state.nepochs = 10
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
+    state.nouts = 10
+    state.scale = False
+    state.dataset = 'cifar10'
+    state.norm = False
+    state.nepochs = 1000
     state.model = 'mlp'
-    #state.act_enc = "sigmoid"
     state.act_enc = "rectifier"
-    state.lr = args.lr
-    state.lr_shrink_time = 50
-    state.lr_dc_rate = 0.001
+    state.lr = 0.1
+    state.lr_shrink_time = 500
+    state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
     state.final_momentum = 0.9
     state.momentum_inc_start = 50
-    state.momentum_inc_end = 70
-    state.batch_size = 200
+    state.momentum_inc_end = 100
+    state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.1
+    state.irange = 0.01
     state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
-    #state.n_units = [384, 1024,  1024]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.5, 0.5]
+    state.n_units = [32*32*3, 1024, 1024]
+    state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
-    state.save_frequency = 5
-    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar10/mlp.pkl")
     state.fold = 0
 
     experiment(state, None)
@@ -150,19 +146,54 @@ def cifar100_experiment():
 
     experiment(state, None)
 
+def mnist_experiment():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "mnist/pylearn2/")
+    state.nouts = 100
+    state.scale = True
+    state.dataset = 'mnist'
+    state.norm = False
+    state.nepochs = 1000
+    state.model = 'mlp'
+    state.act_enc = "rectifier"
+    state.lr = 0.01
+    state.lr_shrink_time = 50
+    state.lr_dc_rate = 0.001
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 50
+    state.momentum_inc_end = 70
+    state.batch_size = 200
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.irange = 0.1
+    state.shuffle = False
+    state.n_units = [28 * 28, 1024, 1024]
+    state.gaussian_corruption_levels = [0.3, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.0]
+    state.group_corruption_levels = None
+    state.group_sizes = [128, 128, 128]
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/mnist/mlp.pkl")
+    state.fold = 0
+
+    experiment(state, None)
+
 def tfd_experiment():
 
     state = DD()
 
     # train params
-    state.dataset = args.dataset
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.dataset = 'tfd'
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/0/")
     state.fold = 0
-    state.scale = args.scale
-    state.norm = args.norm
+    state.scale = False
+    state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = args.lr
+    state.lr = 0.01
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.001
     state.enable_momentum = True
@@ -180,12 +211,12 @@ def tfd_experiment():
     state.model = 'conv'
     state.activation = "tanh"
     state.nouts = 7
-    state.image_shapes = [(48, 48), (22, 22), (9, 9), (3, 3)]
-    state.nkerns =  [20, 50, 50]
-    state.filter_shapes =  [(20, 1, 5, 5), (50, 20, 5, 5), (50, 50, 4, 4)]
-    state.poolsizes =  [(2, 2), (2, 2), (2, 2)]
-    state.gaussian_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.0]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.5, 0.5]
+    state.image_shapes = [(48, 48), (20, 20), (6, 6)]
+    state.nkerns =  [1, 50, 60]
+    state.filter_shapes =  [(50, 1, 9, 9), (60, 50, 9, 9)]
+    state.poolsizes =  [(2, 2), (2, 2)]
+    state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
     state.nhid = 500
     state.irange = 0.1
 
@@ -204,3 +235,5 @@ if __name__ == "__main__":
         cifar100_experiment()
     elif args.dataset == 'tfd':
         tfd_experiment()
+    elif args.dataset == 'mnsit':
+        mnist_experiment()

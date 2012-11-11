@@ -25,22 +25,24 @@ def apply_lcn(data):
     return data
 
 
-def make_data(which):
+def make_data(which, fold):
 
     print "Prcoessing {}...".format(which)
     DATA_PATH = get_data_path()
-    data_dir = DATA_PATH + "/faces/TFD"
-    output_dir = data_dir + '/pylearn2'
+    data_dir = DATA_PATH + "faces/TFD"
+    output_dir = data_dir + '/pylearn2/{}'.format(fold)
     serial.mkdir( output_dir )
 
-    data= TFD(which_set = which)
-    data = apply_lcn(data)
+    data= TFD(which_set = which, fold = fold, center = False)
+    #data = apply_lcn(data)
+    data.X = data.X / 255.
+    data.y = numpy.concatenate(data.y)
 
     data.use_design_loc(output_dir + '/{}.npy'.format(which))
     serial.save(output_dir + '/{}.pkl'.format(which), data)
 
 
 if __name__ == "__main__":
-    make_data('train')
-    make_data('valid')
-    make_data('test')
+    make_data('train', 0)
+    make_data('valid', 0)
+    make_data('test', 0)
