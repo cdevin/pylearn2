@@ -286,7 +286,7 @@ def mlp_cifar_g():
 def mlp_cifar100():
 
     state = DD()
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "cifar100/pca/")
     state.shuffle = False
     state.dataset = 'cifar100'
     state.nouts = 100
@@ -296,40 +296,38 @@ def mlp_cifar100():
     state.model = 'mlp'
     state.nepochs = 1000
     state.lr = 0.05
-    state.lr_shrink_time = 60
-    state.lr_dc_rate = 0.01
+    state.lr_shrink_time = 300
+    state.lr_dc_rate = 0.001
     state.enable_momentum = True
     state.init_momentum = 0.5
     state.final_momentum = 0.9
-    state.momentum_inc_start = 50
+    state.momentum_inc_start = 60
     state.momentum_inc_end = 100
     state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.irange = 0.1
-    state.n_units = [32*32*3, 1024, 1024, 1024]
-    state.group_sizes = [128, 128, 128, 128]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5]
+    state.bias_init = 1.0
+    state.n_units = [32*32*3, 10000, 1000]
+    state.group_sizes = [128, 128, 123]
+    state.gaussian_corruption_levels = [0.]
     state.binomial_corruption_levels = [0.0, 0.3, 0.3]
     state.group_corruption_levels = None
-    state.save_frequency = 50
-    state.save_name = "cifar100_l3.pkl"
+    state.save_frequency = 100
+    state.save_name = "cifar100_l.pkl"
     state.fold = 0
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar100_3l_2"
+    TABLE_NAME = "sd_mlp_cifar100_1l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.1, 0.01]:
-        for gauss in [[0.5, 0.5, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0]]:
-            for l0 in [0.0, 0.5]:
-                for l1 in [0.0, 0.5]:
-                    for l2 in [0.0, 0.5]:
-                        for l3 in [0.0, 0.5]:
-                            state.lr = lr
-                            state.gaussian_corruption_levels = gauss
-                            state.binomial_corruption_levels = [l0, l1, l2, l3]
-                            sql.insert_job(mlp_experiment, flatten(state), db)
-                            ind += 1
+    for lr in [0.01, 0.001]:
+        for l0 in [0.0]:
+            for l1 in [0.0, 0.3, 0.5, 0.7, 0.9]:
+                for l2 in [0.0, 0.5]:
+                    state.lr = lr
+                    state.binomial_corruption_levels = [l0, l1, l2]
+                    sql.insert_job(mlp_experiment, flatten(state), db)
+                    ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jo bs submitted".format(ind)

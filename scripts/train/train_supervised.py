@@ -23,6 +23,7 @@ def load_model(state, numpy_rng):
                 n_outs = state.nouts,
                 act_enc = state.act_enc,
                 irange = state.irange,
+                bias_init = state.bias_init,
                 group_corruption_levels = state.group_corruption_levels)
     elif state.model == 'conv':
         return Conv(rng = numpy_rng,
@@ -108,13 +109,12 @@ def cifar10_experiment():
 def cifar100_experiment():
 
     state = DD()
-    #state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
-    state.data_path = os.path.join(DATA_PATH, "cifar100/zca_512_d/")
+    state.data_path = os.path.join(DATA_PATH, "cifar100/pca/")
     state.nouts = 100
     state.scale = False
     state.dataset = 'cifar100'
     state.norm = False
-    state.nepochs = 10
+    state.nepochs = 1000
     state.model = 'mlp'
     state.act_enc = "rectifier"
     state.lr = 0.01
@@ -129,11 +129,12 @@ def cifar100_experiment():
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.irange = 0.1
+    state.bias_init = 0.0
     state.shuffle = False
     #state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
     state.n_units = [512, 10000, 1000]
     state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
-    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.5, 0.5]
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]

@@ -4,7 +4,6 @@ import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 from classify import shared_dataset, norm
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroupCombined, BinomialCorruptorScaled
-from noisy_encoder.models.naenc import NoisyAutoencoder, DropOutHiddenLayer
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX
 
@@ -18,13 +17,20 @@ class LogisticRegression(object):
     determine a class membership probability.
     """
 
-    def __init__(self, input_clean, input_corrupted, n_in, n_out):
-        self.W = theano.shared(value=numpy.zeros((n_in, n_out),
-                                                 dtype=theano.config.floatX),
-                                name='W', borrow=True)
-        self.b = theano.shared(value=numpy.zeros((n_out,),
-                                                 dtype=theano.config.floatX),
-                               name='b', borrow=True)
+    def __init__(self, input_clean, input_corrupted, n_in, n_out, irange = 0.01, bias_init = 1.0, rng = 9001):
+
+        if rng == None or type(rng) == type(1):
+            rng = numpy.random.RandomState(rng)
+
+        self.W = sharedX(rng.normal(loc = 0.0,
+            scale = irange,
+            size = (n_in, n_out)),
+            name='W', borrow=True )
+        self.b = sharedX(
+            numpy.ones(n_out) * bias_init,
+            name='b',
+            borrow=True)
+
         self.p_y_given_x_clean = T.nnet.softmax(T.dot(input_clean, self.W) + self.b)
         self.p_y_given_x_corrupted = T.nnet.softmax(T.dot(input_corrupted, self.W) + self.b)
 
@@ -45,6 +51,33 @@ class LogisticRegression(object):
         else:
             raise NotImplementedError()
 
+
+class HiddenLayer(object):
+
+    def __init__(self, input_clean, input_corrupted, n_in, n_out, activation, irange = 0.01, bias_init = 1.0, rng = 9001):
+
+        if rng == None or type(rng) == type(1):
+            rng = numpy.random.RandomState(rng)
+
+        self.W = sharedX(rng.normal(loc = 0.0,
+            scale = irange,
+            size = (n_in, n_out)),
+            name='W', borrow=True )
+        self.b = sharedX(
+            numpy.ones(n_out) * bias_init,
+            name='b',
+            borrow=True)
+
+        lin_output_clean = T.dot(input_clean, self.W) + self.b
+        lin_output_corrupted = T.dot(input_corrupted, self.W) + self.b
+        self.output_clean = (lin_output_clean if activation is None
+                       else activation(lin_output_clean))
+        self.output_corrupted = (lin_output_corrupted if activation is None
+                       else activation(lin_output_corrupted))
+        # parameters of the model
+        self.params = [self.W, self.b]
+
+
 class PickableLambda(object):
     def __call__(self, x):
         return x
@@ -55,15 +88,17 @@ def rectifier(X):
 class MLP(object):
     def __init__(self, numpy_rng, n_units, gaussian_corruption_levels,
                     binomial_corruption_levels, group_sizes, n_outs, act_enc,
-                    irange, group_corruption_levels = None):
+                    irange, bias_init, group_corruption_levels = None, rng = 9001):
 
         self.hidden_layers = []
+        self.sparsity = []
         self.params = []
         self.n_layers = len(n_units) - 1
 
         assert self.n_layers > 0
 
         theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
+        self.rng = numpy.random.RandomState(rng)
         # allocate symbolic variables for the data
         self.x = T.matrix('x')  # the data is presented as rasterized images
         self.y = T.ivector('y')  # the labels are presented as 1D vector of
@@ -72,47 +107,52 @@ class MLP(object):
         if act_enc == "rectifier":
             act_enc = rectifier
 
-        output_clean = self.x
-        output_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[0])(self.x)
-        output_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[0])(output_corrupted)
 
         self.w_l1 = 0.
         self.act_l1 = 0.
         for i in xrange(self.n_layers):
-            if group_corruption_levels is not None:
-                binomial_corruptor = BinomialCorruptorScaledGroupCombined(
-                        corruption_level_group = group_corruption_levels[i],
-                        corruption_level_individual = binomial_corruption_levels[i],
-                        group_size = group_sizes[i])
+            if i == 0:
+                input_clean = self.x
+                input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[i])(self.x)
+                input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[i])(input_corrupted)
             else:
-                binomial_corruptor = BinomialCorruptorScaled(
-                    corruption_level = binomial_corruption_levels[i+1])
-            gaussian_corruptor = GaussianCorruptor(
-                    stdev = gaussian_corruption_levels[i+1])
+                input_clean = self.hidden_layers[-1].output_clean
+                input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[i])(self.hidden_layers[-1].output_corrupted)
+                input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[i])(input_corrupted)
 
-            hidden_layer = DropOutHiddenLayer([gaussian_corruptor, binomial_corruptor],
-                                        nvis = n_units[i],
-                                        nhid = n_units[i+1],
-                                        act_enc = act_enc,
-                                        irange = irange)
+            hidden_layer = HiddenLayer(input_clean = input_clean,
+                                        input_corrupted = input_corrupted,
+                                        n_in = n_units[i],
+                                        n_out = n_units[i+1],
+                                        activation = act_enc,
+                                        irange = irange,
+                                        bias_init = bias_init,
+                                        rng = self.rng)
             self.hidden_layers.append(hidden_layer)
-            self.params.extend(hidden_layer._params)
-            output_corrupted = hidden_layer(output_corrupted)
-            output_clean = hidden_layer.test_encode(output_clean)
-            self.w_l1 += abs(hidden_layer.weights).sum()
-            self.act_l1 += abs(output_corrupted).sum()
+            self.params.extend(hidden_layer.params)
+            self.w_l1 += abs(hidden_layer.W).sum()
+            self.act_l1 += abs(hidden_layer.output_corrupted).sum()
+            self.sparsity.append(1. - (T.gt(hidden_layer.output_clean, 0.0).sum(1).mean() / float(n_units[i+1])))
 
+        # Logistic layer
+        input_clean = self.hidden_layers[-1].output_clean
+        input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[-1])(self.hidden_layers[-1].output_corrupted)
+        input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[-1])(input_corrupted)
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
-                         input_clean=output_clean,
-                         input_corrupted = output_corrupted,
-                         n_in=n_units[-1], n_out=n_outs)
+                         input_clean=input_clean,
+                         input_corrupted = input_corrupted,
+                         n_in=n_units[-1], n_out=n_outs,
+                         irange = irange,
+                         bias_init = bias_init,
+                         rng = self.rng)
 
 
         self.params.extend(self.logLayer.params)
         #self.L1 += abs(self.logLayer.W).sum()
         self.cost = self.logLayer.negative_log_likelihood(self.y)
         self.errors = self.logLayer.errors(self.y)
+        self.sparsity = T.stack(self.sparsity)
 
     def build_finetune_functions(self, datasets, batch_size, w_l1_ratio, act_l1_ratio, enable_momentum):
 
@@ -153,7 +193,7 @@ class MLP(object):
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
                 theano.Param(momentum)],
-              outputs=cost,
+              outputs=[cost, self.sparsity],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:

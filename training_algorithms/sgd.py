@@ -74,7 +74,7 @@ def sgd(model,
             else:
                 momentum = final_momentum
 
-            minibatch_avg_cost = train_fn(minibatch_index, learning_rate, momentum)
+            minibatch_avg_cost, sparsity = train_fn(minibatch_index, learning_rate, momentum)
             iter = epoch * n_train_batches + minibatch_index
             if numpy.isnan(minibatch_avg_cost):
                 done_looping = True
@@ -84,10 +84,9 @@ def sgd(model,
             if (iter + 1) % validation_frequency == 0:
                 validation_losses = validate_model()
                 this_validation_loss = numpy.mean(validation_losses)
-                print('epoch %i, cost %f, learning rate %f, momentum %1.3f, validation error %f %%' %
-                      (epoch, minibatch_avg_cost, learning_rate, momentum, this_validation_loss * 100.))
-                #import ipdb
-                #ipdb.set_trace()
+                print('%i, cost %f, lr %f, validation error %f %%' %
+                      (epoch, minibatch_avg_cost, learning_rate, this_validation_loss * 100.))
+                print '\tSparsity :{}'.format(sparsity)
 
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:

@@ -65,12 +65,14 @@ class DropOutHiddenLayer(Autoencoder):
 
     def __init__(self, corruptors,
             nvis, nhid, act_enc,
-            irange=1., rng=9001):
+            irange=1., bias_init = 1., rng=9001):
 
         """
         irange : flaot, optional
             The weights are initialized by normal distrubution, irange is the variane
         """
+
+        self.bias_init = bias_init
 
         super(DropOutHiddenLayer, self).__init__(
         nvis = nvis,
@@ -98,7 +100,7 @@ class DropOutHiddenLayer(Autoencoder):
 
     def _initialize_hidbias(self):
         self.hidbias = sharedX(
-            numpy.ones(self.nhid),
+            numpy.ones(self.nhid) * self.bias_init,
             name='hb',
             borrow=True
         )
