@@ -191,12 +191,12 @@ def mlp_cifar():
     state.dataset = 'cifar10'
     state.nouts = 10
     state.act_enc = "rectifier"
-    state.scale = True
+    state.scale = False
     state.norm = False
     state.model = 'mlp'
     state.nepochs = 1000
     state.lr = 0.05
-    state.lr_shrink_time = 60
+    state.lr_shrink_time = 700
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -206,29 +206,31 @@ def mlp_cifar():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.01
-    state.n_units = [32*32*3, 1024, 1024]
+    state.irange = 0.05
+    state.n_units = [32*32*3, 1024, 1024, 1024]
     state.group_sizes = [128, 128]
     state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.5, 0.5]
     state.group_corruption_levels = None
     state.save_frequency = 50
-    state.save_name = "cifar_l5.pkl"
     state.save_name = "cifar10_l2.pkl"
     state.fold = 0
+    state.description = "Data rescale=True, center = True, global=standardize\
+            weight init, normal, bias +1"
 
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l_s_2"
+    TABLE_NAME = "sd_mlp_cifar_2l_s_3"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01]:
-        for g0 in [0.1, 0.3, 0.5, 0.7, 0.9]:
-            for g1 in [0.1, 0.3, 0.5, 0.7 ,0.9]:
-                for g2 in [0.1, 0.3, 0.5, 0.7, 0.9]:
-                    state.lr = lr
-                    #state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
-                    state.gaussian_corruption_levels = [g0, g1, g2]
-                    sql.insert_job(mlp_experiment, flatten(state), db)
-                    ind += 1
+    for lr in [0.01, 0.001]:
+        for g0 in [0.1, 0.3, 0.5, 0.7, 0.9, 0.0]:
+            for g1 in [0.0]:
+                for g2 in [0.0]:
+                    for g3 in [0.0]:
+                        state.lr = lr
+                        #state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
+                        state.gaussian_corruption_levels = [g0, g1, g2, g3]
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)

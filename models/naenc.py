@@ -1,6 +1,8 @@
+import numpy
 from theano import tensor
 from pylearn2.autoencoder import Autoencoder
 from pylearn2.corruption import Corruptor, BinomialCorruptor
+from pylearn2.utils import sharedX
 
 
 class NoisyAutoencoder(Autoencoder):
@@ -63,7 +65,12 @@ class DropOutHiddenLayer(Autoencoder):
 
     def __init__(self, corruptors,
             nvis, nhid, act_enc,
-            irange=1e-3, rng=9001):
+            irange=1., rng=9001):
+
+        """
+        irange : flaot, optional
+            The weights are initialized by normal distrubution, irange is the variane
+        """
 
         super(DropOutHiddenLayer, self).__init__(
         nvis = nvis,
@@ -76,6 +83,26 @@ class DropOutHiddenLayer(Autoencoder):
 
         self.corruptors = corruptors
         self._params = [self.hidbias, self.weights]
+
+    def _initialize_weights(self, nvis, rng=None, irange=None):
+        if rng is None:
+            rng = self.rng
+        if irange is None:
+            irange = self.irange
+        # TODO: use weight scaling factor if provided, Xavier's default else
+        self.weights = sharedX(
+            rng.normal(loc = 0.0, scale = irange, size = (nvis, self.nhid)),
+            name='W',
+            borrow=True
+        )
+
+    def _initialize_hidbias(self):
+        self.hidbias = sharedX(
+            numpy.ones(self.nhid),
+            name='hb',
+            borrow=True
+        )
+
 
     def _hidden_activation(self, x):
 

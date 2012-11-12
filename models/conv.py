@@ -235,12 +235,14 @@ class Conv(object):
                 input_corrupted = GaussianCorruptor(stdev = \
                         gaussian_corruption_levels[0])(self.x.reshape((batch_size, 1,
                                 image_shapes[0][0], image_shapes[0][1])))
+                input_corrupted = BinomialCorruptorScaled(corruption_level = \
+                        binomial_corruption_levels[0])(input_corrupted)
             else:
                 input_clean = self.layers[-1].output_clean
                 input_corrupted = GaussianCorruptor(stdev = \
                         gaussian_corruption_levels[i])(self.layers[-1].output_corrupted)
                 input_corrupted = BinomialCorruptorScaled(corruption_level = \
-                        binomial_corruption_levels[i-1])(input_corrupted)
+                        binomial_corruption_levels[i])(input_corrupted)
 
             layer = LeNetConvPoolLayer(rng, input_clean = input_clean,
                                     input_corrupted = input_corrupted,

@@ -32,18 +32,18 @@ def make(method):
         serial.mkdir( output_dir )
 
         pipeline = preprocessing.Pipeline()
-        pipeline.items.append(preprocessing.GlobalContrastNormalization())
-        pipeline.items.append(preprocessing.ZCA())
-        #pipeline.items.append(preprocessing.RemapInterval([-12, 10], [-1, 1]))
+        #pipeline.items.append(preprocessing.GlobalContrastNormalization())
+        #pipeline.items.append(preprocessing.ZCA())
         pipeline.items.append(preprocessing.Standardize())
-        #train.apply_preprocessor(preprocessor=pipeline, can_fit=True)
+        #pipeline.items.append(preprocessing.RemapInterval([-5., 5.], [-1, 1]))
+        train.apply_preprocessor(preprocessor=pipeline, can_fit=True)
         train.use_design_loc(output_dir + '/train.npy')
         serial.save(output_dir + '/train.pkl', train)
         print train.X.max(), train.X.min()
 
         # Test
         test = CIFAR10(which_set="test", rescale = True, center = True)
-        #test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
+        test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
         test.use_design_loc(output_dir + '/test.npy')
         serial.save(output_dir + '/test.pkl', test)
 

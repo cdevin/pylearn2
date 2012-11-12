@@ -80,8 +80,8 @@ def cifar10_experiment():
     state.nepochs = 1000
     state.model = 'mlp'
     state.act_enc = "rectifier"
-    state.lr = 0.1
-    state.lr_shrink_time = 500
+    state.lr = 0.01
+    state.lr_shrink_time = 1000
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -91,16 +91,16 @@ def cifar10_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.irange = 0.01
+    state.irange = 0.05
     state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
+    state.n_units = [32*32*3, 1000, 1000, 1000]
+    state.gaussian_corruption_levels = [0.0, 0.0, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.5, 0.5]
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
     state.save_frequency = 100
-    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar10/mlp.pkl")
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar10/mlp_2.pkl")
     state.fold = 0
 
     experiment(state, None)
@@ -108,17 +108,14 @@ def cifar10_experiment():
 def cifar100_experiment():
 
     state = DD()
-    #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn3/")
-    #state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
-    state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
-    #state.data_path = os.path.join(DATA_PATH, "timit/pylearn2/")
+    #state.data_path = os.path.join(DATA_PATH, "cifar100/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "cifar100/zca_512_d/")
     state.nouts = 100
     state.scale = False
     state.dataset = 'cifar100'
     state.norm = False
     state.nepochs = 10
     state.model = 'mlp'
-    #state.act_enc = "sigmoid"
     state.act_enc = "rectifier"
     state.lr = 0.01
     state.lr_shrink_time = 50
@@ -133,14 +130,14 @@ def cifar100_experiment():
     state.act_l1_ratio = 0.0
     state.irange = 0.1
     state.shuffle = False
-    state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
-    #state.n_units = [384, 1024,  1024]
-    state.gaussian_corruption_levels = [0.5, 0.5, 0.5, 0.5, 0.5]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.0, 0.5, 0.5]
+    #state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
+    state.n_units = [512, 10000, 1000]
+    state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
     state.group_sizes = [128, 128, 128]
-    state.save_frequency = 5
+    state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
     state.fold = 0
 
@@ -193,13 +190,13 @@ def tfd_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.01
-    state.lr_shrink_time = 50
-    state.lr_dc_rate = 0.001
+    state.lr = 0.1
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
     state.final_momentum = 0.9
-    state.momentum_inc_start = 50
+    state.momentum_inc_start = 30
     state.momentum_inc_end = 70
     state.batch_size = 200
     state.w_l1_ratio = 0.0
@@ -211,12 +208,12 @@ def tfd_experiment():
     state.model = 'conv'
     state.activation = "tanh"
     state.nouts = 7
-    state.image_shapes = [(48, 48), (20, 20), (6, 6)]
-    state.nkerns =  [1, 50, 60]
-    state.filter_shapes =  [(50, 1, 9, 9), (60, 50, 9, 9)]
-    state.poolsizes =  [(2, 2), (2, 2)]
+    state.image_shapes = [(48, 48), (22, 22), (9, 9)]
+    state.nkerns =  [1, 20, 50]
+    state.filter_shapes =  [(20, 1, 5, 5), (50, 20, 5, 5)]
+    state.poolsizes =  [(2, 2), (2, 2),]
     state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
-    state.binomial_corruption_levels = [0.5, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.0, 0.5]
     state.nhid = 500
     state.irange = 0.1
 
