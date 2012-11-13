@@ -117,8 +117,8 @@ def cifar100_experiment():
     state.nepochs = 1000
     state.model = 'mlp'
     state.act_enc = "rectifier"
-    state.lr = 0.01
-    state.lr_shrink_time = 50
+    state.lr = 0.0001
+    state.lr_shrink_time = 300
     state.lr_dc_rate = 0.001
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -134,10 +134,10 @@ def cifar100_experiment():
     #state.n_units = [32*32*3, 1024, 1024, 1024, 1024]
     state.n_units = [512, 10000, 1000]
     state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
-    state.binomial_corruption_levels = [0.0, 0.5, 0.5]
+    state.binomial_corruption_levels = [0.0, 0.9, 0.0]
     #state.group_corruption_levels = [0.0, 0.0, 0.5] # set this to None to stop group training
     state.group_corruption_levels = None
-    state.group_sizes = [128, 128, 128]
+    state.group_sizes = [None, 1000, None]
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
     state.fold = 0

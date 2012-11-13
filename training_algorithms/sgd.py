@@ -59,6 +59,8 @@ def sgd(model,
     done_looping = False
     epoch = 0
 
+    monitors = {'cost': [], 'valid' : [], 'test': [], 'sparse' : []}
+
     while (epoch < training_epochs) and (not done_looping):
         for minibatch_index in xrange(n_train_batches):
             # Adjust learning rate
@@ -88,6 +90,13 @@ def sgd(model,
                       (epoch, minibatch_avg_cost, learning_rate, this_validation_loss * 100.))
                 print '\tSparsity :{}'.format(sparsity)
 
+                #save monitors
+
+                monitors['cost'].append(minibatch_avg_cost)
+                monitors['valid'].append(this_validation_loss)
+                monitors['test'].append(test_score)
+                monitors['sparse'].append(sparsity)
+
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:
 
@@ -115,9 +124,11 @@ def sgd(model,
         if (epoch + 1) % save_frequency == 0:
             print "Saving the model"
             serial.save(save_name, model)
+            serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
 
     print "Saving the model"
     serial.save(save_name, model)
+    serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
            'with test performance %f %%') %

@@ -307,10 +307,10 @@ def mlp_cifar100():
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.irange = 0.1
-    state.bias_init = 1.0
-    state.n_units = [32*32*3, 10000, 1000]
+    state.bias_init = 0.0
+    state.n_units = [512, 10000, 1000]
     state.group_sizes = [128, 128, 123]
-    state.gaussian_corruption_levels = [0.]
+    state.gaussian_corruption_levels = [0., 0.0, 0.0]
     state.binomial_corruption_levels = [0.0, 0.3, 0.3]
     state.group_corruption_levels = None
     state.save_frequency = 100
@@ -320,14 +320,16 @@ def mlp_cifar100():
     ind = 0
     TABLE_NAME = "sd_mlp_cifar100_1l"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.001]:
+    for lr in [10., 1.]:
         for l0 in [0.0]:
-            for l1 in [0.0, 0.3, 0.5, 0.7, 0.9]:
-                for l2 in [0.0, 0.5]:
-                    state.lr = lr
-                    state.binomial_corruption_levels = [l0, l1, l2]
-                    sql.insert_job(mlp_experiment, flatten(state), db)
-                    ind += 1
+            for l1 in [0.9]:
+                for l2 in [0.5]:
+                    for irange in [0.1]:
+                        state.lr = lr
+                        state.binomial_corruption_levels = [l0, l1, l2]
+                        state.irange = irange
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jo bs submitted".format(ind)
