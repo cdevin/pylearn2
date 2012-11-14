@@ -216,7 +216,7 @@ def tfd_experiment():
     state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
     state.binomial_corruption_levels = [0.0, 0.0, 0.5]
     state.nhid = 500
-    state.irange = 0.1
+    state.irange = 0.01
 
     experiment(state, None)
 

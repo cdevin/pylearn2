@@ -123,11 +123,11 @@ class MLP(object):
             if i == 0:
                 input_clean = self.x
                 input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[i])(self.x)
-                input_corrupted = BinomialCorruptor(corruption_level = binomial_corruption_levels[i], group_sizes[i])(input_corrupted)
+                input_corrupted = BinomialCorruptor(corruption_level = binomial_corruption_levels[i], group_size = group_sizes[i])(input_corrupted)
             else:
                 input_clean = self.hidden_layers[-1].output_clean
                 input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[i])(self.hidden_layers[-1].output_corrupted)
-                input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[i], group_sizes[i])(input_corrupted)
+                input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[i], group_size = group_sizes[i])(input_corrupted)
 
             hidden_layer = HiddenLayer(input_clean = input_clean,
                                         input_corrupted = input_corrupted,
@@ -146,7 +146,7 @@ class MLP(object):
         # Logistic layer
         input_clean = self.hidden_layers[-1].output_clean
         input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[-1])(self.hidden_layers[-1].output_corrupted)
-        input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[-1], group_sizes[-1])(input_corrupted)
+        input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[-1], group_size = group_sizes[-1])(input_corrupted)
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
                          input_clean=input_clean,

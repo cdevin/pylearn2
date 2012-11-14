@@ -315,7 +315,7 @@ class Conv(object):
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
                 theano.Param(momentum)],
-              outputs=cost,
+              outputs=[cost, cost],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:

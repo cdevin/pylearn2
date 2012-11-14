@@ -26,7 +26,8 @@ class DropOutAutoencoder(Autoencoder):
 
     def _hidden_activation(self, x):
 
-        hidden = super(DropOutAutoencoder, self)._hidden_activation(x)
+        corrupted_x = self.input_corruptor(x)
+        hidden = super(DropOutAutoencoder, self)._hidden_activation(corrupted_x)
         return self.hidden_corruptor(hidden)
 
     def test_encode(self, inputs):
@@ -36,35 +37,13 @@ class DropOutAutoencoder(Autoencoder):
         else:
             return [self.encode(v) for v in inputs]
 
-    def reconstruct(self, inputs):
-        """
-        Reconstruct the inputs after corrupting and mapping through the
-        encoder and decoder.
-
-        Parameters
-        ----------
-        inputs : tensor_like or list of tensor_likes
-            Theano symbolic (or list thereof) representing the input
-            minibatch(es) to be corrupted and reconstructed. Assumed to be
-            2-tensors, with the first dimension indexing training examples and
-            the second indexing data dimensions.
-
-        Returns
-        -------
-        reconstructed : tensor_like or list of tensor_like
-            Theano symbolic (or list thereof) representing the corresponding
-             reconstructed minibatch(es) after corruption and encoding/decoding.
-        """
-        corrupted = self.input_corruptor(inputs)
-        return super(DropOutAutoencoder, self).reconstruct(corrupted)
-
     def test_reconstruct(self, inputs):
-        return super(DropOutAutoencoder, self).reconstruct(inputs)
-
+        raise NotImplementedError("Is there such a thing?")
 
 class DropOutHiddenLayer(Autoencoder):
 
-    def __init__(self, corruptors,
+    def __init__(self, input_corruptor,
+            hidden_corruptor,
             nvis, nhid, act_enc,
             irange=1., bias_init = 1., rng=9001):
 
@@ -84,7 +63,8 @@ class DropOutHiddenLayer(Autoencoder):
         irange = irange,
         rng = rng)
 
-        self.corruptors = corruptors
+        self.input_corruptor = input_corruptor
+        self.hidden_corruptor = hidden_corruptor
         self._params = [self.hidbias, self.weights]
 
     def _initialize_weights(self, nvis, rng=None, irange=None):
@@ -108,13 +88,9 @@ class DropOutHiddenLayer(Autoencoder):
 
     def _hidden_activation(self, x):
 
-        hidden = super(DropOutHiddenLayer, self)._hidden_activation(x)
-        if isinstance(self.corruptors, Corruptor):
-            hidden = self.corruptors(hidden)
-        else:
-            for item in self.corruptors:
-                hidden = item(hidden)
-        return hidden
+        corrupted_x = self.input_corruptor(x)
+        hidden = super(DropOutAutoencoder, self)._hidden_activation(corrupted_x)
+        return self.hidden_corruptor(hidden)
 
     def test_encode(self, inputs):
 
@@ -122,7 +98,6 @@ class DropOutHiddenLayer(Autoencoder):
             return super(DropOutHiddenLayer, self)._hidden_activation(inputs)
         else:
             return [self.encode(v) for v in inputs]
-
 
 class BalancedDropOutHiddenLayer(Autoencoder):
 
@@ -221,4 +196,50 @@ class DeepDropOutAutoencoder(Autoencoder):
         hiddens = self.encode(inputs)
         for layer in reversed(self.layers):
             hiddens = layer.decode(hiddens)
-        return hiddens
+        return h iddens
+
+class DeepDropOutHiddenLayer(Autoencoder):
+
+    def __init__(self, input_corruptors,
+                    hidden_corruptors,
+                    n_units,
+                    act_enc,
+                    irange = 1e-3,
+                    bias_init- 0.0,
+                    rng = 9001):
+
+
+        self.input_space = VectorSpace(n_units[0])
+        self.output_space = VectorSpace(n_units[-1])
+
+        self.layers = []
+        self._params = []
+        self.weights = []
+        self.n_layers = len(n_units) - 1
+        for i in range(self.n_layers):
+            self.layers.append(DropOutHiddenLayer(input_corruptor = input_corruptors[i],
+                                hidden_corruptor = hidden_corruptors[i],
+                                nvis = n_units[i],
+                                nhid = n_units[i+1],
+                                act_enc = act_enc,
+                                irange = irange,
+                                bias_init = bias_init,
+                                rng = rng))
+            self._params.extend(self.layers[-1]._params)
+            self.weights.append(self.layers[-1].weights)
+
+    def encode(self, inputs):
+
+        outputs = inputs
+        for layer in self.layers:
+            outputs = layer(outputs)
+
+        return outputs
+
+    def test_encode(self, inputs):
+
+        outputs = inputs
+        for layer in self.layers:
+            outputs = layer.test_encode(outputs)
+
+
