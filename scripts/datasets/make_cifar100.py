@@ -7,23 +7,23 @@ import numpy
 from make_cifar10 import PCA
 
 print 'Loading CIFAR_100 train set...'
-train = CIFAR100(which_set="train")
+train = CIFAR100(which_set="train", scale = True)
 
 DATA_PATH = get_data_path()
 data_dir = DATA_PATH + "cifar100"
-output_dir = data_dir + '/pca'
+output_dir = data_dir + '/scale'
 serial.mkdir( output_dir )
 
 print "Pre-processin train set..."
 pipeline = preprocessing.Pipeline()
 #pipeline.items.append(preprocessing.GlobalContrastNormalization())
-#pipeline.items.append(preprocessing.ZCA(n_components=513, n_drop_components=1))
-pipeline.items.append(preprocessing.MakeUnitNorm())
+pipeline.items.append(preprocessing.Standardize())
+#pipeline.items.append(preprocessing.ZCA())
+#pipeline.items.append(preprocessing.MakeUnitNorm())
 
-train.apply_preprocessor(preprocessor=pipeline, can_fit=True)
-pca = PCA(512)
-pca.train(train.get_design_matrix())
-train.set_design_matrix(pca(train.get_design_matrix()))
+#train.apply_preprocessor(preprocessor=pipeline, can_fit=True)
+print train.X.max(), train.X.min()
+
 
 train.y = train.y_fine
 train.use_design_loc(output_dir + '/train.npy')
@@ -32,11 +32,10 @@ numpy.save(output_dir + '/train_y.npy', train.y)
 
 # Test
 print 'Loading CIFAR_100 test set...'
-test = CIFAR100(which_set="test")
+test = CIFAR100(which_set="test", scale = True)
 print "Pre-processin test set..."
-test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
+#test.apply_preprocessor(preprocessor=pipeline, can_fit=True)
 
-test.set_design_matrix(pca(test.get_design_matrix()))
 test.y = test.y_fine
 test.use_design_loc(output_dir + '/test.npy')
 serial.save(output_dir + '/test.pkl', test)

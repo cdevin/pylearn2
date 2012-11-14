@@ -3,15 +3,16 @@ from theano import tensor
 from pylearn2.autoencoder import Autoencoder
 from pylearn2.corruption import Corruptor, BinomialCorruptor
 from pylearn2.utils import sharedX
+from pylearn2.space import VectorSpace
 
 
-class NoisyAutoencoder(Autoencoder):
+class DropOutAutoencoder(Autoencoder):
 
     def __init__(self, input_corruptor, hidden_corruptor,
             nvis, nhid, act_enc, act_dec,
             tied_weights = False, irange=1e-3, rng=9001):
 
-        super(NoisyAutoencoder, self).__init__(
+        super(DropOutAutoencoder, self).__init__(
         nvis,
         nhid,
         act_enc,
@@ -25,13 +26,13 @@ class NoisyAutoencoder(Autoencoder):
 
     def _hidden_activation(self, x):
 
-        hidden = super(NoisyAutoencoder, self)._hidden_activation(x)
+        hidden = super(DropOutAutoencoder, self)._hidden_activation(x)
         return self.hidden_corruptor(hidden)
 
     def test_encode(self, inputs):
 
         if isinstance(inputs, tensor.Variable):
-            return super(NoisyAutoencoder, self)._hidden_activation(inputs)
+            return super(DropOutAutoencoder, self)._hidden_activation(inputs)
         else:
             return [self.encode(v) for v in inputs]
 
@@ -52,13 +53,13 @@ class NoisyAutoencoder(Autoencoder):
         -------
         reconstructed : tensor_like or list of tensor_like
             Theano symbolic (or list thereof) representing the corresponding
-            reconstructed minibatch(es) after corruption and encoding/decoding.
+             reconstructed minibatch(es) after corruption and encoding/decoding.
         """
         corrupted = self.input_corruptor(inputs)
-        return super(NoisyAutoencoder, self).reconstruct(corrupted)
+        return super(DropOutAutoencoder, self).reconstruct(corrupted)
 
     def test_reconstruct(self, inputs):
-        return super(NoisyAutoencoder, self).reconstruct(inputs)
+        return super(DropOutAutoencoder, self).reconstruct(inputs)
 
 
 class DropOutHiddenLayer(Autoencoder):
@@ -104,7 +105,6 @@ class DropOutHiddenLayer(Autoencoder):
             name='hb',
             borrow=True
         )
-
 
     def _hidden_activation(self, x):
 
@@ -171,4 +171,54 @@ class BalancedDropOutHiddenLayer(Autoencoder):
         else:
             return [self.encode(v) for v in inputs]
 
+class DeepDropOutAutoencoder(Autoencoder):
 
+    def __init__(self, input_corruptors,
+                    hidden_corruptors,
+                    n_units,
+                    act_enc,
+                    act_dec,
+                    tied_weights = False,
+                    irange = 1e-3, rng = 9001):
+
+        self.input_space = VectorSpace(n_units[0])
+        self.output_space = VectorSpace(n_units[-1])
+
+        self.layers = []
+        self._params = []
+        self.weights = []
+        self.n_layers = len(n_units) - 1
+        for i in range(self.n_layers):
+            self.layers.append(DropOutAutoencoder(input_corruptor = input_corruptors[i],
+                                hidden_corruptor = hidden_corruptors[i],
+                                nvis = n_units[i],
+                                nhid = n_units[i+1],
+                                act_enc = act_enc,
+                                act_dec = act_dec,
+                                tied_weights = tied_weights,
+                                irange = irange,
+                                rng = rng))
+
+            self._params.extend(self.layers[-1]._params)
+            self.weights.append(self.layers[-1].weights)
+
+    def encode(self, inputs):
+
+        outputs = inputs
+        for layer in self.layers:
+            outputs = layer(outputs)
+
+        return outputs
+
+    def test_encode(self, inputs):
+
+        outputs = inputs
+        for layer in self.layers:
+            outputs = layer.test_encode(outputs)
+
+    def reconstruct(self, inputs):
+
+        hiddens = self.encode(inputs)
+        for layer in reversed(self.layers):
+            hiddens = layer.decode(hiddens)
+        return hiddens

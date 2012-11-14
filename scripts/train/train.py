@@ -12,6 +12,7 @@ import pylearn2
 import pylearn2.config
 from pylearn2.utils import serial
 from utils.config import get_data_path, get_result_path
+from jobman.tools import DD
 
 DATA_PATH = get_data_path()
 RESULT_PATH = get_result_path()
@@ -93,6 +94,43 @@ train_1layer_yaml_string = """
 }
 """
 
+# 2-layer drop-out unsupervised
+unsupervised_2layer_yaml = """
+!obj:pylearn2.train.Train {
+    "dataset": !pkl:  %(data_path)s,
+    "model": !obj:noisy_encoder.models.dropouts.DeepDropOutAutoencoder {
+        "input_corruptors": [None, None],
+        "hidden_corruptors": [!obj:noisy_encoder.utils.corruptions.BinomialCorruptorScaled {
+            "corruption_level" : %(hidden_corruption_level_0)f,},
+            !obj:noisy_encoder.utils.corruptions.BinomialCorruptorScaled {
+            "corruption_level" : %(hidden_corruption_level_1)f}],
+        "n_units" : %(n_units)s,
+        "act_enc" : %(act_enc)s,
+        "act_dec" : %(act_dec)s,
+        "tied_weights" : %(tied_weights)s,
+        "irange" : %(irange)f
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : %(learning_rate)f,
+        "batch_size" : %(batch_size)i,
+        "monitoring_batches" : %(monitoring_batches)i,
+        "monitoring_dataset" : !pkl: %(data_path)s,
+        "init_momentum" : %(init_momentum)f,
+        "cost" : !obj:pylearn2.costs.autoencoder.MeanBinaryCrossEntropy {},
+        "termination_criterion" : !obj:pylearn2.training_algorithms.sgd.EpochCounter {
+            "max_epochs": %(max_epochs)i,
+        },
+    },
+    "callbacks" : [!obj:pylearn2.training_algorithms.sgd.MonitorBasedLRAdjuster {
+                    "shrink_amt": %(shrink_amt)f, grow_amt: %(grow_amt)f},
+                    !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+                    "final_momentum" : %(final_momentum)f,
+                    "start" : %(start_momentum)f,
+                    "saturate" : %(saturate_momentum)f}],
+    "save_path": %(save_name)s,
+    "save_freq": %(save_freq)i
+}
+"""
 
 
 
@@ -150,14 +188,52 @@ def train_1layer(submit = False):
 
     experiment(state, None)
 
+
+def cifar100_2layer():
+
+    state = DD()
+
+    # architecture
+    state.data_path = os.path.join(DATA_PATH, "cifar100/scale/train.pkl")
+    state.n_units = "[3072, 1000, 1000]"
+    state.w_l1_ratio = 0.0
+    state.act_enc = "sigmoid"
+    state.act_dec = "sigmoid"
+    state.tied_weights = True
+    state.input_corruption_level = None
+    state.hidden_corruption_level_0 = 0.5
+    state.hidden_corruption_level_1 = 0.5
+    state.irange = 0.01
+
+    # sgd
+    state.learning_rate = 0.01
+    state.grow_amt = 1.001
+    state.shrink_amt = 0.009
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.start_momentum = 10
+    state.saturate_momentum = 30
+    state.batch_size = 20
+    state.monitoring_batches = 2500
+    state.max_epochs = 300
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar/l1_2_")
+    state.save_freq = 1
+    state.yaml_string = unsupervised_2layer_yaml
+
+    experiment(state, None)
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'noisy AE trainer')
-    parser.add_argument('-t', '--task', choices = ['layer1'], required = True)
+    parser.add_argument('-t', '--task', choices = ['layer1', 'cifar100_2layer'], required = True)
     args = parser.parse_args()
 
     if args.task == 'layer1':
         train_1layer()
+    elif args.task == 'cifar100_2layer':
+        cifar100_2layer()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
 
