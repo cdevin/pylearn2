@@ -196,7 +196,7 @@ def cifar100_2layer():
     state.data_path = os.path.join(DATA_PATH, "cifar100/scale/train.pkl")
     state.n_units = "[3072, 1000, 1000]"
     state.w_l1_ratio = 0.0
-    state.act_enc = "sigmoid"
+    state.act_enc = "rectifier"
     state.act_dec = "sigmoid"
     state.tied_weights = True
     state.input_corruption_level = None

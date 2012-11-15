@@ -6,11 +6,20 @@ from pylearn2.utils import sharedX
 from pylearn2.space import VectorSpace
 
 
+def rectifier(X):
+    return X * (X > 0.0)
+
 class DropOutAutoencoder(Autoencoder):
 
     def __init__(self, input_corruptor, hidden_corruptor,
             nvis, nhid, act_enc, act_dec,
             tied_weights = False, irange=1e-3, rng=9001):
+
+        # TODO This is hack, find the proper way to make rectifier accessible everywhere
+        if act_enc == "rectifier":
+            act_enc = rectifier
+        if act_dec == "rectifier":
+            act_dec = rectifier
 
         super(DropOutAutoencoder, self).__init__(
         nvis,
