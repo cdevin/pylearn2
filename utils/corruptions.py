@@ -142,4 +142,13 @@ class BinomialCorruptorScaledGroupCombined(Corruptor):
         else:
             return [self._corrupt(inp) for inp in inputs]
 
+class EmptyCorruptor(Corruptor):
 
+    def __init__(self):
+        pass
+
+    def _corrupt(self, x):
+        return x
+
+    def __call__(self, inputs):
+        return inputs

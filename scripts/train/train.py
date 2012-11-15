@@ -99,7 +99,8 @@ unsupervised_2layer_yaml = """
 !obj:pylearn2.train.Train {
     "dataset": !pkl:  %(data_path)s,
     "model": !obj:noisy_encoder.models.dropouts.DeepDropOutAutoencoder {
-        "input_corruptors": [None, None],
+        "input_corruptors": [!obj:noisy_encoder.utils.corruptions.EmptyCorruptor {},
+                            !obj:noisy_encoder.utils.corruptions.EmptyCorruptor {}],
         "hidden_corruptors": [!obj:noisy_encoder.utils.corruptions.BinomialCorruptorScaled {
             "corruption_level" : %(hidden_corruption_level_0)f,},
             !obj:noisy_encoder.utils.corruptions.BinomialCorruptorScaled {
@@ -127,11 +128,10 @@ unsupervised_2layer_yaml = """
                     "final_momentum" : %(final_momentum)f,
                     "start" : %(start_momentum)f,
                     "saturate" : %(saturate_momentum)f}],
-    "save_path": %(save_name)s,
+    "save_path": "%(save_name)s",
     "save_freq": %(save_freq)i
 }
 """
-
 
 
 def experiment(state, channel):
@@ -188,7 +188,6 @@ def train_1layer(submit = False):
 
     experiment(state, None)
 
-
 def cifar100_2layer():
 
     state = DD()
@@ -221,7 +220,6 @@ def cifar100_2layer():
     state.yaml_string = unsupervised_2layer_yaml
 
     experiment(state, None)
-
 
 
 if __name__ == "__main__":

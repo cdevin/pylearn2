@@ -2,7 +2,7 @@ import os
 import argparse, fnmatch
 import numpy
 from jobman import DD, flatten, api0, sql
-from train import DATA_PATH, RESULT_PATH, train_1layer_yaml_string
+from train import DATA_PATH, RESULT_PATH, train_1layer_yaml_string, unsupervised_2layer_yaml
 from train import experiment as train_experiment
 from classify import experiment as classify_experiment
 from l2_svm import experiment as l2_svm_experiment
@@ -434,12 +434,70 @@ def mlp_timit():
     print "{} jobs submitted".format(ind)
 
 
+
+def cifar100_2layer_unsupervised():
+
+    state = DD()
+
+    # architecture
+    state.data_path = os.path.join(DATA_PATH, "cifar100/scale/train.pkl")
+    state.n_units = "[3072, 1000, 1000]"
+    state.w_l1_ratio = 0.0
+    state.act_enc = "sigmoid"
+    state.act_dec = "sigmoid"
+    state.tied_weights = True
+    state.input_corruption_level = None
+    state.hidden_corruption_level_0 = 0.5
+    state.hidden_corruption_level_1 = 0.5
+    state.irange = 0.01
+
+    # sgd
+    state.learning_rate = 0.01
+    state.grow_amt = 1.001
+    state.shrink_amt = 0.009
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.start_momentum = 10
+    state.saturate_momentum = 30
+    state.batch_size = 20
+    state.monitoring_batches = 2500
+    state.max_epochs = 300
+    state.save_name = "cifar_2l.pkl"
+    state.save_freq = 100
+    state.yaml_string = unsupervised_2layer_yaml
+    state.description = "effect of dropout on unsupervised auto-encoder"
+
+    ind = 0
+    TABLE_NAME = "auto_cifar100_2l"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [10, 0.1, 0.01, 0.001]:
+        for l1 in [0.0, 0.5]:
+            for l2 in [0.0, 0.5]:
+                for enc, dec in zip(["sigmoid", "sigmoid"], ["rectifier", "linear"]):
+                    state.learning_rate =  lr
+                    state.hidden_corruption_level_0 = l1
+                    state.hidden_corruption_level_1 = l2
+                    state.act_enc = enc
+                    state.act_dec = dec
+                    sql.insert_job(train_experiment, flatten(state), db)
+                    ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jo bs submitted".format(ind)
+
+
+
+
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
-                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100', 'mlp_mnist'])
+                    'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
+                    'mlp_mnist', 'uns_cifar100'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -464,6 +522,8 @@ if __name__ == "__main__":
         mlp_mnist()
     elif args.task == 'mlp_timit':
         mlp_timit()
+    elif args.task == 'uns_cifar100':
+        cifar100_2layer_unsupervised()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
