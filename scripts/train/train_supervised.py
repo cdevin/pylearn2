@@ -48,7 +48,6 @@ def experiment(state, channel):
                         state.scale,
                         state.norm,
                         state.fold)
-
     model = load_model(state, numpy_rng)
     state.test_score, state.valid_score = sgd(model = model,
                                 datasets = datasets,
@@ -185,13 +184,13 @@ def tfd_experiment():
 
     # train params
     state.dataset = 'tfd'
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/0/")
-    state.fold = 0
+    state.fold = 1
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.1
+    state.lr = 0.01
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -209,12 +208,12 @@ def tfd_experiment():
     state.model = 'conv'
     state.activation = "tanh"
     state.nouts = 7
-    state.image_shapes = [(48, 48), (22, 22), (9, 9)]
-    state.nkerns =  [1, 20, 50]
-    state.filter_shapes =  [(20, 1, 5, 5), (50, 20, 5, 5)]
-    state.poolsizes =  [(2, 2), (2, 2),]
-    state.gaussian_corruption_levels = [0.0, 0.0, 0.0]
-    state.binomial_corruption_levels = [0.0, 0.0, 0.5]
+    state.image_shapes = [(48, 48), (21, 21), (9, 9), (3, 3)]
+    state.nkerns =  [1, 20, 50, 100]
+    state.filter_shapes =  [(20, 1, 7, 7), (50, 20, 4, 4), (100, 50, 4, 4)]
+    state.poolsizes =  [(2, 2), (2, 2), (2, 2)]
+    state.gaussian_corruption_levels = [0.0, 0.0, 0.0, 0.0, 0.0]
+    state.binomial_corruption_levels = [0.0, 0.5, 0.5, 0.5, 0.5]
     state.nhid = 500
     state.irange = 0.01
 

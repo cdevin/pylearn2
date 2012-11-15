@@ -196,7 +196,7 @@ class DeepDropOutAutoencoder(Autoencoder):
         hiddens = self.encode(inputs)
         for layer in reversed(self.layers):
             hiddens = layer.decode(hiddens)
-        return h iddens
+        return hiddens
 
 class DeepDropOutHiddenLayer(Autoencoder):
 
@@ -205,7 +205,7 @@ class DeepDropOutHiddenLayer(Autoencoder):
                     n_units,
                     act_enc,
                     irange = 1e-3,
-                    bias_init- 0.0,
+                    bias_init =  0.0,
                     rng = 9001):
 
 

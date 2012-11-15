@@ -43,7 +43,6 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
         test_set = serial.load(data_path + 'test.pkl')
-        nouts = 61
         train_x = train_set.X
         train_y = train_set.y
         valid_x = valid_set.X
@@ -68,7 +67,6 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         train_x = numpy.vstack([norm(x) for x in train_x])
         valdd_x = numpy.vstack([norm(x) for x in valid_x])
         test_x = numpy.vstack([norm(x) for x in test_x])
-
 
     train = shared_dataset(train_x, train_y)
     valid = shared_dataset(valid_x, valid_y)
