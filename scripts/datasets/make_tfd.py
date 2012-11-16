@@ -36,7 +36,7 @@ def make_data(which, fold):
     data= TFD(which_set = which, fold = fold, center = False)
     #data = apply_lcn(data)
     data.X = data.X / 255.
-    data.y = numpy.concatenate(data.y -1)
+    data.y = numpy.concatenate(data.y)
 
     data.use_design_loc(output_dir + '/{}.npy'.format(which))
     serial.save(output_dir + '/{}.pkl'.format(which), data)
