@@ -50,6 +50,35 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_x = test_set.X
         test_y = test_set.y
         del train_set, valid_set, test_set
+    elif dataset == 'tfd_siamese':
+        train_set = serial.load(data_path + 'train_emot.pkl')
+        train_set_p = serial.load(data_path + 'train_neutral.pkl')
+        valid_set = serial.load(data_path + 'valid_emot.pkl')
+        valid_set_p = serial.load(data_path + 'valid_neutral.pkl')
+        test_set = serial.load(data_path + 'test_emot.pkl')
+        test_set_p = serial.load(data_path + 'test_neutral.pkl')
+        train_x = train_set.X
+        train_x_p = train_set_p.X
+        train_y = train_set.y
+        train_y_p = train_set_p.y
+        valid_x = valid_set.X
+        valid_x_p = valid_set_p.X
+        valid_y = valid_set.y
+        valid_y_p = valid_set_p.y
+        test_x = test_set.X
+        test_x_p = test_set_p.X
+        test_y = test_set.y
+        test_y_p = test_set_p.y
+
+        train = shared_dataset(train_x, train_y)
+        train_p = shared_dataset(train_x_p, train_y_p)
+        valid = shared_dataset(valid_x, valid_y)
+        valid_p = shared_dataset(valid_x_p, valid_y_p)
+        test = shared_dataset(test_x, test_y)
+        test_p = shared_dataset(test_x_p, test_y_p)
+
+        return train, train_p, valid, valid_p, test, test_p
+
     else:
         raise NameError('Unknown dataset: {}').format(dataset)
 

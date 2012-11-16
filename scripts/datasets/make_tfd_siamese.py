@@ -57,7 +57,7 @@ def make_data(which, fold):
 
 
     data_neutral.use_design_loc(output_dir + '/{}_neutral.npy'.format(which))
-    serial.save(output_dir + '/{}_netural.pkl'.format(which), data_neutral)
+    serial.save(output_dir + '/{}_neutral.pkl'.format(which), data_neutral)
     data_emot.use_design_loc(output_dir + '/{}_emot.npy'.format(which))
     serial.save(output_dir + '/{}_emot.pkl'.format(which), data_emot)
 

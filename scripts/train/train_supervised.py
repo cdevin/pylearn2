@@ -7,6 +7,7 @@ from noisy_encoder.utils.io import load_data
 from noisy_encoder.training_algorithms.sgd import sgd
 from noisy_encoder.models.mlp import MLP
 from noisy_encoder.models.conv import Conv
+from noisy_encoder.models.siamese import Siamese
 from theano.tensor.shared_randomstreams import RandomStreams
 
 
@@ -37,18 +38,19 @@ def load_model(state, numpy_rng):
                 nout = state.nouts,
                 activation = state.activation,
                 batch_size = state.batch_size)
-    elif state.model == 'Siamese':
+    elif state.model == 'siamese':
         return Siamese(numpy_rng = numpy_rng,
                 base_model = state.base_model,
                 n_units = state.n_units,
                 gaussian_corruption_levels = state.gaussian_corruption_levels,
                 binomial_corruption_levels = state.binomial_corruption_levels,
-                group_sizes = state.group_sizes,
                 n_outs = state.nouts,
                 act_enc = state.act_enc,
                 irange = state.irange,
                 bias_init = state.bias_init,
-                group_corruption_levels = state.group_corruption_levels)
+                method = state.method)
+    else:
+        raise NameError("Unknown model: {}".format(state.model))
 
 
 def experiment(state, channel):
@@ -214,8 +216,8 @@ def tfd_experiment():
     state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 100
-    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
+    state.save_frequency = 1
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
     state.model = 'conv'
@@ -237,9 +239,9 @@ def siamese_experiment():
     state = DD()
 
     # train params
-    state.dataset = 'tfd'
+    state.dataset = 'tfd_siamese'
     state.fold = 1
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -252,19 +254,21 @@ def siamese_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 200
+    #state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
-    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
 
 
     # model params
+    state.model = 'siamese'
+    state.method = 'diff'
     state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
     state.n_units = [1000, 500]
     state.gaussian_corruption_levels = [0.0, 0.0]
     state.binomial_corruption_levels = [0.5, 0.5]
-    state.nouts = 7
+    state.nouts = 6
     state.act_enc = "sigmoid"
     state.irange = 0.01
     state.bias_init = 0.0
@@ -273,7 +277,7 @@ def siamese_experiment():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit', 'tfd'], required = True)
+    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit', 'tfd', 'siamese'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
