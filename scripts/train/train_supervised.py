@@ -37,6 +37,19 @@ def load_model(state, numpy_rng):
                 nout = state.nouts,
                 activation = state.activation,
                 batch_size = state.batch_size)
+    elif state.model == 'Siamese':
+        return Siamese(numpy_rng = numpy_rng,
+                base_model = state.base_model,
+                n_units = state.n_units,
+                gaussian_corruption_levels = state.gaussian_corruption_levels,
+                binomial_corruption_levels = state.binomial_corruption_levels,
+                group_sizes = state.group_sizes,
+                n_outs = state.nouts,
+                act_enc = state.act_enc,
+                irange = state.irange,
+                bias_init = state.bias_init,
+                group_corruption_levels = state.group_corruption_levels)
+
 
 def experiment(state, channel):
 
@@ -219,6 +232,45 @@ def tfd_experiment():
 
     experiment(state, None)
 
+def siamese_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd'
+    state.fold = 1
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 1000
+    state.lr = 0.01
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 200
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/cifar100/mlp.pkl")
+
+
+    # model params
+    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
+    state.n_units = [1000, 500]
+    state.gaussian_corruption_levels = [0.0, 0.0]
+    state.binomial_corruption_levels = [0.5, 0.5]
+    state.nouts = 7
+    state.act_enc = "sigmoid"
+    state.irange = 0.01
+    state.bias_init = 0.0
+
+    experiment(state, None)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit', 'tfd'], required = True)
@@ -234,3 +286,5 @@ if __name__ == "__main__":
         tfd_experiment()
     elif args.dataset == 'mnsit':
         mnist_experiment()
+    elif args.dataset == 'siamese':
+        siamese_experiment()

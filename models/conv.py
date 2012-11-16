@@ -277,6 +277,10 @@ class Conv(object):
 
         self.errors = self.log_layer.errors(self.y)
 
+
+    def __call__(self):
+        return self.hid_layer.output_clean
+
     def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
 
         train_set_x, train_set_y = datasets[0]
