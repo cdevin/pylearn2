@@ -35,6 +35,7 @@ from theano.tensor.signal import downsample
 from theano.tensor.nnet import conv
 
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
+from noisy_encoder.models.base import eval_activation
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX
 
@@ -191,16 +192,6 @@ def load_data(dataset, fold = 0, center = False, scale = True):
             tfd_load_data('test', fold, center, scale)
     else:
         return mnist_load_data('/RQexec/mirzameh/data/mnist/mnist.pkl.gz')
-
-def eval_activation(activation):
-    if activation == 'tanh':
-        return T.tanh
-    elif activation == 'sigmoid':
-        return T.nnet.sigmoid
-    elif activation == 'rectifier':
-        def rectifier(X):
-            return X * (X > 0.0)
-        return rectifier
 
 class Conv(object):
     def __init__(self,

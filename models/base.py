@@ -2,6 +2,7 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
+from pylearn2.utils import sharedX
 
 
 
@@ -81,5 +82,15 @@ class PickableLambda(object):
 
 def rectifier(X):
     return X * (X > 0.0)
+
+def eval_activation(activation):
+    if activation == 'tanh':
+        return T.tanh
+    elif activation == 'sigmoid':
+        return T.nnet.sigmoid
+    elif activation == 'rectifier':
+        def rectifier(X):
+            return X * (X > 0.0)
+        return rectifier
 
 

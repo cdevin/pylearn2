@@ -4,6 +4,7 @@ from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
 from classify import shared_dataset, norm
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
+from noisy_encoder.models.base import eval_activation
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX, serial
 from base import *
@@ -12,8 +13,9 @@ class Siamese(object):
 
     def __init__(self, numpy_rng, base_model, n_units, gaussian_corruption_levels,
                     binomial_corruption_levels, n_outs, act_enc,
-                    irange, bias_init,  rng = 9001):
+                    irange, bias_init, method, rng = 9001):
 
+        act_enc = eval_activation(act_enc)
 
         theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
         self.rng = numpy.random.RandomState(rng)
@@ -25,8 +27,8 @@ class Siamese(object):
         # load base model
         base_model = serial.load(base_model)
 
-        self.x = base_model(self.x)
-        self.x_p = base_model(self.x_p)
+        self.x = base_model.x
+        self.x_p = base_model.x.copy()
 
         if method == 'diff':
             self.inputs = self.x - self.x_p
@@ -36,7 +38,9 @@ class Siamese(object):
 
         self.hidden_layers = []
         self.params = []
-        for i in xrange(len(n_units)):
+        self.w_l1 = 0
+        self.act_l1 = 0
+        for i in xrange(len(n_units) -1):
             if i == 0:
                 input_clean = self.inputs
                 input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[i])(self.inputs)
@@ -58,7 +62,6 @@ class Siamese(object):
             self.params.extend(hidden_layer.params)
             self.w_l1 += abs(hidden_layer.W).sum()
             self.act_l1 += abs(hidden_layer.output_corrupted).sum()
-            self.sparsity.append((hidden_layer.output_clean>0).mean())
         # Logistic layer
         input_clean = self.hidden_layers[-1].output_clean
         input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[-1])(self.hidden_layers[-1].output_corrupted)
@@ -76,7 +79,7 @@ class Siamese(object):
         self.params.extend(self.logLayer.params)
         self.cost = self.logLayer.negative_log_likelihood(self.y)
         self.errors = self.logLayer.errors(self.y)
-        self.sparsity = T.stack(self.sparsity)
+        self.sparsity = 0
 
     def build_finetune_functions(self, datasets, batch_size, w_l1_ratio, act_l1_ratio, enable_momentum):
 
