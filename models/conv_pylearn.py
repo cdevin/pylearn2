@@ -2,19 +2,15 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
-from classify import shared_dataset, norm
-from noisy_encoder.utils.corruptions import GaussianCorruptor, BinomialCorruptorScaled
-from noisy_encoder.models.naenc import NoisyAutoencoder
 from noisy_encoder.models.mlp import LogisticRegression, rectifier, PickableLambda
 
 
 
 
-class ConvPool(Block, Model):
+class Conv(Block, Model):
     """Pool Layer of a convolutional network """
 
-    def __init__(self, corruptor, filter_shape, image_shape, poolsize, act_enc, rng=9001):
-        assert image_shape[1] == filter_shape[1]
+    def __init__(self, corruptor, image_shape, nchannels_input, nchannels_output, pool_shape, act_enc, border_mode = 'valid', rng=9001):
 
         if not hasattr(rng, 'randn'):
             self.rng = numpy.random.RandomState([2012,11,6,9])
@@ -30,8 +26,8 @@ class ConvPool(Block, Model):
         self.image_shape = image_shape
         self.act_enc = act_enc
 
-        self.input_space = Conv2DSpace(shape = , nchannels = )
-        #self.ouput_space =
+        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
+        self.ouput_space = Conv2DSpace(shape = image_shape - kernel_shape, nchannels = nchannels_output)
 
 
         def _resolve_callable(conf, conf_attr):
@@ -64,7 +60,7 @@ class ConvPool(Block, Model):
                 batch_size = batch_size,
                 input_space = input_space,
                 output_axes = output_spaces.axes,
-                subsample = subsample,
+                subsample = pool_shape,
                 border_mode = border_mode,
                 filter_shape = self.weights.get_value.shape, message = "")
 
@@ -90,7 +86,7 @@ class ConvPool(Block, Model):
             act_enc = self.act_enc
         return act_enc(self._hidden_input(x))
 
-     def encode(self, inputs):
+    def encode(self, inputs):
         if isinstance(inputs, tensor.Variable):
             return self._corrupted_hidden_activation(inputs)
         else:

@@ -65,7 +65,7 @@ class Siamese(object):
         # Logistic layer
         input_clean = self.hidden_layers[-1].output_clean
         input_corrupted = GaussianCorruptor(stdev = gaussian_corruption_levels[-1])(self.hidden_layers[-1].output_corrupted)
-        input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[-1], group_size = group_sizes[-1])(input_corrupted)
+        input_corrupted = BinomialCorruptorScaled(corruption_level = binomial_corruption_levels[-1])(input_corrupted)
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
                          input_clean=input_clean,
