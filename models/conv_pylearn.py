@@ -1,33 +1,44 @@
 import numpy
 import theano
-import theano.tensor as T
+from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
-from noisy_encoder.models.mlp import LogisticRegression, rectifier, PickableLambda
-
-
+from pylearn2.base import Block
+from pylearn2.models import Model
+from pylearn2.utils import sharedX
+from pylearn2.space import Conv2DSpace
+from pylearn2.linear.conv2d import Conv2D
 
 
 class Conv(Block, Model):
     """Pool Layer of a convolutional network """
 
-    def __init__(self, corruptor, image_shape, nchannels_input, nchannels_output, pool_shape, act_enc, border_mode = 'valid', rng=9001):
+    def __init__(self,
+                    irange,
+                    image_shape,
+                    kernel_shape,
+                    nchannels_input,
+                    nchannels_output,
+                    pool_shape,
+                    batch_size,
+                    act_enc,
+                    border_mode = 'valid',
+                    rng=9001):
 
         if not hasattr(rng, 'randn'):
             self.rng = numpy.random.RandomState([2012,11,6,9])
         else:
             self.rng = rng
 
+        self.nchannels_output = nchannels_output
+        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
+        self.output_space = Conv2DSpace(shape = [a-b+1 for a, b in zip(image_shape, kernel_shape)], nchannels = nchannels_output)
 
-        self.weights = sharedX(rng.uniform(-irange,irange,(output_space.nchannels, input_space.nchannels, \
+        self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
                       kernel_shape[0], kernel_shape[1])))
         self._initialize_hidbias()
 
-        self.filter_shape = filter_shape
-        self.image_shape = image_shape
         self.act_enc = act_enc
 
-        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
-        self.ouput_space = Conv2DSpace(shape = image_shape - kernel_shape, nchannels = nchannels_output)
 
 
         def _resolve_callable(conf, conf_attr):
@@ -58,16 +69,16 @@ class Conv(Block, Model):
 
         self.transformer = Conv2D(filters = self.weights,
                 batch_size = batch_size,
-                input_space = input_space,
-                output_axes = output_spaces.axes,
+                input_space = self.input_space,
+                output_axes = self.output_space.axes,
                 subsample = pool_shape,
                 border_mode = border_mode,
-                filter_shape = self.weights.get_value.shape, message = "")
+                filters_shape = self.weights.get_value().shape, message = "")
 
 
     def _initialize_hidbias(self):
         self.hidbias = sharedX(
-            numpy.zeros(self.nhid),
+            numpy.zeros(self.nchannels_output),
              name='hb',
             borrow=True
         )
@@ -77,7 +88,7 @@ class Conv(Block, Model):
         return self.transformer.lmul(x)
 
     def _hidden_input(self, x):
-        return self._convolve(x) + self.b
+        return self._convolve(x) + self.hidbias
 
     def _hidden_activation(self, x):
         if self.act_enc is None:
@@ -88,11 +99,12 @@ class Conv(Block, Model):
 
     def encode(self, inputs):
         if isinstance(inputs, tensor.Variable):
-            return self._corrupted_hidden_activation(inputs)
+            return self._hidden_activation(inputs)
         else:
             return [self.encode(v) for v in inputs]
 
     def __call__(self, inputs):
         return self.encode(inputs)
 
-
+    def get_weights(self):
+        return self.weights
