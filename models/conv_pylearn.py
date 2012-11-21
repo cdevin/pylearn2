@@ -146,7 +146,7 @@ class LeNet(Block, Model):
             self.layers.append(layer)
             self._params.extend(layer._params)
 
-            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape, kernel_shapes[i-1], pool_shapes[i-1])]
+            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape, kernel_shapes[i], pool_shapes[i])]
 
         mlp_nunits.insert(0, numpy.prod(image_shape) * nchannels[-1])
         self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
@@ -176,7 +176,7 @@ class LeNet(Block, Model):
         return self.mlp.predict_y(self.conv_encode(inputs))
 
     def __call__(self, inputs):
-        return self.p_y_given_x(inputs)
+        return self.test_encode(inputs)
 
 
 class LeNetLearner(object):
@@ -229,8 +229,11 @@ class LeNetLearner(object):
     def encode(self, inputs):
         return self.model.encode(inputs)
 
+    def test_encode(self, inputs):
+        return self.mode.test_encode(inputs)
+
     def __call__(self, inputs):
-        return self.encode(inputs)
+        return self.test_encode(inputs)
 
     def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
 

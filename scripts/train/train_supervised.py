@@ -256,7 +256,7 @@ def tfd_newconv_experiment():
     state.scale = False
     state.norm = False
     state.shuffle = False
-    state.nepochs = 2
+    state.nepochs = 1000
     state.lr = 0.1
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.01
@@ -265,22 +265,22 @@ def tfd_newconv_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 200
+    state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 1
+    state.save_frequency = 5
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
-    state.kernel_shapes = [(5,5)]
-    state.nchannels = [1, 50]
-    state.pool_shapes = [(2,2)]
+    state.kernel_shapes = [(9,9), (5, 5)]
+    state.nchannels = [1, 50, 100]
+    state.pool_shapes = [(2,2), (2, 2)]
     state.act_enc = "tanh"
-    state.mlp_input_corruptors = [None, None]
-    state.mlp_hidden_corruptors = [None, None]
-    state.mlp_nunits = [1000]
+    state.mlp_input_corruptors = [None, None, None]
+    state.mlp_hidden_corruptors = [None, None, None]
+    state.mlp_nunits = [500]
     state.n_outs = 7
 
     experiment(state, None)
@@ -305,7 +305,7 @@ def siamese_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 200
+    state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
@@ -317,7 +317,7 @@ def siamese_experiment():
     state.method = 'diff'
     state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
-    state.n_units = [1000, 500]
+    state.n_units = [500, 500]
     state.input_corruptors = [None, None]
     state.hidden_corruptors = [None, None]
     state.nouts = 6
