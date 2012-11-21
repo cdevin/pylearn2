@@ -164,10 +164,10 @@ class LeNet(Block, Model):
 
 
     def encode(self, x):
-        return self.mlp(self.conv_encode(x))
+        return self.mlp.encode(self.conv_encode(x))
 
     def test_encode(self, x):
-        return self.mlp.test_encode(self.conv_encode)
+        return self.mlp.test_encode(self.conv_encode(x))
 
     def p_y_given_x(self, inputs):
         return self.mlp.p_y_given_x(self.conv_encode(inputs))
@@ -225,6 +225,12 @@ class LeNetLearner(object):
     def negative_log_likelihood(self, inputs, y):
 
         return -tensor.mean(tensor.log(self.model.p_y_given_x(inputs))[tensor.arange(y.shape[0]), y])
+
+    def encode(self, inputs):
+        return self.model.encode(inputs)
+
+    def __call__(self, inputs):
+        return self.encode(inputs)
 
     def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
 

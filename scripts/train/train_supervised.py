@@ -52,10 +52,11 @@ def load_model(state, numpy_rng):
                 n_outs = state.n_outs)
     elif state.model == 'siamese':
         return Siamese(numpy_rng = numpy_rng,
+                image_topo = state.image_topo,
                 base_model = state.base_model,
                 n_units = state.n_units,
-                gaussian_corruption_levels = state.gaussian_corruption_levels,
-                binomial_corruption_levels = state.binomial_corruption_levels,
+                input_corruptors = state.input_corruptors,
+                hidden_corruptors = state.hidden_corruptors,
                 n_outs = state.nouts,
                 act_enc = state.act_enc,
                 irange = state.irange,
@@ -63,7 +64,6 @@ def load_model(state, numpy_rng):
                 method = state.method)
     else:
         raise NameError("Unknown model: {}".format(state.model))
-
 
 def experiment(state, channel):
 
@@ -245,7 +245,6 @@ def tfd_experiment():
 
     experiment(state, None)
 
-
 def tfd_newconv_experiment():
 
     state = DD()
@@ -257,8 +256,8 @@ def tfd_newconv_experiment():
     state.scale = False
     state.norm = False
     state.shuffle = False
-    state.nepochs = 1000
-    state.lr = 0.01
+    state.nepochs = 2
+    state.lr = 0.1
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -269,7 +268,7 @@ def tfd_newconv_experiment():
     state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 100
+    state.save_frequency = 1
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
@@ -286,15 +285,13 @@ def tfd_newconv_experiment():
 
     experiment(state, None)
 
-
-
 def siamese_experiment():
 
     state = DD()
 
     # train params
     state.dataset = 'tfd_siamese'
-    state.fold = 1
+    state.fold = 0
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
     state.scale = False
     state.norm = False
@@ -308,7 +305,7 @@ def siamese_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    #state.batch_size = 200
+    state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
@@ -319,9 +316,10 @@ def siamese_experiment():
     state.model = 'siamese'
     state.method = 'diff'
     state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
+    state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [1000, 500]
-    state.gaussian_corruption_levels = [0.0, 0.0]
-    state.binomial_corruption_levels = [0.5, 0.5]
+    state.input_corruptors = [None, None]
+    state.hidden_corruptors = [None, None]
     state.nouts = 6
     state.act_enc = "sigmoid"
     state.irange = 0.01
