@@ -6,12 +6,74 @@ from pylearn2.base import Block
 from pylearn2.models import Model
 from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
-from pylearn2.linear.conv2d import Conv2D
+#from pylearn2.linear.conv2d import Conv2D
 from noisy_encoder.models.mlp_new import DropOutMLP
+from theano.tensor.nnet.conv import conv2d
+from theano.tensor.signal import downsample
 
+
+class Conv2D:
+    """ A temporarily solution for pylearn2.linear.conv2d.Conv2D
+    slowness problem.
+    TODO: It should be replaced by pylearn2 version after issue is resolved
+    """
+    def __init__(self,
+                filters,
+                batch_size,
+                input_space,
+                output_axes = ('b', 0, 1, 'c'),
+                subsample = (1, 1),
+                border_mode = 'valid',
+                filters_shape = None,
+                message = ""):
+
+        self.filters = filters
+        self.input_space = input_space
+        self.output_axes = output_axes
+        self.img_shape = (batch_size, input_space.nchannels,
+                        input_space.shape[0], input_space.shape[1])
+        self.subsample = subsample
+        self.border_mode = border_mode
+        self.filters_shape = filters.get_value(borrow=True).shape
+
+
+    def lmul(self, x):
+
+        assert x.ndim == 4
+        axes = self.input_space.axes
+        assert len(axes) == 4
+
+        op_axes = ('b', 'c', 0, 1)
+
+        if tuple(axes) != op_axes:
+            x = x.dimshuffle(
+                axes.index('b'),
+                axes.index('c'),
+                axes.index(0),
+                axes.index(1))
+
+
+        conv_out = conv2d(x, self.filters,
+                        image_shape = self.img_shape,
+                        filter_shape = self.filters_shape,
+                        border_mode = self.border_mode)
+
+        rval = downsample.max_pool_2d(input = conv_out,
+                ds = self.subsample, ignore_border = True)
+
+        axes = self.output_axes
+        assert len(axes) == 4
+
+        if tuple(axes) != op_axes:
+            rval = rval.dimshuffle(
+                    op_axes.index(axes[0]),
+                    op_axes.index(axes[1]),
+                    op_axes.index(axes[2]),
+                    op_axes.index(axes[3]))
+        return rval
 
 class Conv(Block, Model):
-    """Pool Layer of a convolutional network """
+    """ A convolution - pool block """
 
     def __init__(self,
                     image_shape,
@@ -31,14 +93,14 @@ class Conv(Block, Model):
             self.rng = rng
 
         self.nchannels_output = nchannels_output
+
         self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
-        self.output_space = Conv2DSpace(shape = [(a-b+1) / c for a, b, c in zip(image_shape, kernel_shape, pool_shape)], nchannels = nchannels_output)
+        self.output_space = Conv2DSpace(shape = [(a-b+1) / c for a, b, c in \
+                zip(image_shape, kernel_shape, pool_shape)], nchannels = nchannels_output)
+
         self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
                       kernel_shape[0], kernel_shape[1])))
         self._initialize_hidbias()
-
-        self.act_enc = act_enc
-
 
 
         def _resolve_callable(conf, conf_attr):
@@ -108,7 +170,6 @@ class Conv(Block, Model):
     def get_weights(self):
         return self.weights
 
-
 class LeNet(Block, Model):
 
     def __init__(self,
@@ -128,7 +189,6 @@ class LeNet(Block, Model):
 
 
         self.layers = []
-        self.hid_layers = []
         self._params = []
 
         self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels[0])
@@ -146,7 +206,8 @@ class LeNet(Block, Model):
             self.layers.append(layer)
             self._params.extend(layer._params)
 
-            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape, kernel_shapes[i], pool_shapes[i])]
+            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape,
+                            kernel_shapes[i], pool_shapes[i])]
 
         mlp_nunits.insert(0, numpy.prod(image_shape) * nchannels[-1])
         self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
@@ -162,7 +223,6 @@ class LeNet(Block, Model):
             x = layer(x)
         return x.flatten(2)
 
-
     def encode(self, x):
         return self.mlp.encode(self.conv_encode(x))
 
@@ -177,7 +237,6 @@ class LeNet(Block, Model):
 
     def __call__(self, inputs):
         return self.test_encode(inputs)
-
 
 class LeNetLearner(object):
     "Temporary class to train LeNet with current non-pylearn sgd"
@@ -219,11 +278,9 @@ class LeNetLearner(object):
         self.params = self.model._params
 
     def errors(self, inputs, y):
-
         return tensor.mean(tensor.neq(self.model.predict_y(inputs), y))
 
     def negative_log_likelihood(self, inputs, y):
-
         return -tensor.mean(tensor.log(self.model.p_y_given_x(inputs))[tensor.arange(y.shape[0]), y])
 
     def encode(self, inputs):

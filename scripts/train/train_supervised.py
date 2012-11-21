@@ -210,7 +210,7 @@ def tfd_experiment():
 
     # train params
     state.dataset = 'tfd'
-    state.fold = 1
+    state.fold = 0
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     state.scale = False
     state.norm = False
@@ -227,7 +227,7 @@ def tfd_experiment():
     state.batch_size = 200
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 1
+    state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
@@ -257,7 +257,7 @@ def tfd_newconv_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.1
+    state.lr = 0.05
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -268,7 +268,7 @@ def tfd_newconv_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 5
+    state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
@@ -329,7 +329,8 @@ def siamese_experiment():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10', 'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese'], required = True)
+    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
+        'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
