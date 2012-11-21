@@ -1,4 +1,4 @@
-from noisy_encoder.models.conv_pylearn import Conv
+from noisy_encoder.models.conv_pylearn import Conv, LeNet
 import theano.sandbox.rng_mrg
 RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
 from theano import tensor as T
@@ -31,7 +31,20 @@ def test_encode():
     Y = model(X)
 
 
+def test_lenet_encode():
+    model = LeNet(image_shape = [32, 32], kernel_shapes = ([5,5], [3,3]),
+            nchannels = [3, 20, 50], pool_shape = ([2, 2],[2, 2]), batch_size = 10,
+            mlp_input_corruptors = [None, None], mlp_hidden_corruptors = [None, None],
+            mlp_nunits = [1000, 2000], n_outs = 20,
+            act_enc = "sigmoid")
+    theano_rng = RandomStreams(17)
+
+    X = T.tensor4()
+
+    Y = model(X)
+
 
 if __name__ == "__main__":
     test_get_weights()
     test_encode()
+    test_lenet_encode()

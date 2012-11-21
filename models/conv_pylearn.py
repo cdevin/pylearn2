@@ -5,15 +5,15 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from pylearn2.base import Block
 from pylearn2.models import Model
 from pylearn2.utils import sharedX
-from pylearn2.space import Conv2DSpace
+from pylearn2.space import Conv2DSpace, VectorSpace
 from pylearn2.linear.conv2d import Conv2D
+from noisy_encoder.models.mlp_new import DropOutMLP
 
 
 class Conv(Block, Model):
     """Pool Layer of a convolutional network """
 
     def __init__(self,
-                    irange,
                     image_shape,
                     kernel_shape,
                     nchannels_input,
@@ -22,6 +22,7 @@ class Conv(Block, Model):
                     batch_size,
                     act_enc,
                     border_mode = 'valid',
+                    irange = 0.05,
                     rng=9001):
 
         if not hasattr(rng, 'randn'):
@@ -64,8 +65,7 @@ class Conv(Block, Model):
         self.act_enc = _resolve_callable(locals(), 'act_enc')
 
         # store parameters of this layer
-        self.params = [self.weights, self.hidbias]
-
+        self._params = [self.weights, self.hidbias]
 
         self.transformer = Conv2D(filters = self.weights,
                 batch_size = batch_size,
@@ -108,3 +108,196 @@ class Conv(Block, Model):
 
     def get_weights(self):
         return self.weights
+
+
+class LeNet(Block, Model):
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shapes,
+                    nchannels,
+                    pool_shapes,
+                    batch_size,
+                    act_enc,
+                    mlp_input_corruptors,
+                    mlp_hidden_corruptors,
+                    mlp_nunits,
+                    n_outs,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    rng=9001):
+
+
+        self.layers = []
+        self.hid_layers = []
+        self._params = []
+
+        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels[0])
+        self.output_space = VectorSpace(mlp_nunits[-1])
+
+        for i in range(len(kernel_shapes)):
+            if i == 0:
+                image_shape = image_shape
+            else:
+                image_shape = [a - b + 1 for a, b in zip(image_shape, kernel_shapes[i-1])]
+
+            layer = Conv(irange = irange,
+                    image_shape = image_shape,
+                    kernel_shape = kernel_shapes[i],
+                    nchannels_input = nchannels[i],
+                    nchannels_output = nchannels[i+1],
+                    pool_shape = pool_shapes[i],
+                    batch_size = batch_size,
+                    act_enc = act_enc)
+            self.layers.append(layer)
+            self._params.extend(layer._params)
+
+
+        self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
+                        hidden_corruptors = mlp_hidden_corruptors,
+                        n_units = mlp_nunits,
+                        n_outs = n_outs,
+                        act_enc = act_enc)
+
+
+    def conv_encode(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x.flatten(2)
+
+
+    def encode(self, x):
+        return self.mlp(self.conv_encode(x))
+
+    def test_encode(self, x):
+        return self.mlp.test_encode(self.conv_encode)
+
+    def p_y_given_x(self, inputs):
+        return self.mlp.p_y_given_x(self.conv_encode(inputs))
+
+    def predict_y(self, inputs):
+        return self.mlp.predict_y(self.conv_encode(inputs))
+
+    def __call__(self, inputs):
+        return self.p_y_given_x(inputs)
+
+
+class LeNetLearner(object):
+    "Temporary class to train LeNet with current non-pylearn sgd"
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shapes,
+                    nchannels,
+                    pool_shapes,
+                    batch_size,
+                    act_enc,
+                    mlp_input_corruptors,
+                    mlp_hidden_corruptors,
+                    mlp_nunits,
+                    n_outs,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    rng=9001):
+
+        self.x = tensor.matrix('x')
+        self.y = tensor.ivector('y')
+
+        self.input = self.x.reshape((batch_size, 1, image_shape[0], image_shape[1]))
+        self.model = LeNet(image_shape = image_shape,
+                    kernel_shapes = kernel_shapes,
+                    nchannels = nchannels,
+                    pool_shapes = pool_shapes,
+                    batch_size = batch_size,
+                    act_enc = act_enc,
+                    mlp_input_corruptors = mlp_input_corruptors,
+                    mlp_hidden_corruptors = mlp_hidden_corruptors,
+                    mlp_nunits = mlp_nunits,
+                    n_outs = n_outs,
+                    border_mode = border_mode,
+                    irange = irange,
+                    rng=rng)
+
+        self.params = self.model._params
+
+    def errors(self, inputs, y):
+
+        return tensor.mean(tensor.neq(self.model.predict_y(inputs), y))
+
+    def negative_log_likelihood(self, inputs, y):
+
+        return -tensor.mean(tensor.log(self.model.p_y_given_x(inputs))[tensor.arange(y.shape[0]), y])
+
+    def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
+
+        train_set_x, train_set_y = datasets[0]
+        valid_set_x, valid_set_y = datasets[1]
+        test_set_x, test_set_y = datasets[2]
+
+        # compute number of minibatches for training, validation and testing
+        n_valid_batches = valid_set_x.get_value(borrow=True).shape[0]
+        n_test_batches = test_set_x.get_value(borrow=True).shape[0]
+        n_valid_batches /= batch_size
+        n_test_batches /= batch_size
+
+
+        index = tensor.lscalar()  # index to a [mini]batch
+        learning_rate = tensor.scalar('lr')
+        if enable_momentum is None:
+            momentum = None
+        else:
+            momentum = tensor.scalar('momentum')
+        cost = self.negative_log_likelihood(self.input, self.y)
+        gparams = tensor.grad(cost, self.params)
+
+        # compute list of fine-tuning updates
+        updates = {}
+        if momentum is None:
+            for param, gparam in zip(self.params, gparams):
+                updates[param] = param - gparam * learning_rate
+        else:
+            for param, gparam in zip(self.params, gparams):
+                inc = sharedX(param.get_value() * 0.)
+                updated_inc = momentum * inc - learning_rate * gparam
+                updates[inc] = updated_inc
+                updates[param] = param + updated_inc
+
+
+        train_fn = theano.function(inputs=[index,
+                theano.Param(learning_rate),
+                theano.Param(momentum)],
+              outputs=[cost, cost],
+              updates=updates,
+              givens={
+                self.x: train_set_x[index * batch_size:
+                                    (index + 1) * batch_size],
+                self.y: train_set_y[index * batch_size:
+                                    (index + 1) * batch_size]})
+
+        errors = self.errors(self.input, self.y)
+
+        test_score_i = theano.function([index], errors,
+                 givens={
+                   self.x: test_set_x[index * batch_size:
+                                      (index + 1) * batch_size],
+                   self.y: test_set_y[index * batch_size:
+                                      (index + 1) * batch_size]})
+
+        valid_score_i = theano.function([index], errors,
+              givens={
+                 self.x: valid_set_x[index * batch_size:
+                                     (index + 1) * batch_size],
+                 self.y: valid_set_y[index * batch_size:
+                                     (index + 1) * batch_size]})
+
+        # Create a function that scans the entire validation set
+        def valid_score():
+            return [valid_score_i(i) for i in xrange(n_valid_batches)]
+
+        # Create a function that scans the entire test set
+        def test_score():
+            return [test_score_i(i) for i in xrange(n_test_batches)]
+
+        return train_fn, valid_score, test_score
+
+

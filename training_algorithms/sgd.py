@@ -18,8 +18,7 @@ def sgd(model,
             init_momentum,
             final_momentum,
             momentum_inc_start,
-            momentum_inc_end,
-            irange):
+            momentum_inc_end):
 
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]

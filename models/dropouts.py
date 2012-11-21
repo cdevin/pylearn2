@@ -97,9 +97,15 @@ class DropOutHiddenLayer(Autoencoder):
 
     def _hidden_activation(self, x):
 
-        corrupted_x = self.input_corruptor(x)
-        hidden = super(DropOutAutoencoder, self)._hidden_activation(corrupted_x)
-        return self.hidden_corruptor(hidden)
+        if self.input_corruptor is None:
+            corrupted_x = x
+        else:
+            corrupted_x = self.input_corruptor(x)
+        hidden = super(DropOutHiddenLayer, self)._hidden_activation(corrupted_x)
+        if self.hidden_corruptor is None:
+            return hidden
+        else:
+            return self.hidden_corruptor(hidden)
 
     def test_encode(self, inputs):
 
@@ -238,7 +244,6 @@ class DeepDropOutHiddenLayer(Autoencoder):
             self.weights.append(self.layers[-1].weights)
 
     def encode(self, inputs):
-
         outputs = inputs
         for layer in self.layers:
             outputs = layer(outputs)
@@ -250,5 +255,5 @@ class DeepDropOutHiddenLayer(Autoencoder):
         outputs = inputs
         for layer in self.layers:
             outputs = layer.test_encode(outputs)
-
+        return outputs
 
