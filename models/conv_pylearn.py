@@ -155,6 +155,7 @@ class LeNet(Block, Model):
                         n_outs = n_outs,
                         act_enc = act_enc)
 
+        self._params.extend(self.mlp._params)
 
     def conv_encode(self, x):
         for layer in self.layers:

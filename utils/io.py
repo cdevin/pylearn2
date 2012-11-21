@@ -1,3 +1,4 @@
+import gc
 import numpy
 from sklearn.preprocessing import Scaler
 from pylearn2.utils import serial
@@ -101,5 +102,7 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
     valid = shared_dataset(valid_x, valid_y)
     test = shared_dataset(test_x, test_y)
 
+    del train_x, train_y, valid_x, valid_y, test_x, test_y
+    gc.collect()
     return train, valid, test
 
