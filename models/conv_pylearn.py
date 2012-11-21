@@ -32,8 +32,7 @@ class Conv(Block, Model):
 
         self.nchannels_output = nchannels_output
         self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
-        self.output_space = Conv2DSpace(shape = [a-b+1 for a, b in zip(image_shape, kernel_shape)], nchannels = nchannels_output)
-
+        self.output_space = Conv2DSpace(shape = [(a-b+1) / c for a, b, c in zip(image_shape, kernel_shape, pool_shape)], nchannels = nchannels_output)
         self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
                       kernel_shape[0], kernel_shape[1])))
         self._initialize_hidbias()
@@ -136,11 +135,6 @@ class LeNet(Block, Model):
         self.output_space = VectorSpace(mlp_nunits[-1])
 
         for i in range(len(kernel_shapes)):
-            if i == 0:
-                image_shape = image_shape
-            else:
-                image_shape = [a - b + 1 for a, b in zip(image_shape, kernel_shapes[i-1])]
-
             layer = Conv(irange = irange,
                     image_shape = image_shape,
                     kernel_shape = kernel_shapes[i],
@@ -152,7 +146,9 @@ class LeNet(Block, Model):
             self.layers.append(layer)
             self._params.extend(layer._params)
 
+            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape, kernel_shapes[i-1], pool_shapes[i-1])]
 
+        mlp_nunits.insert(0, numpy.prod(image_shape) * nchannels[-1])
         self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
                         hidden_corruptors = mlp_hidden_corruptors,
                         n_units = mlp_nunits,
@@ -203,7 +199,8 @@ class LeNetLearner(object):
         self.x = tensor.matrix('x')
         self.y = tensor.ivector('y')
 
-        self.input = self.x.reshape((batch_size, 1, image_shape[0], image_shape[1]))
+        # This is the shape pylearn handles images batches
+        self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
         self.model = LeNet(image_shape = image_shape,
                     kernel_shapes = kernel_shapes,
                     nchannels = nchannels,
@@ -217,7 +214,7 @@ class LeNetLearner(object):
                     border_mode = border_mode,
                     irange = irange,
                     rng=rng)
-
+        self.input_space = self.model.input_space
         self.params = self.model._params
 
     def errors(self, inputs, y):
@@ -239,7 +236,6 @@ class LeNetLearner(object):
         n_test_batches = test_set_x.get_value(borrow=True).shape[0]
         n_valid_batches /= batch_size
         n_test_batches /= batch_size
-
 
         index = tensor.lscalar()  # index to a [mini]batch
         learning_rate = tensor.scalar('lr')
