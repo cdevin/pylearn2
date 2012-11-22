@@ -486,11 +486,6 @@ def cifar100_2layer_unsupervised():
 def conv_tfd():
 
     state = DD()
-    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
-    state.fold = 0
-    state.description = "Data rescale=True, center = True, global=standardize\
-            weight init, normal, bias +1"
-
 
     # train params
     state.dataset = 'tfd'
@@ -501,7 +496,7 @@ def conv_tfd():
     state.shuffle = False
     state.nepochs = 1000
     state.lr = 0.01
-    state.lr_shrink_time = 50
+    state.lr_shrink_time = 70
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -515,49 +510,32 @@ def conv_tfd():
     state.save_name = "conv.pkl"
 
 
-    # make corruptors
-    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
-    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
-
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
-    state.kernel_shapes = [(9,9), (5, 5)]
-    state.nchannels = [1, 20, 50]
-    state.pool_shapes = [(2,2), (2, 2)]
+    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
+    state.nchannels = [1, 20, 50, 80]
+    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
     state.conv_act = "tanh"
     state.mlp_act = "rectifier"
-    state.mlp_input_corruptors = [None, None]
-    state.mlp_hidden_corruptors = [corr1, corr2]
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
 
 
-
-
-
     ind = 0
-    TABLE_NAME = "sd_mlp_cifar_2l_s_3"
+    TABLE_NAME = "dr_tfd_conv"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.001]:
-        for g0 in [0.1, 0.3, 0.5, 0.7, 0.9, 0.0]:
-            for g1 in [0.0]:
-                for g2 in [0.0]:
-                    for g3 in [0.0]:
-                        state.lr = lr
-                        #state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
-                        state.gaussian_corruption_levels = [g0, g1, g2, g3]
-                        sql.insert_job(mlp_experiment, flatten(state), db)
-                        ind += 1
+    for lr in [0.05, 0.01, 0.005]:
+        for fold in [0, 1, 2, 3, 4]:
+            state.lr = lr
+            state.fold = fold
+            sql.insert_job(mlp_experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
-
-
-
-
-
-
 
 if __name__ == "__main__":
 
@@ -565,7 +543,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
-                    'mlp_mnist', 'uns_cifar100'])
+                    'mlp_mnist', 'uns_cifar100', 'conv_tfd'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -592,6 +570,8 @@ if __name__ == "__main__":
         mlp_timit()
     elif args.task == 'uns_cifar100':
         cifar100_2layer_unsupervised()
+    elif args.task == 'conv_tfd':
+        conv_tfd()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

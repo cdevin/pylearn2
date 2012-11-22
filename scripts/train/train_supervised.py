@@ -259,7 +259,7 @@ def tfd_newconv_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.01
+    state.lr = 0.02
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -276,9 +276,9 @@ def tfd_newconv_experiment():
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
-    state.kernel_shapes = [(9,9), (5, 5)]
-    state.nchannels = [1, 20, 50]
-    state.pool_shapes = [(2,2), (2, 2)]
+    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
+    state.nchannels = [1, 20, 50, 80]
+    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
     state.conv_act = "tanh"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
