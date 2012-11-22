@@ -178,7 +178,8 @@ class LeNet(Block, Model):
                     nchannels,
                     pool_shapes,
                     batch_size,
-                    act_enc,
+                    conv_act,
+                    mlp_act,
                     mlp_input_corruptors,
                     mlp_hidden_corruptors,
                     mlp_nunits,
@@ -202,7 +203,7 @@ class LeNet(Block, Model):
                     nchannels_output = nchannels[i+1],
                     pool_shape = pool_shapes[i],
                     batch_size = batch_size,
-                    act_enc = act_enc)
+                    act_enc = conv_act)
             self.layers.append(layer)
             self._params.extend(layer._params)
 
@@ -214,7 +215,7 @@ class LeNet(Block, Model):
                         hidden_corruptors = mlp_hidden_corruptors,
                         n_units = mlp_nunits,
                         n_outs = n_outs,
-                        act_enc = act_enc)
+                        act_enc = mlp_act)
 
         self._params.extend(self.mlp._params)
 
@@ -247,7 +248,8 @@ class LeNetLearner(object):
                     nchannels,
                     pool_shapes,
                     batch_size,
-                    act_enc,
+                    conv_act,
+                    mlp_act,
                     mlp_input_corruptors,
                     mlp_hidden_corruptors,
                     mlp_nunits,
@@ -266,7 +268,8 @@ class LeNetLearner(object):
                     nchannels = nchannels,
                     pool_shapes = pool_shapes,
                     batch_size = batch_size,
-                    act_enc = act_enc,
+                    conv_act = conv_act,
+                    mlp_act = mlp_act,
                     mlp_input_corruptors = mlp_input_corruptors,
                     mlp_hidden_corruptors = mlp_hidden_corruptors,
                     mlp_nunits = mlp_nunits,

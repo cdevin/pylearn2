@@ -46,7 +46,8 @@ def load_model(state, numpy_rng):
                 nchannels = state.nchannels,
                 pool_shapes = state.pool_shapes,
                 batch_size = state.batch_size,
-                act_enc = state.act_enc,
+                conv_act = state.conv_act,
+                mlp_act = state.mlp_act,
                 mlp_input_corruptors = state.mlp_input_corruptors,
                 mlp_hidden_corruptors = state.mlp_hidden_corruptors,
                 mlp_nunits = state.mlp_nunits,
@@ -283,7 +284,8 @@ def tfd_newconv_experiment():
     state.kernel_shapes = [(9,9), (5, 5)]
     state.nchannels = [1, 20, 50]
     state.pool_shapes = [(2,2), (2, 2)]
-    state.act_enc = "tanh"
+    state.conv_act = "tanh"
+    state.mlp_act = "rectifier"
     state.mlp_input_corruptors = [None, None]
     state.mlp_hidden_corruptors = [corr1, corr2]
     state.mlp_nunits = [1000, 500]
