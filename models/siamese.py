@@ -20,7 +20,9 @@ class Siamese(object):
                     hidden_corruptors,
                     n_outs,
                     act_enc,
-                    irange, bias_init, method = 'diff', rng = 9001):
+                    irange, bias_init,
+                    method = 'diff',
+                    rng = 9001):
 
         act_enc = eval_activation(act_enc)
 
@@ -42,7 +44,8 @@ class Siamese(object):
         if method == 'diff':
             self.inputs = inputs - inputs_p
         elif method == 'kl':
-            self.inputs = self.x * tensor.log(self.x_p) + (1 - sel.x) * log(1 - self.x_p)
+            self.inputs = inputs * tensor.log(inputs_p) + \
+                            (1 - inputs) * tensor.log(1 - inputs_p)
         else:
             raise NameError("Unknown method: {}".format(method))
 

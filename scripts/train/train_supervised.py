@@ -9,6 +9,7 @@ from noisy_encoder.models.mlp import MLP
 from noisy_encoder.models.conv import Conv
 from noisy_encoder.models.conv_pylearn import LeNetLearner
 from noisy_encoder.models.siamese import Siamese
+from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from theano.tensor.shared_randomstreams import RandomStreams
 
 
@@ -257,8 +258,8 @@ def tfd_newconv_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.05
-    state.lr_shrink_time = 100
+    state.lr = 0.01
+    state.lr_shrink_time = 50
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -271,16 +272,21 @@ def tfd_newconv_experiment():
     state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
+
+    # make corruptors
+    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
+    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
+
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
     state.kernel_shapes = [(9,9), (5, 5)]
-    state.nchannels = [1, 50, 100]
+    state.nchannels = [1, 20, 50]
     state.pool_shapes = [(2,2), (2, 2)]
     state.act_enc = "tanh"
-    state.mlp_input_corruptors = [None, None, None]
-    state.mlp_hidden_corruptors = [None, None, None]
-    state.mlp_nunits = [500]
+    state.mlp_input_corruptors = [None, None]
+    state.mlp_hidden_corruptors = [corr1, corr2]
+    state.mlp_nunits = [1000, 500]
     state.n_outs = 7
 
     experiment(state, None)
@@ -311,6 +317,9 @@ def siamese_experiment():
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
 
+    # make corruptors
+    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
+    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
 
     # model params
     state.model = 'siamese'
@@ -319,7 +328,7 @@ def siamese_experiment():
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 500]
     state.input_corruptors = [None, None]
-    state.hidden_corruptors = [None, None]
+    state.hidden_corruptors = [corr1, corr2]
     state.nouts = 6
     state.act_enc = "sigmoid"
     state.irange = 0.01

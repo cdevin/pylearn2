@@ -287,7 +287,7 @@ class LeNetLearner(object):
         return self.model.encode(inputs)
 
     def test_encode(self, inputs):
-        return self.mode.test_encode(inputs)
+        return self.model.test_encode(inputs)
 
     def __call__(self, inputs):
         return self.test_encode(inputs)
