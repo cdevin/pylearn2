@@ -8,6 +8,8 @@ from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
 #from pylearn2.linear.conv2d import Conv2D
 from noisy_encoder.models.mlp_new import DropOutMLP
+from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
+from pylearn2.corruption import GaussianCorruptor
 from theano.tensor.nnet.conv import conv2d
 from theano.tensor.signal import downsample
 
@@ -250,8 +252,8 @@ class LeNetLearner(object):
                     batch_size,
                     conv_act,
                     mlp_act,
-                    mlp_input_corruptors,
-                    mlp_hidden_corruptors,
+                    mlp_input_corruption_levels,
+                    mlp_hidden_corruption_levels,
                     mlp_nunits,
                     n_outs,
                     border_mode = 'valid',
@@ -260,6 +262,22 @@ class LeNetLearner(object):
 
         self.x = tensor.matrix('x')
         self.y = tensor.ivector('y')
+
+        # make corruptors:
+        mlp_input_corruptors = []
+        for item in mlp_input_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_input_corruptors.extend([None])
+            else:
+                mlp_input_corruptors.extend([GaussianCorruptor(corruption_level = item)])
+
+        mlp_hidden_corruptors = []
+        for item in mlp_hidden_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_hidden_corruptors.extend([None])
+            else:
+                mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
+
 
         # This is the shape pylearn handles images batches
         self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))

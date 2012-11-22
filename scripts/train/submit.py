@@ -433,8 +433,6 @@ def mlp_timit():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-
-
 def cifar100_2layer_unsupervised():
 
     state = DD()
@@ -484,6 +482,76 @@ def cifar100_2layer_unsupervised():
 
     db.createView(TABLE_NAME + '_view')
     print "{} jo bs submitted".format(ind)
+
+def conv_tfd():
+
+    state = DD()
+    state.data_path = os.path.join(DATA_PATH, "cifar10_local/pylearn2/")
+    state.fold = 0
+    state.description = "Data rescale=True, center = True, global=standardize\
+            weight init, normal, bias +1"
+
+
+    # train params
+    state.dataset = 'tfd'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 1000
+    state.lr = 0.01
+    state.lr_shrink_time = 50
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 100
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 50
+    state.save_name = "conv.pkl"
+
+
+    # make corruptors
+    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
+    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
+
+    # model params
+    state.model = 'new_conv'
+    state.image_shape = [48, 48]
+    state.kernel_shapes = [(9,9), (5, 5)]
+    state.nchannels = [1, 20, 50]
+    state.pool_shapes = [(2,2), (2, 2)]
+    state.conv_act = "tanh"
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruptors = [None, None]
+    state.mlp_hidden_corruptors = [corr1, corr2]
+    state.mlp_nunits = [1000, 500]
+    state.n_outs = 7
+
+
+
+
+
+    ind = 0
+    TABLE_NAME = "sd_mlp_cifar_2l_s_3"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.001]:
+        for g0 in [0.1, 0.3, 0.5, 0.7, 0.9, 0.0]:
+            for g1 in [0.0]:
+                for g2 in [0.0]:
+                    for g3 in [0.0]:
+                        state.lr = lr
+                        #state.binomial_corruption_levels = [l0_corr, l1_corr, l2_corr]
+                        state.gaussian_corruption_levels = [g0, g1, g2, g3]
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
 
 
 

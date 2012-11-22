@@ -48,8 +48,8 @@ def load_model(state, numpy_rng):
                 batch_size = state.batch_size,
                 conv_act = state.conv_act,
                 mlp_act = state.mlp_act,
-                mlp_input_corruptors = state.mlp_input_corruptors,
-                mlp_hidden_corruptors = state.mlp_hidden_corruptors,
+                mlp_input_corruption_levels = state.mlp_input_corruption_levels,
+                mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
                 mlp_nunits = state.mlp_nunits,
                 n_outs = state.n_outs)
     elif state.model == 'siamese':
@@ -273,11 +273,6 @@ def tfd_newconv_experiment():
     state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
-
-    # make corruptors
-    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
-    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
-
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
@@ -286,8 +281,8 @@ def tfd_newconv_experiment():
     state.pool_shapes = [(2,2), (2, 2)]
     state.conv_act = "tanh"
     state.mlp_act = "rectifier"
-    state.mlp_input_corruptors = [None, None]
-    state.mlp_hidden_corruptors = [corr1, corr2]
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
 
