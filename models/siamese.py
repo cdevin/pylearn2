@@ -1,7 +1,6 @@
 import numpy
 import theano
 from theano import tensor
-from theano.tensor.shared_randomstreams import RandomStreams
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
 from noisy_encoder.models.mlp_new import DropOutMLP
 from pylearn2.corruption import GaussianCorruptor
@@ -10,6 +9,7 @@ from pylearn2.utils import sharedX, serial
 class Siamese(object):
 
     def __init__(self, numpy_rng,
+                    theano_rng,
                     image_topo,
                     base_model,
                     n_units,
@@ -22,8 +22,8 @@ class Siamese(object):
                     rng = 9001):
 
 
-        theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
-        self.rng = numpy.random.RandomState(rng)
+        self.theano_rng = theano_rng
+        self.numpy_rng = numpy_rng
 
         self.x = tensor.matrix('x')
         self.x_p = tensor.matrix('x_p')

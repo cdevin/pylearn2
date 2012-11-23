@@ -16,9 +16,10 @@ from theano.tensor.shared_randomstreams import RandomStreams
 RESULT_PATH = get_result_path()
 DATA_PATH = get_data_path()
 
-def load_model(state, numpy_rng):
+def load_model(state, numpy_rng, theano_rng):
     if state.model == 'mlp':
         return MLP(numpy_rng = numpy_rng,
+                theano_rng = theano_rng,
                 n_units = state.n_units,
                 gaussian_corruption_levels = state.gaussian_corruption_levels,
                 binomial_corruption_levels = state.binomial_corruption_levels,
@@ -30,6 +31,7 @@ def load_model(state, numpy_rng):
                 group_corruption_levels = state.group_corruption_levels)
     elif state.model == 'conv':
         return Conv(rng = numpy_rng,
+                theano_rng = theano_rng,
                 image_shapes = state.image_shapes,
                 nkerns = state.nkerns,
                 filter_shapes = state.filter_shapes,
@@ -41,7 +43,8 @@ def load_model(state, numpy_rng):
                 activation = state.activation,
                 batch_size = state.batch_size)
     elif state.model == 'new_conv':
-        return LeNetLearner(image_shape = state.image_shape,
+        return LeNetLearner(
+                image_shape = state.image_shape,
                 kernel_shapes = state.kernel_shapes,
                 nchannels = state.nchannels,
                 pool_shapes = state.pool_shapes,
@@ -51,9 +54,11 @@ def load_model(state, numpy_rng):
                 mlp_input_corruption_levels = state.mlp_input_corruption_levels,
                 mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
                 mlp_nunits = state.mlp_nunits,
-                n_outs = state.n_outs)
+                n_outs = state.n_outs,
+                rng = numpy_rng)
     elif state.model == 'siamese':
         return Siamese(numpy_rng = numpy_rng,
+                theano_rng = theano_rng,
                 image_topo = state.image_topo,
                 base_model = state.base_model,
                 n_units = state.n_units,
@@ -70,6 +75,7 @@ def load_model(state, numpy_rng):
 def experiment(state, channel):
 
     numpy_rng = numpy.random.RandomState(89677)
+    theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
 
     datasets = load_data(state.dataset,
                         state.data_path,
@@ -77,7 +83,7 @@ def experiment(state, channel):
                         state.scale,
                         state.norm,
                         state.fold)
-    model = load_model(state, numpy_rng)
+    model = load_model(state, numpy_rng, theano_rng)
     state.test_score, state.valid_score = sgd(model = model,
                                 datasets = datasets,
                                 learning_rate_init = state.lr,
@@ -259,7 +265,7 @@ def tfd_newconv_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.02
+    state.lr = 0.005
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -270,7 +276,7 @@ def tfd_newconv_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 1
+    state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
@@ -283,7 +289,7 @@ def tfd_newconv_experiment():
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [1000, 500]
+    state.mlp_nunits = [500, 500]
     state.n_outs = 7
 
     experiment(state, None)

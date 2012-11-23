@@ -490,7 +490,6 @@ def conv_tfd():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -531,6 +530,7 @@ def conv_tfd():
         for fold in [0, 1, 2, 3, 4]:
             state.lr = lr
             state.fold = fold
+            state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
             sql.insert_job(mlp_experiment, flatten(state), db)
             ind += 1
 
@@ -544,7 +544,6 @@ def siamese_tfd():
     # train params
     state.dataset = 'tfd_siamese'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -584,6 +583,7 @@ def siamese_tfd():
         for fold in [0, 1, 2, 3, 4]:
             state.lr = lr
             state.fold = fold
+            state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
             sql.insert_job(mlp_experiment, flatten(state), db)
             ind += 1
 

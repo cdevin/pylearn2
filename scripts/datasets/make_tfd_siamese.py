@@ -63,6 +63,6 @@ def make_data(which, fold):
 
 
 if __name__ == "__main__":
-    make_data('train', 0)
-    make_data('valid', 0)
-    make_data('test', 0)
+    make_data('train', 3)
+    make_data('valid', 3)
+    make_data('test', 3)

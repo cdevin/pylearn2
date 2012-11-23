@@ -205,7 +205,8 @@ class LeNet(Block, Model):
                     nchannels_output = nchannels[i+1],
                     pool_shape = pool_shapes[i],
                     batch_size = batch_size,
-                    act_enc = conv_act)
+                    act_enc = conv_act,
+                    rng = rng)
             self.layers.append(layer)
             self._params.extend(layer._params)
 
@@ -217,7 +218,8 @@ class LeNet(Block, Model):
                         hidden_corruptors = mlp_hidden_corruptors,
                         n_units = mlp_nunits,
                         n_outs = n_outs,
-                        act_enc = mlp_act)
+                        act_enc = mlp_act,
+                        rng = rng)
 
         self._params.extend(self.mlp._params)
 
