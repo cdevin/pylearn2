@@ -4,10 +4,8 @@ from pylearn2.autoencoder import Autoencoder
 from pylearn2.corruption import Corruptor, BinomialCorruptor
 from pylearn2.utils import sharedX
 from pylearn2.space import VectorSpace
+from noisy_encoder.models.base import rectifier
 
-
-def rectifier(X):
-    return X * (X > 0.0)
 
 class DropOutAutoencoder(Autoencoder):
 

@@ -537,13 +537,67 @@ def conv_tfd():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def siamese_tfd():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd_siamese'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 1000
+    state.lr = 0.01
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 100
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
+
+    # model params
+    state.model = 'siamese'
+    state.method = 'diff'
+    state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [500, 1000]
+    state.input_corruption_levels = [None, None]
+    state.hidden_corruption_levels = [0.5, 0.5]
+    state.nouts = 6
+    state.act_enc = "rectifier"
+    state.irange = 0.01
+    state.bias_init = 0.0
+
+
+    ind = 0
+    TABLE_NAME = "dr_tfd_siamese"
+    db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.05, 0.01, 0.005]:
+        for fold in [0, 1, 2, 3, 4]:
+            state.lr = lr
+            state.fold = fold
+            sql.insert_job(mlp_experiment, flatten(state), db)
+            ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Albedo trainer submitter')
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
-                    'mlp_mnist', 'uns_cifar100', 'conv_tfd'])
+                    'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -572,6 +626,8 @@ if __name__ == "__main__":
         cifar100_2layer_unsupervised()
     elif args.task == 'conv_tfd':
         conv_tfd()
+    elif args.task == "siamese_tfd":
+        siamese_tfd()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

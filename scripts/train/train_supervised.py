@@ -57,8 +57,8 @@ def load_model(state, numpy_rng):
                 image_topo = state.image_topo,
                 base_model = state.base_model,
                 n_units = state.n_units,
-                input_corruptors = state.input_corruptors,
-                hidden_corruptors = state.hidden_corruptors,
+                input_corruption_levels = state.input_corruption_levels,
+                hidden_corruption_levels = state.hidden_corruption_levels,
                 n_outs = state.nouts,
                 act_enc = state.act_enc,
                 irange = state.irange,
@@ -270,7 +270,7 @@ def tfd_newconv_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 50
+    state.save_frequency = 1
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
 
     # model params
@@ -311,23 +311,19 @@ def siamese_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0
     state.act_l1_ratio = 0.0
-    state.save_frequency = 100
+    state.save_frequency = 1
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
-
-    # make corruptors
-    corr1 = BinomialCorruptorScaled(corruption_level = 0.5)
-    corr2 = BinomialCorruptorScaled(corruption_level = 0.5)
 
     # model params
     state.model = 'siamese'
     state.method = 'diff'
-    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
     state.image_topo = (state.batch_size, 48, 48, 1)
-    state.n_units = [500, 500]
-    state.input_corruptors = [None, None]
-    state.hidden_corruptors = [corr1, corr2]
+    state.n_units = [500, 1000]
+    state.input_corruption_levels = [None, None]
+    state.hidden_corruption_levels = [0.5, 0.5]
     state.nouts = 6
-    state.act_enc = "sigmoid"
+    state.act_enc = "rectifier"
     state.irange = 0.01
     state.bias_init = 0.0
 

@@ -12,7 +12,7 @@ from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from pylearn2.corruption import GaussianCorruptor
 from theano.tensor.nnet.conv import conv2d
 from theano.tensor.signal import downsample
-
+from noisy_encoder.models.base import rectifier
 
 class Conv2D:
     """ A temporarily solution for pylearn2.linear.conv2d.Conv2D

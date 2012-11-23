@@ -2,13 +2,10 @@ import numpy
 import theano
 from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
-from classify import shared_dataset, norm
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
-from noisy_encoder.models.base import eval_activation
 from noisy_encoder.models.mlp_new import DropOutMLP
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX, serial
-from base import *
 
 class Siamese(object):
 
@@ -16,15 +13,14 @@ class Siamese(object):
                     image_topo,
                     base_model,
                     n_units,
-                    input_corruptors,
-                    hidden_corruptors,
+                    input_corruption_levels,
+                    hidden_corruption_levels,
                     n_outs,
                     act_enc,
                     irange, bias_init,
                     method = 'diff',
                     rng = 9001):
 
-        act_enc = eval_activation(act_enc)
 
         theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
         self.rng = numpy.random.RandomState(rng)
@@ -32,6 +28,24 @@ class Siamese(object):
         self.x = tensor.matrix('x')
         self.x_p = tensor.matrix('x_p')
         self.y = tensor.ivector('y')
+
+
+        # make corruptors:
+        input_corruptors = []
+        for item in input_corruption_levels:
+            if item == None or item == 0.0:
+                input_corruptors.extend([None])
+            else:
+                input_corruptors.extend([GaussianCorruptor(corruption_level = item)])
+
+        hidden_corruptors = []
+        for item in hidden_corruption_levels:
+            if item == None or item == 0.0:
+                hidden_corruptors.extend([None])
+            else:
+                hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
+
+
 
         # load base model
         base_model = serial.load(base_model)
@@ -80,16 +94,16 @@ class Siamese(object):
         n_test_batches = test_set_x.get_value(borrow=True).shape[0]
         n_test_batches /= batch_size
 
-        index = T.lscalar('index')  # index to a [mini]batch
-        learning_rate = T.scalar('lr')
+        index = tensor.lscalar('index')  # index to a [mini]batch
+        learning_rate = tensor.scalar('lr')
         if enable_momentum is None:
             momentum = None
         else:
-            momentum = T.scalar('momentum')
+            momentum = tensor.scalar('momentum')
 
         # compute the gradients with respect to the model parameters
         cost = self.negative_log_likelihood(self.inputs, self.y)
-        gparams = T.grad(cost, self.params)
+        gparams = tensor.grad(cost, self.params)
 
         # compute list of fine-tuning updates
         updates = {}

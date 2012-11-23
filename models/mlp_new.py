@@ -7,9 +7,7 @@ from pylearn2.models import Model
 from pylearn2.classifier import LogisticRegressionLayer
 from pylearn2.space import VectorSpace
 from noisy_encoder.models.dropouts import DeepDropOutHiddenLayer
-
-def rectifier(X):
-    return X * (X > 0.0)
+from noisy_encoder.models.base import rectifier
 
 class PickableLambda(object):
 
