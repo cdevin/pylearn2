@@ -335,6 +335,7 @@ class LeNetLearner(object):
             momentum = tensor.scalar('momentum')
         cost = self.negative_log_likelihood(self.input, self.y)
         gparams = tensor.grad(cost, self.params)
+        errors = self.errors(self.input, self.y)
 
         # compute list of fine-tuning updates
         updates = {}
@@ -352,7 +353,7 @@ class LeNetLearner(object):
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
                 theano.Param(momentum)],
-              outputs=[cost, cost],
+              outputs=[cost, errors],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
@@ -360,7 +361,6 @@ class LeNetLearner(object):
                 self.y: train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
-        errors = self.errors(self.input, self.y)
 
         test_score_i = theano.function([index], errors,
                  givens={

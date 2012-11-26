@@ -1,5 +1,6 @@
 import time, sys, os
 import numpy
+from copy import deepcopy
 from pylearn2.utils import serial
 
 
@@ -51,6 +52,7 @@ def sgd(model,
                                   # check every epoch
 
     best_params = None
+    best_model = None
     best_validation_loss = numpy.inf
     test_score = 0.
     start_time = time.clock()
@@ -58,7 +60,7 @@ def sgd(model,
     done_looping = False
     epoch = 0
 
-    monitors = {'cost': [], 'valid' : [], 'test': [], 'sparse' : []}
+    monitors = {'cost': [],  'train' : [], 'valid' : [], 'test': []}
 
     while (epoch < training_epochs) and (not done_looping):
         for minibatch_index in xrange(n_train_batches):
@@ -75,7 +77,7 @@ def sgd(model,
             else:
                 momentum = final_momentum
 
-            minibatch_avg_cost, sparsity = train_fn(minibatch_index, learning_rate, momentum)
+            minibatch_avg_cost, train_score = train_fn(minibatch_index, learning_rate, momentum)
             iter = epoch * n_train_batches + minibatch_index
             if numpy.isnan(minibatch_avg_cost):
                 done_looping = True
@@ -87,14 +89,13 @@ def sgd(model,
                 this_validation_loss = numpy.mean(validation_losses)
                 print('%i, cost %f, lr %f, validation error %f %%' %
                       (epoch, minibatch_avg_cost, learning_rate, this_validation_loss * 100.))
-                print '\tSparsity :{}'.format(sparsity)
 
                 #save monitors
 
                 monitors['cost'].append(minibatch_avg_cost)
+                monitors['train'].append(train_score)
                 monitors['valid'].append(this_validation_loss)
                 monitors['test'].append(test_score)
-                monitors['sparse'].append(sparsity)
 
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:
@@ -111,6 +112,7 @@ def sgd(model,
                     # test it on the test set
                     test_losses = test_model()
                     test_score = numpy.mean(test_losses)
+                    best_model = deepcopy(model)
                     print(('\t\t\t\t\tepoch %i, minibatch %i/%i, test error of '
                            'best model %f %%') %
                           (epoch, minibatch_index + 1, n_train_batches,
@@ -122,11 +124,11 @@ def sgd(model,
         epoch = epoch + 1
         if (epoch + 1) % save_frequency == 0:
             print "Saving the model"
-            serial.save(save_name, model)
+            serial.save(save_name, best_model)
             serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
 
     print "Saving the model"
-    serial.save(save_name, model)
+    serial.save(save_name, best_model)
     serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
@@ -138,4 +140,12 @@ def sgd(model,
 
     return test_score * 100., best_validation_loss * 100.
 
+
+
+
+#def save(name, model, monitor):
+
+    #best_
+    #serial.save(name, model)
+    #serial.save('monitor.pkl', name.rstrip('pkl') + 'monitor.pkl')
 
