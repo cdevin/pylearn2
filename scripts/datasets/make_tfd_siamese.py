@@ -12,9 +12,12 @@ from theano import tensor
 import theano
 import numpy
 from copy import deepcopy
+from noisy_encoder.scripts.datasets.utils import reflect, shuffle, corner_shuffle, apply_lcn
 
 
-def make_data(which, fold):
+def make_data(which, fold, seed = 2322):
+
+    rng = numpy.random.RandomState(seed)
 
     print "Prcoessing {}...".format(which)
     DATA_PATH = get_data_path()
@@ -23,8 +26,6 @@ def make_data(which, fold):
     serial.mkdir( output_dir )
 
     data= TFD(which_set = which, fold = fold, center = False)
-    #data = apply_lcn(data)
-    data.X = data.X / 255.
     data.y = numpy.concatenate(data.y)
     data.y_identity = numpy.concatenate(data.y_identity)
 
@@ -56,13 +57,27 @@ def make_data(which, fold):
     data_emot.y_identity = data.y_identity[new_x_emot]
 
 
+    # augumentation
+    if which == 'train':
+        data_neutral.X, data_neutral.y = corner_shuffle(data_neutral.X, data_neutral.y, (data_neutral.X.shape[0], 48, 48), rng)
+        data_neutral.X, data_neutral.y= reflect(data_neutral.X, data_neutral.y, (data_neutral.X.shape[0], 48, 48))
+        data_neutral.X, data_neutral.y = shuffle(data_neutral.X, data_neutral.y, rng)
+
+        data_emot.X, data_emot.y = corner_shuffle(data_emot.X, data_emot.y, (data_emot.X.shape[0], 48, 48), rng)
+        data_emot.X, data_emot.y= reflect(data_emot.X, data_emot.y, (data_emot.X.shape[0], 48, 48))
+        data_emot.X, data_emot.y = shuffle(data_emot.X, data_emot.y, rng)
+
+    data_neutral.X = data_neutral.X / 255.
+    data_emot.X = data_emot.X / 255.
+
+
     data_neutral.use_design_loc(output_dir + '/{}_neutral.npy'.format(which))
     serial.save(output_dir + '/{}_neutral.pkl'.format(which), data_neutral)
-    data_emot.use_design_loc(output_dir + '/{}_emot.npy'.format(which))
-    serial.save(output_dir + '/{}_emot.pkl'.format(which), data_emot)
+    data_emot.use_design_loc(output_dir + '/{}.npy'.format(which))
+    serial.save(output_dir + '/{}.pkl'.format(which), data_emot)
 
 
 if __name__ == "__main__":
-    make_data('train', 3)
-    make_data('valid', 3)
-    make_data('test', 3)
+    make_data('train', 4)
+    make_data('valid', 4)
+    make_data('test', 4)

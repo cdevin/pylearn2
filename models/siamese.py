@@ -17,7 +17,8 @@ class Siamese(object):
                     hidden_corruption_levels,
                     n_outs,
                     act_enc,
-                    irange, bias_init,
+                    irange,
+                    bias_init,
                     method = 'diff',
                     rng = 9001):
 
@@ -67,7 +68,9 @@ class Siamese(object):
                             hidden_corruptors = hidden_corruptors,
                             n_units = n_units,
                             n_outs = n_outs,
-                            act_enc = act_enc)
+                            act_enc = act_enc,
+                            irange = irange,
+                            bias_init = bias_init)
 
         self.params = self.mlp._params
 
@@ -102,8 +105,10 @@ class Siamese(object):
             momentum = tensor.scalar('momentum')
 
         # compute the gradients with respect to the model parameters
+        w_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights.mean()) * w_l1_ratio
         cost = self.negative_log_likelihood(self.inputs, self.y)
         gparams = tensor.grad(cost, self.params)
+        errors = self.errors(self.inputs, self.y)
 
         # compute list of fine-tuning updates
         updates = {}
@@ -121,7 +126,7 @@ class Siamese(object):
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
                 theano.Param(momentum)],
-              outputs=[cost, cost],
+              outputs=[cost, errors],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
@@ -131,7 +136,6 @@ class Siamese(object):
                 self.y: train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
-        errors = self.errors(self.inputs, self.y)
 
         test_score_i = theano.function([index], errors,
                  givens={

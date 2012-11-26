@@ -52,11 +52,11 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_y = test_set.y
         del train_set, valid_set, test_set
     elif dataset == 'tfd_siamese':
-        train_set = serial.load(data_path + 'train_emot.pkl')
+        train_set = serial.load(data_path + 'train.pkl')
         train_set_p = serial.load(data_path + 'train_neutral.pkl')
-        valid_set = serial.load(data_path + 'valid_emot.pkl')
+        valid_set = serial.load(data_path + 'valid.pkl')
         valid_set_p = serial.load(data_path + 'valid_neutral.pkl')
-        test_set = serial.load(data_path + 'test_emot.pkl')
+        test_set = serial.load(data_path + 'test.pkl')
         test_set_p = serial.load(data_path + 'test_neutral.pkl')
         train_x = train_set.X
         train_x_p = train_set_p.X

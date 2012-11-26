@@ -40,7 +40,7 @@ def sgd(model,
 
     print '... training the model'
     # early-stopping parameters
-    patience = 1000 * n_train_batches  # look as this many examples regardless
+    patience = 500 * n_train_batches  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
                             # found
     improvement_threshold = 0.995  # a relative improvement of this much is

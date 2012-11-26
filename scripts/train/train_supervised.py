@@ -319,23 +319,24 @@ def siamese_experiment():
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
     state.batch_size = 100
-    state.w_l1_ratio = 0.0
+    state.w_l1_ratio = 0.0005
     state.act_l1_ratio = 0.0
-    state.save_frequency = 1
+    state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
 
     # model params
     state.model = 'siamese'
     state.method = 'diff'
-    state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
+    #state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
+    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
-    state.n_units = [500, 1000]
+    state.n_units = [500, 1000, 500]
     state.input_corruption_levels = [None, None]
     state.hidden_corruption_levels = [0.5, 0.5]
     state.nouts = 6
     state.act_enc = "rectifier"
-    state.irange = 0.01
-    state.bias_init = 0.0
+    state.irange = 0.1
+    state.bias_init = 0.1
 
     experiment(state, None)
 

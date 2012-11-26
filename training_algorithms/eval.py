@@ -1,6 +1,6 @@
 import numpy
 
-def Eval(model, datasets, batch_size):
+def eval(model, datasets, batch_size):
 
     """ Evauate performance of a model without any learning """
 

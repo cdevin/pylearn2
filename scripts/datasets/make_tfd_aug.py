@@ -6,7 +6,7 @@ import numpy as np
 from pylearn2.datasets.tfd import TFD
 from DLN.datasets.preprocessing import Scale
 from DLN.config.config import get_data_path
-from noisy_encoder.scripts.datasets.utils import reflect, shuffle, corner_shuffle
+from noisy_encoder.scripts.datasets.utils import reflect, shuffle, corner_shuffle, apply_lcn
 
 def make_data(which, fold, seed =2322):
 
@@ -28,6 +28,7 @@ def make_data(which, fold, seed =2322):
         data.X, data.y = shuffle(data.X, data.y, rng)
 
     data.X = data.X / 255.
+    #data.X = apply_lcn(data.X, (data.X.shape[0], 48, 48))
 
     data.use_design_loc(output_dir + '/{}.npy'.format(which))
     serial.save(output_dir + '/{}.pkl'.format(which), data)

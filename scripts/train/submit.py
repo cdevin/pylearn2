@@ -493,7 +493,7 @@ def conv_tfd():
     state.scale = False
     state.norm = False
     state.shuffle = False
-    state.nepochs = 1000
+    state.nepochs = 500
     state.lr = 0.01
     state.lr_shrink_time = 70
     state.lr_dc_rate = 0.01
@@ -503,9 +503,9 @@ def conv_tfd():
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
     state.batch_size = 100
-    state.w_l1_ratio = 0.0
+    state.w_l1_ratio = 0.0005
     state.act_l1_ratio = 0.0
-    state.save_frequency = 50
+    state.save_frequency = 100
     state.save_name = "conv.pkl"
 
 
@@ -515,22 +515,25 @@ def conv_tfd():
     state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
     state.nchannels = [1, 20, 50, 80]
     state.pool_shapes = [(2,2), (2, 2), (2, 2)]
-    state.conv_act = "tanh"
+    state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
+    state.irange = 0.1
+    state.bias_init = 0.1
+    state.description = "Augumented data: flip + corner shuffling"
 
 
     ind = 0
     TABLE_NAME = "dr_tfd_conv"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.05, 0.01, 0.005]:
+    for lr in [0.01, 0.005]:
         for fold in [0, 1, 2, 3, 4]:
             state.lr = lr
             state.fold = fold
-            state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+            state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2_aug/{}/".format(state.fold))
             sql.insert_job(mlp_experiment, flatten(state), db)
             ind += 1
 
