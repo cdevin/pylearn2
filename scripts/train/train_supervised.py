@@ -262,13 +262,13 @@ def tfd_newconv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2_aug/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.001
-    state.lr_shrink_time = 50
+    state.lr = 0.01
+    state.lr_shrink_time = 70
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
     state.init_momentum = 0.5
@@ -293,8 +293,8 @@ def tfd_newconv_experiment():
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
-    state.bias_init = 1.0
-    state.irange = 0.01
+    state.bias_init = 0.1
+    state.irange = 0.1
 
     experiment(state, None)
 
