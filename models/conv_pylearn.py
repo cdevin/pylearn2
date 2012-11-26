@@ -87,6 +87,7 @@ class Conv(Block, Model):
                     act_enc,
                     border_mode = 'valid',
                     irange = 0.05,
+                    bias_init = 0.0,
                     rng=9001):
 
         if not hasattr(rng, 'randn'):
@@ -102,7 +103,7 @@ class Conv(Block, Model):
 
         self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
                       kernel_shape[0], kernel_shape[1])))
-        self._initialize_hidbias()
+        self._initialize_hidbias(bias_init)
 
 
         def _resolve_callable(conf, conf_attr):
@@ -139,9 +140,9 @@ class Conv(Block, Model):
                 filters_shape = self.weights.get_value().shape, message = "")
 
 
-    def _initialize_hidbias(self):
+    def _initialize_hidbias(self, bias_init):
         self.hidbias = sharedX(
-            numpy.zeros(self.nchannels_output),
+            numpy.ones(self.nchannels_output) * bias_init,
              name='hb',
             borrow=True
         )
@@ -188,6 +189,7 @@ class LeNet(Block, Model):
                     n_outs,
                     border_mode = 'valid',
                     irange = 0.05,
+                    bias_init = 0.0,
                     rng=9001):
 
 
@@ -198,7 +200,7 @@ class LeNet(Block, Model):
         self.output_space = VectorSpace(mlp_nunits[-1])
 
         for i in range(len(kernel_shapes)):
-            layer = Conv(irange = irange,
+            layer = Conv(
                     image_shape = image_shape,
                     kernel_shape = kernel_shapes[i],
                     nchannels_input = nchannels[i],
@@ -206,6 +208,8 @@ class LeNet(Block, Model):
                     pool_shape = pool_shapes[i],
                     batch_size = batch_size,
                     act_enc = conv_act,
+                    irange = irange,
+                    bias_init = bias_init,
                     rng = rng)
             self.layers.append(layer)
             self._params.extend(layer._params)
@@ -260,6 +264,7 @@ class LeNetLearner(object):
                     n_outs,
                     border_mode = 'valid',
                     irange = 0.05,
+                    bias_init = 0.0,
                     rng=9001):
 
         self.x = tensor.matrix('x')
@@ -296,6 +301,7 @@ class LeNetLearner(object):
                     n_outs = n_outs,
                     border_mode = border_mode,
                     irange = irange,
+                    bias_init = bias_init,
                     rng=rng)
         self.input_space = self.model.input_space
         self.params = self.model._params
@@ -336,7 +342,7 @@ class LeNetLearner(object):
         cost = self.negative_log_likelihood(self.input, self.y)
         gparams = tensor.grad(cost, self.params)
         errors = self.errors(self.input, self.y)
-
+        w_l1 = abs(self.model.mlp.hiddens.layers[-1].weights.mean()) * w_l1_ratio
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:

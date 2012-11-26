@@ -55,6 +55,8 @@ def load_model(state, numpy_rng, theano_rng):
                 mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
                 mlp_nunits = state.mlp_nunits,
                 n_outs = state.n_outs,
+                irange = state.irange,
+                bias_init = state.bias_init,
                 rng = numpy_rng)
     elif state.model == 'siamese':
         return Siamese(numpy_rng = numpy_rng,
@@ -265,7 +267,7 @@ def tfd_newconv_experiment():
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.005
+    state.lr = 0.001
     state.lr_shrink_time = 50
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -274,7 +276,7 @@ def tfd_newconv_experiment():
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
     state.batch_size = 100
-    state.w_l1_ratio = 0.0
+    state.w_l1_ratio = 0.0005
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
@@ -285,12 +287,14 @@ def tfd_newconv_experiment():
     state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
     state.nchannels = [1, 20, 50, 80]
     state.pool_shapes = [(2,2), (2, 2), (2, 2)]
-    state.conv_act = "tanh"
+    state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [500, 500]
+    state.mlp_nunits = [1000, 500]
     state.n_outs = 7
+    state.bias_init = 1.0
+    state.irange = 0.01
 
     experiment(state, None)
 
