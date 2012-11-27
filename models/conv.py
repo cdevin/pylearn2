@@ -1,276 +1,326 @@
-"""This tutorial introduces the LeNet5 neural network architecture
-using Theano.  LeNet5 is a convolutional neural network, good for
-classifying images. This tutorial shows how to build the architecture,
-and comes with all the hyper-parameters you need to reproduce the
-paper's MNIST results.
-
-
-This implementation simplifies the model in the following ways:
-
- - LeNetConvPool doesn't implement location-specific gain and bias parameters
- - LeNetConvPool doesn't implement pooling by average, it implements pooling
-   by max.
- - Digit classification is implemented with a logistic regression rather than
-   an RBF network
- - LeNet5 was not fully-connected convolutions at second layer
-
-References:
- - Y. LeCun, L. Bottou, Y. Bengio and P. Haffner:
-   Gradient-Based Learning Applied to Document
-   Recognition, Proceedings of the IEEE, 86(11):2278-2324, November 1998.
-   http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf
-
-"""
-import cPickle
-import gzip
-import os
-import sys
-import time
-
 import numpy
-
 import theano
-import theano.tensor as T
-from theano.tensor.signal import downsample
-from theano.tensor.nnet import conv
-
-from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
-from noisy_encoder.models.base import eval_activation
-from pylearn2.corruption import GaussianCorruptor
+from theano import tensor
+from theano.tensor.shared_randomstreams import RandomStreams
+from pylearn2.base import Block
+from pylearn2.models import Model
 from pylearn2.utils import sharedX
+from pylearn2.space import Conv2DSpace, VectorSpace
+#from pylearn2.linear.conv2d import Conv2D
+from noisy_encoder.models.mlp import DropOutMLP
+from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
+from pylearn2.corruption import GaussianCorruptor
+from theano.tensor.nnet.conv import conv2d
+from theano.tensor.signal import downsample
+from noisy_encoder.models.base import rectifier
 
-import jobman
-
-class HiddenLayer(object):
-    def __init__(self,
-                rng,
-                input_clean,
-                input_corrupted,
-                n_in,
-                n_out,
-                W=None,
-                b=None,
-                activation=T.tanh):
-
-        self.input_clean = input_clean
-        self.input_corrupted = input_corrupted
-
-        if W is None:
-            W_values = numpy.asarray(rng.uniform(
-                    low=-numpy.sqrt(6. / (n_in + n_out)),
-                    high=numpy.sqrt(6. / (n_in + n_out)),
-                    size=(n_in, n_out)), dtype=theano.config.floatX)
-            if activation == theano.tensor.nnet.sigmoid:
-                W_values *= 4
-
-            W = theano.shared(value=W_values, name='W', borrow=True)
-
-        if b is None:
-            b_values = numpy.zeros((n_out,), dtype=theano.config.floatX)
-            b = theano.shared(value=b_values, name='b', borrow=True)
-
-        self.W = W
-        self.b = b
-
-        lin_output_clean = T.dot(input_clean, self.W) + self.b
-        lin_output_corrupted = T.dot(input_corrupted, self.W) + self.b
-        self.output_clean = (lin_output_clean if activation is None
-                       else activation(lin_output_clean))
-        self.output_corrupted = (lin_output_corrupted if activation is None
-                       else activation(lin_output_corrupted))
-        # parameters of the model
-        self.params = [self.W, self.b]
-
-class LogisticRegression(object):
-    """Multi-class Logistic Regression Class
-
-    The logistic regression is fully described by a weight matrix :math:`W`
-    and bias vector :math:`b`. Classification is done by projecting data
-    points onto a set of hyperplanes, the distance to which is used to
-    determine a class membership probability.
+class Conv2D:
+    """ A temporarily solution for pylearn2.linear.conv2d.Conv2D
+    slowness problem.
+    TODO: It should be replaced by pylearn2 version after issue is resolved
     """
-
-    def __init__(self, input_clean, input_corrupted, n_in, n_out):
-        self.W = theano.shared(value=numpy.zeros((n_in, n_out),
-                                                 dtype=theano.config.floatX),
-                                name='W', borrow=True)
-        self.b = theano.shared(value=numpy.zeros((n_out,),
-                                                 dtype=theano.config.floatX),
-                               name='b', borrow=True)
-        self.p_y_given_x_clean = T.nnet.softmax(T.dot(input_clean, self.W) + self.b)
-        self.p_y_given_x_corrupted = T.nnet.softmax(T.dot(input_corrupted, self.W) + self.b)
-
-        self.y_pred = T.argmax(self.p_y_given_x_clean, axis=1)
-
-        self.params = [self.W, self.b]
-
-    def negative_log_likelihood(self, y):
-        return -T.mean(T.log(self.p_y_given_x_corrupted)[T.arange(y.shape[0]), y])
-
-    def errors(self, y):
-
-        if y.ndim != self.y_pred.ndim:
-            raise TypeError('y should have the same shape as self.y_pred',
-                ('y', target.type, 'y_pred', self.y_pred.type))
-        if y.dtype.startswith('int'):
-            return T.mean(T.neq(self.y_pred, y))
-        else:
-            raise NotImplementedError()
-
-class LeNetConvPoolLayer(object):
-    """Pool Layer of a convolutional network """
-
-    def __init__(self, rng, input_clean, input_corrupted, filter_shape, image_shape, poolsize, activation = T.tanh):
-        """
-        Allocate a LeNetConvPoolLayer with shared variable internal parameters.
-
-        :type rng: numpy.random.RandomState
-        :param rng: a random number generator used to initialize weights
-
-        :type input: theano.tensor.dtensor4
-        :param input: symbolic image tensor, of shape image_shape
-
-        :type filter_shape: tuple or list of length 4
-        :param filter_shape: (number of filters, num input feature maps,
-                              filter height,filter width)
-
-        :type image_shape: tuple or list of length 4
-        :param image_shape: (batch size, num input feature maps,
-                             image height, image width)
-
-        :type poolsize: tuple or list of length 2
-        :param poolsize: the downsampling (pooling) factor (#rows,#cols)
-        """
-        assert image_shape[1] == filter_shape[1]
-        self.input_clean = input_clean
-        self.input_corrupted = input_corrupted
-
-        # there are "num input feature maps * filter height * filter width"
-        # inputs to each hidden unit
-        fan_in = numpy.prod(filter_shape[1:])
-        # each unit in the lower layer receives a gradient from:
-        # "num output feature maps * filter height * filter width" /
-        #   pooling size
-        fan_out = (filter_shape[0] * numpy.prod(filter_shape[2:]) /
-                   numpy.prod(poolsize))
-        # initialize weights with random weights
-        W_bound = numpy.sqrt(6. / (fan_in + fan_out))
-        self.W = theano.shared(numpy.asarray(
-            rng.uniform(low=-W_bound, high=W_bound, size=filter_shape),
-            dtype=theano.config.floatX),
-                               borrow=True)
-
-        # the bias is a 1D tensor -- one bias per output feature map
-        b_values = numpy.zeros((filter_shape[0],), dtype=theano.config.floatX)
-        self.b = theano.shared(value=b_values, borrow=True)
-
-        # convolve input feature maps with filters
-        conv_out_clean = conv.conv2d(input=input_clean, filters=self.W,
-                filter_shape=filter_shape, image_shape=image_shape)
-        conv_out_corrupted = conv.conv2d(input=input_corrupted, filters=self.W,
-                filter_shape=filter_shape, image_shape=image_shape)
-
-        # downsample each feature map individually, using maxpooling
-        pooled_out_clean = downsample.max_pool_2d(input=conv_out_clean,
-                                            ds=poolsize, ignore_border=True)
-        pooled_out_corrupted = downsample.max_pool_2d(input=conv_out_corrupted,
-                                            ds=poolsize, ignore_border=True)
-
-        # add the bias term. Since the bias is a vector (1D array), we first
-        # reshape it to a tensor of shape (1,n_filters,1,1). Each bias will
-        # thus be broadcasted across mini-batches and feature map
-        # width & height
-        self.output_clean = activation(pooled_out_clean + self.b.dimshuffle('x', 0, 'x', 'x'))
-        self.output_corrupted = activation(pooled_out_corrupted + self.b.dimshuffle('x', 0, 'x', 'x'))
-        # store parameters of this layer
-        self.params = [self.W, self.b]
-
-def load_data(dataset, fold = 0, center = False, scale = True):
-    if dataset == 'tfd':
-        return tfd_load_data('train', fold, center, scale),\
-            tfd_load_data('valid', fold, center, scale),\
-            tfd_load_data('test', fold, center, scale)
-    else:
-        return mnist_load_data('/RQexec/mirzameh/data/mnist/mnist.pkl.gz')
-
-class Conv(object):
     def __init__(self,
-                    rng,
-                    image_shapes,
-                    nkerns,
-                    filter_shapes,
-                    poolsizes,
-                    binomial_corruption_levels,
-                    gaussian_corruption_levels,
-                    nhid,
-                    nout,
-                    activation,
-                    batch_size=500):
+                filters,
+                batch_size,
+                input_space,
+                output_axes = ('b', 0, 1, 'c'),
+                subsample = (1, 1),
+                border_mode = 'valid',
+                filters_shape = None,
+                message = ""):
 
-        activation = eval_activation(activation)
+        self.filters = filters
+        self.input_space = input_space
+        self.output_axes = output_axes
+        self.img_shape = (batch_size, input_space.nchannels,
+                        input_space.shape[0], input_space.shape[1])
+        self.subsample = subsample
+        self.border_mode = border_mode
+        self.filters_shape = filters.get_value(borrow=True).shape
 
-        self.x = T.matrix('x')   # the data is presented as rasterized images
-        self.y = T.ivector('y')  # the labels are presented as 1D vector of
+
+    def lmul(self, x):
+
+        assert x.ndim == 4
+        axes = self.input_space.axes
+        assert len(axes) == 4
+
+        op_axes = ('b', 'c', 0, 1)
+
+        if tuple(axes) != op_axes:
+            x = x.dimshuffle(
+                axes.index('b'),
+                axes.index('c'),
+                axes.index(0),
+                axes.index(1))
 
 
-        print '... building the model'
+        conv_out = conv2d(x, self.filters,
+                        image_shape = self.img_shape,
+                        filter_shape = self.filters_shape,
+                        border_mode = self.border_mode)
 
-        n_layers = len(filter_shapes)
+        rval = downsample.max_pool_2d(input = conv_out,
+                ds = self.subsample, ignore_border = True)
 
-        # conv layers
-        self.layers = []
-        self.params = []
-        for i in range(n_layers):
-            if i == 0:
-                input_clean = self.x.reshape((batch_size, 1, image_shapes[0][1], image_shapes[0][1]))
-                input_corrupted = GaussianCorruptor(stdev = \
-                        gaussian_corruption_levels[0])(self.x.reshape((batch_size, 1,
-                                image_shapes[0][0], image_shapes[0][1])))
-                input_corrupted = BinomialCorruptorScaled(corruption_level = \
-                        binomial_corruption_levels[0])(input_corrupted)
+        axes = self.output_axes
+        assert len(axes) == 4
+
+        if tuple(axes) != op_axes:
+            rval = rval.dimshuffle(
+                    op_axes.index(axes[0]),
+                    op_axes.index(axes[1]),
+                    op_axes.index(axes[2]),
+                    op_axes.index(axes[3]))
+        return rval
+
+class Conv(Block, Model):
+    """ A convolution - pool block """
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shape,
+                    nchannels_input,
+                    nchannels_output,
+                    pool_shape,
+                    batch_size,
+                    act_enc,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    bias_init = 0.0,
+                    rng=9001):
+
+        if not hasattr(rng, 'randn'):
+            self.rng = numpy.random.RandomState([2012,11,6,9])
+        else:
+            self.rng = rng
+
+        self.nchannels_output = nchannels_output
+
+        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
+        self.output_space = Conv2DSpace(shape = [(a-b+1) / c for a, b, c in \
+                zip(image_shape, kernel_shape, pool_shape)], nchannels = nchannels_output)
+
+        self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
+                      kernel_shape[0], kernel_shape[1])))
+        self._initialize_hidbias(bias_init)
+
+
+        def _resolve_callable(conf, conf_attr):
+            if conf[conf_attr] is None or conf[conf_attr] == "linear":
+                return None
+            if act_enc == "rectifier":
+                return rectifier
+            # If it's a callable, use it directly.
+            if hasattr(conf[conf_attr], '__call__'):
+                return conf[conf_attr]
+            elif (conf[conf_attr] in globals()
+                    and hasattr(globals()[conf[conf_attr]], '__call__')):
+                return globals()[conf[conf_attr]]
+            elif hasattr(tensor.nnet, conf[conf_attr]):
+                return getattr(tensor.nnet, conf[conf_attr])
+            elif hasattr(tensor, conf[conf_attr]):
+                return getattr(tensor, conf[conf_attr])
             else:
-                input_clean = self.layers[-1].output_clean
-                input_corrupted = GaussianCorruptor(stdev = \
-                        gaussian_corruption_levels[i])(self.layers[-1].output_corrupted)
-                input_corrupted = BinomialCorruptorScaled(corruption_level = \
-                        binomial_corruption_levels[i])(input_corrupted)
+                raise ValueError("Couldn't interpret %s value: '%s'" %
+                        (conf_attr, conf[conf_attr]))
 
-            layer = LeNetConvPoolLayer(rng, input_clean = input_clean,
-                                    input_corrupted = input_corrupted,
-                                    image_shape=(batch_size, nkerns[i],
-                                        image_shapes[i][0], image_shapes[i][1]),
-                                    filter_shape=filter_shapes[i],
-                                    poolsize=poolsizes[i],
-                                    activation = activation)
+
+        self.act_enc = _resolve_callable(locals(), 'act_enc')
+
+        # store parameters of this layer
+        self._params = [self.weights, self.hidbias]
+
+        self.transformer = Conv2D(filters = self.weights,
+                batch_size = batch_size,
+                input_space = self.input_space,
+                output_axes = self.output_space.axes,
+                subsample = pool_shape,
+                border_mode = border_mode,
+                filters_shape = self.weights.get_value().shape, message = "")
+
+
+    def _initialize_hidbias(self, bias_init):
+        self.hidbias = sharedX(
+            numpy.ones(self.nchannels_output) * bias_init,
+             name='hb',
+            borrow=True
+        )
+
+
+    def _convolve(self, x):
+        return self.transformer.lmul(x)
+
+    def _hidden_input(self, x):
+        return self._convolve(x) + self.hidbias
+
+    def _hidden_activation(self, x):
+        if self.act_enc is None:
+            act_enc = lambda x: x
+        else:
+            act_enc = self.act_enc
+        return act_enc(self._hidden_input(x))
+
+    def encode(self, inputs):
+        if isinstance(inputs, tensor.Variable):
+            return self._hidden_activation(inputs)
+        else:
+            return [self.encode(v) for v in inputs]
+
+    def __call__(self, inputs):
+        return self.encode(inputs)
+
+    def get_weights(self):
+        return self.weights
+
+class LeNet(Block, Model):
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shapes,
+                    nchannels,
+                    pool_shapes,
+                    batch_size,
+                    conv_act,
+                    mlp_act,
+                    mlp_input_corruptors,
+                    mlp_hidden_corruptors,
+                    mlp_nunits,
+                    n_outs,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    bias_init = 0.0,
+                    rng=9001):
+
+
+        self.layers = []
+        self._params = []
+
+        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels[0])
+        self.output_space = VectorSpace(mlp_nunits[-1])
+
+        for i in range(len(kernel_shapes)):
+            layer = Conv(
+                    image_shape = image_shape,
+                    kernel_shape = kernel_shapes[i],
+                    nchannels_input = nchannels[i],
+                    nchannels_output = nchannels[i+1],
+                    pool_shape = pool_shapes[i],
+                    batch_size = batch_size,
+                    act_enc = conv_act,
+                    irange = irange,
+                    bias_init = bias_init,
+                    rng = rng)
             self.layers.append(layer)
-            self.params.extend(layer.params)
+            self._params.extend(layer._params)
 
-        # Hidden layer
-        input_clean = self.layers[-1].output_clean.flatten(2)
-        input_corrupted = GaussianCorruptor(stdev = \
-                gaussian_corruption_levels[-2])(self.layers[-1].output_corrupted.flatten(2))
-        input_corrupted = BinomialCorruptorScaled(corruption_level = \
-                binomial_corruption_levels[-2])(input_corrupted)
-        self.hid_layer = HiddenLayer(rng, input_clean=input_clean,
-                    input_corrupted = input_corrupted,
-                    n_in=nkerns[-1] * numpy.prod(image_shapes[-1]),
-                    n_out=nhid, activation= activation)
-        self.params.extend(self.hid_layer.params)
+            image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape,
+                            kernel_shapes[i], pool_shapes[i])]
 
-        # Logistic layer
-        input_corrupted = GaussianCorruptor(stdev = \
-                gaussian_corruption_levels[-1])(self.hid_layer.output_corrupted)
-        input_corrupted = BinomialCorruptorScaled(corruption_level = \
-                binomial_corruption_levels[-1])(input_corrupted)
-        self.log_layer = LogisticRegression(input_clean=self.hid_layer.output_clean,
-                input_corrupted = input_corrupted, n_in=nhid, n_out=nout)
-        self.params.extend(self.log_layer.params)
+        mlp_nunits.insert(0, numpy.prod(image_shape) * nchannels[-1])
+        self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
+                        hidden_corruptors = mlp_hidden_corruptors,
+                        n_units = mlp_nunits,
+                        n_outs = n_outs,
+                        act_enc = mlp_act,
+                        rng = rng)
 
-        self.errors = self.log_layer.errors(self.y)
+        self._params.extend(self.mlp._params)
+
+    def conv_encode(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x.flatten(2)
+
+    def encode(self, x):
+        return self.mlp.encode(self.conv_encode(x))
+
+    def test_encode(self, x):
+        return self.mlp.test_encode(self.conv_encode(x))
+
+    def p_y_given_x(self, inputs):
+        return self.mlp.p_y_given_x(self.conv_encode(inputs))
+
+    def predict_y(self, inputs):
+        return self.mlp.predict_y(self.conv_encode(inputs))
+
+    def __call__(self, inputs):
+        return self.test_encode(inputs)
+
+class LeNetLearner(object):
+    "Temporary class to train LeNet with current non-pylearn sgd"
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shapes,
+                    nchannels,
+                    pool_shapes,
+                    batch_size,
+                    conv_act,
+                    mlp_act,
+                    mlp_input_corruption_levels,
+                    mlp_hidden_corruption_levels,
+                    mlp_nunits,
+                    n_outs,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    bias_init = 0.0,
+                    rng=9001):
+
+        self.x = tensor.matrix('x')
+        self.y = tensor.ivector('y')
+
+        # make corruptors:
+        mlp_input_corruptors = []
+        for item in mlp_input_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_input_corruptors.extend([None])
+            else:
+                mlp_input_corruptors.extend([GaussianCorruptor(corruption_level = item)])
+
+        mlp_hidden_corruptors = []
+        for item in mlp_hidden_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_hidden_corruptors.extend([None])
+            else:
+                mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
 
 
-    def __call__(self):
-        return self.hid_layer.output_clean
+        # This is the shape pylearn handles images batches
+        self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
+        self.model = LeNet(image_shape = image_shape,
+                    kernel_shapes = kernel_shapes,
+                    nchannels = nchannels,
+                    pool_shapes = pool_shapes,
+                    batch_size = batch_size,
+                    conv_act = conv_act,
+                    mlp_act = mlp_act,
+                    mlp_input_corruptors = mlp_input_corruptors,
+                    mlp_hidden_corruptors = mlp_hidden_corruptors,
+                    mlp_nunits = mlp_nunits,
+                    n_outs = n_outs,
+                    border_mode = border_mode,
+                    irange = irange,
+                    bias_init = bias_init,
+                    rng=rng)
+        self.input_space = self.model.input_space
+        # TODO change it to self._param
+        self.params = self.model._params
+
+    def errors(self, inputs, y):
+        return tensor.mean(tensor.neq(self.model.predict_y(inputs), y))
+
+    def negative_log_likelihood(self, inputs, y):
+        return -tensor.mean(tensor.log(self.model.p_y_given_x(inputs))[tensor.arange(y.shape[0]), y])
+
+    def encode(self, inputs):
+        return self.model.encode(inputs)
+
+    def test_encode(self, inputs):
+        return self.model.test_encode(inputs)
+
+    def __call__(self, inputs):
+        return self.test_encode(inputs)
 
     def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
 
@@ -284,16 +334,16 @@ class Conv(object):
         n_valid_batches /= batch_size
         n_test_batches /= batch_size
 
-
-        index = T.lscalar()  # index to a [mini]batch
-        learning_rate = T.scalar('lr')
+        index = tensor.lscalar()  # index to a [mini]batch
+        learning_rate = tensor.scalar('lr')
         if enable_momentum is None:
             momentum = None
         else:
-            momentum = T.scalar('momentum')
-        cost = self.log_layer.negative_log_likelihood(self.y)
-        gparams = T.grad(cost, self.params)
-
+            momentum = tensor.scalar('momentum')
+        w_l1 = tensor.abs_(self.model.mlp.hiddens.layers[-1].weights).mean() * w_l1_ratio
+        cost = self.negative_log_likelihood(self.input, self.y) + w_l1
+        gparams = tensor.grad(cost, self.params)
+        errors = self.errors(self.input, self.y)
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:
@@ -310,7 +360,7 @@ class Conv(object):
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
                 theano.Param(momentum)],
-              outputs=[cost, cost],
+              outputs=[cost, errors],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
@@ -318,14 +368,15 @@ class Conv(object):
                 self.y: train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
-        test_score_i = theano.function([index], self.errors,
+
+        test_score_i = theano.function([index], errors,
                  givens={
                    self.x: test_set_x[index * batch_size:
                                       (index + 1) * batch_size],
                    self.y: test_set_y[index * batch_size:
                                       (index + 1) * batch_size]})
 
-        valid_score_i = theano.function([index], self.errors,
+        valid_score_i = theano.function([index], errors,
               givens={
                  self.x: valid_set_x[index * batch_size:
                                      (index + 1) * batch_size],
@@ -341,7 +392,5 @@ class Conv(object):
             return [test_score_i(i) for i in xrange(n_test_batches)]
 
         return train_fn, valid_score, test_score
-
-
 
 

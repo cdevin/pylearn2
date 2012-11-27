@@ -2,7 +2,7 @@ import numpy
 import theano
 from theano import tensor
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaledGroup, BinomialCorruptorScaled
-from noisy_encoder.models.mlp_new import DropOutMLP
+from noisy_encoder.models.mlp import DropOutMLP
 from pylearn2.corruption import GaussianCorruptor
 from pylearn2.utils import sharedX, serial
 
