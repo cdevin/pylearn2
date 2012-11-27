@@ -304,6 +304,7 @@ class LeNetLearner(object):
                     bias_init = bias_init,
                     rng=rng)
         self.input_space = self.model.input_space
+        # TODO change it to self._param
         self.params = self.model._params
 
     def errors(self, inputs, y):
@@ -339,10 +340,10 @@ class LeNetLearner(object):
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        cost = self.negative_log_likelihood(self.input, self.y)
+        w_l1 = tensor.abs_(self.model.mlp.hiddens.layers[-1].weights).mean() * w_l1_ratio
+        cost = self.negative_log_likelihood(self.input, self.y) + w_l1
         gparams = tensor.grad(cost, self.params)
         errors = self.errors(self.input, self.y)
-        w_l1 = abs(self.model.mlp.hiddens.layers[-1].weights.mean()) * w_l1_ratio
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:

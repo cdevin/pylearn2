@@ -20,6 +20,7 @@ class Siamese(object):
                     irange,
                     bias_init,
                     method = 'diff',
+                    fine_tune = False,
                     rng = 9001):
 
 
@@ -72,7 +73,10 @@ class Siamese(object):
                             irange = irange,
                             bias_init = bias_init)
 
-        self.params = self.mlp._params
+        if fine_tune:
+            self.params = base_model.model.mlp.hiddens._params + self.mlp._params
+        else:
+            self.params = self.mlp._params
 
     def negative_log_likelihood(self, x, y):
         return -tensor.mean(tensor.log(self.mlp.p_y_given_x(x))[tensor.arange(y.shape[0]), y])
@@ -105,8 +109,8 @@ class Siamese(object):
             momentum = tensor.scalar('momentum')
 
         # compute the gradients with respect to the model parameters
-        w_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights.mean()) * w_l1_ratio
-        cost = self.negative_log_likelihood(self.inputs, self.y)
+        w_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights).mean() * w_l1_ratio
+        cost = self.negative_log_likelihood(self.inputs, self.y) + w_l1
         gparams = tensor.grad(cost, self.params)
         errors = self.errors(self.inputs, self.y)
 

@@ -550,7 +550,7 @@ def siamese_tfd():
     state.scale = False
     state.norm = False
     state.shuffle = False
-    state.nepochs = 1000
+    state.nepochs = 500
     state.lr = 0.01
     state.lr_shrink_time = 100
     state.lr_dc_rate = 0.01
@@ -568,25 +568,26 @@ def siamese_tfd():
     # model params
     state.model = 'siamese'
     state.method = 'diff'
-    state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
+    state.fine_tune = False
     state.image_topo = (state.batch_size, 48, 48, 1)
-    state.n_units = [500, 1000]
+    state.n_units = [500, 1000, 500]
     state.input_corruption_levels = [None, None]
-    state.hidden_corruption_levels = [0.5, 0.5]
+    state.hidden_corruption_levels = [0.5, 0.5, 0.5]
     state.nouts = 6
     state.act_enc = "rectifier"
-    state.irange = 0.01
-    state.bias_init = 0.0
+    state.irange = 0.1
+    state.bias_init = 0.1
 
 
     ind = 0
     TABLE_NAME = "dr_tfd_siamese"
     db = api0.open_db("postgres://mirzamom:pishy83@gershwin.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.05, 0.01, 0.005]:
+    for lr in [0.01, 0.005]:
         for fold in [0, 1, 2, 3, 4]:
             state.lr = lr
             state.fold = fold
-            state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(state.fold))
+            state.data_path = os.path.join(DATA_PATH, "faces/TFD/siamese/{}/".format(fold))
+            state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(fold))
             sql.insert_job(mlp_experiment, flatten(state), db)
             ind += 1
 
