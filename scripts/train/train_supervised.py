@@ -5,7 +5,7 @@ from jobman.tools import DD
 from utils.config import get_data_path, get_result_path
 from noisy_encoder.utils.io import load_data
 from noisy_encoder.training_algorithms.sgd import sgd
-from noisy_encoder.models.mlp import MLP
+#from noisy_encoder.models.mlp import MLP
 from noisy_encoder.models.conv import LeNetLearner
 from noisy_encoder.models.siamese import Siamese
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
