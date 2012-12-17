@@ -594,6 +594,69 @@ def siamese_tfd():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def siamese_variant_tfd():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd_siamese_variant'
+    state.fold = 0
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 300
+    state.lr = 0.01
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 100
+    state.w_l1_ratio = 0.0
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
+    state.coeffs = {'sr' : 0.1, 'jacob' : 0.00001, 'mlp_l1' : 0.00001, 'reg_l1' : 0.001}
+
+    # model params
+    state.model = 'siamese_variant'
+    state.method = 'diff'
+    state.fine_tune = False
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [500, 1000]
+    state.input_corruption_levels = [None, None]
+    state.hidden_corruption_levels = [0.5, 0.5, 0.5]
+    state.nouts = 6
+    state.act_enc = "rectifier"
+    state.irange = 0.1
+    state.bias_init = 0.1
+
+
+    ind = 0
+    TABLE_NAME = "dr_tfd_siamese_variant_tmp"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.005]:
+        for fold in [0]:
+            for jacob in [0.001, 0.000001]:
+                for reg_l1 in [0.1,  0.0001, 0.0]:
+                    for mlp_l1 in [0.1, 0.0001, 0.0]:
+                        state.coeffs['jacob'] = jacob
+                        state.coeffs['mlp_l1'] = mlp_l1
+                        state.coeffs['reg_l1'] = reg_l1
+                        state.lr = lr
+                        state.fold = fold
+                        state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2_rotate/{}/".format(fold))
+                        state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl".format(fold))
+
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
 
 if __name__ == "__main__":
 
@@ -601,7 +664,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
-                    'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd'])
+                    'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd', 'siamese_variant_tfd'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -632,6 +695,8 @@ if __name__ == "__main__":
         conv_tfd()
     elif args.task == "siamese_tfd":
         siamese_tfd()
+    elif args.task == "siamese_variant_tfd":
+        siamese_variant_tfd()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

@@ -4,7 +4,7 @@ class SQL():
 
     def __init__(self):
 
-        self.conn = psycopg2.connect(host = "gershwin.iro.umontreal.ca", database = "mirzamom_db",
+        self.conn = psycopg2.connect(host = "opter.iro.umontreal.ca", database = "mirzamom_db",
                 user = "mirzamom", password = "pishy83")
         self.cur = self.conn.cursor()
 

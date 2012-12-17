@@ -112,6 +112,20 @@ class DropOutHiddenLayer(Autoencoder):
         else:
             return [self.encode(v) for v in inputs]
 
+    def _activation_grad(self, inputs):
+
+        acts = self._hidden_input(inputs)
+        hiddens = self.act_enc(acts)
+        act_grad = tensor.grad(hiddens.sum(), acts)
+        return act_grad
+
+    def jacobian_h_x(self, inputs):
+
+        act_grad = self._activation_grad(inputs)
+        jacobian = self.weights * act_grad.dimshuffle(0, 'x', 1)
+        return jacobian
+
+
 class BalancedDropOutHiddenLayer(Autoencoder):
 
     def __init__(self, gaussian_corruptor,

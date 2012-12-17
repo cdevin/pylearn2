@@ -9,8 +9,7 @@ def sgd(model,
             learning_rate_init,
             training_epochs,
             batch_size,
-            w_l1_ratio,
-            act_l1_ratio,
+            coeffs,
             lr_shrink_time,
             lr_dc_rate,
             save_frequency,
@@ -34,13 +33,12 @@ def sgd(model,
     train_fn, validate_model, test_model = model.build_finetune_functions(
                 datasets=datasets,
                 batch_size=batch_size,
-                w_l1_ratio = w_l1_ratio,
-                act_l1_ratio = act_l1_ratio,
+                coeffs=coeffs,
                 enable_momentum = enable_momentum)
 
     print '... training the model'
     # early-stopping parameters
-    patience = 500 * n_train_batches  # look as this many examples regardless
+    patience = 10000 * n_train_batches  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
                             # found
     improvement_threshold = 0.995  # a relative improvement of this much is
@@ -82,9 +80,16 @@ def sgd(model,
             if numpy.isnan(minibatch_avg_cost):
                 done_looping = True
                 break
-
+            #if epoch == 2:
+                #import ipdb
+                #ipdb.set_trace()
+            #minibatch_avg_cost, train_score = train_fn(minibatch_index, learning_rate, momentum)
 
             if (iter + 1) % validation_frequency == 0:
+                #print model.mlp.hiddens.layers[0].weights.get_value().mean()
+                #print model.mlp.log_layer.W.get_value().mean()
+                #print model.mlp_p.layers[0].weights.get_value().mean()
+                #print model.mlp_p.layers[1].weights.get_value().mean()
                 validation_losses = validate_model()
                 this_validation_loss = numpy.mean(validation_losses)
                 print('%i, cost %f, lr %f, validation error %f %%' %

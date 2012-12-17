@@ -322,7 +322,7 @@ class LeNetLearner(object):
     def __call__(self, inputs):
         return self.test_encode(inputs)
 
-    def build_finetune_functions(self, datasets, batch_size, enable_momentum, w_l1_ratio = 0.0, act_l1_ratio = 0.0):
+    def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
 
         train_set_x, train_set_y = datasets[0]
         valid_set_x, valid_set_y = datasets[1]
@@ -340,7 +340,7 @@ class LeNetLearner(object):
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        w_l1 = tensor.abs_(self.model.mlp.hiddens.layers[-1].weights).mean() * w_l1_ratio
+        w_l1 = tensor.abs_(self.model.mlp.hiddens.layers[-1].weights).mean() * coeffs['w_l1']
         cost = self.negative_log_likelihood(self.input, self.y) + w_l1
         gparams = tensor.grad(cost, self.params)
         errors = self.errors(self.input, self.y)

@@ -7,7 +7,7 @@ from noisy_encoder.utils.io import load_data
 from noisy_encoder.training_algorithms.sgd import sgd
 #from noisy_encoder.models.mlp import MLP
 from noisy_encoder.models.conv import LeNetLearner
-from noisy_encoder.models.siamese import Siamese
+from noisy_encoder.models.siamese import Siamese, SiameseVariant
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from theano.tensor.shared_randomstreams import RandomStreams
 
@@ -71,6 +71,21 @@ def load_model(state, numpy_rng, theano_rng):
                 bias_init = state.bias_init,
                 method = state.method,
                 fine_tune = state.fine_tune)
+    elif state.model == 'siamese_variant':
+        return SiameseVariant(numpy_rng = numpy_rng,
+                theano_rng = theano_rng,
+                image_topo = state.image_topo,
+                base_model = state.base_model,
+                n_units = state.n_units,
+                input_corruption_levels = state.input_corruption_levels,
+                hidden_corruption_levels = state.hidden_corruption_levels,
+                n_outs = state.nouts,
+                act_enc = state.act_enc,
+                irange = state.irange,
+                bias_init = state.bias_init,
+                method = state.method,
+                fine_tune = state.fine_tune)
+
     else:
         raise NameError("Unknown model: {}".format(state.model))
 
@@ -91,8 +106,7 @@ def experiment(state, channel):
                                 learning_rate_init = state.lr,
                                 training_epochs = state.nepochs,
                                 batch_size = state.batch_size,
-                                w_l1_ratio = state.w_l1_ratio,
-                                act_l1_ratio = state.act_l1_ratio,
+                                coeffs = state.coeffs,
                                 lr_shrink_time = state.lr_shrink_time,
                                 lr_dc_rate = state.lr_dc_rate,
                                 save_frequency = state.save_frequency,
@@ -262,12 +276,12 @@ def tfd_newconv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2_aug/{}/".format(state.fold))
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.nepochs = 1000
-    state.lr = 0.01
+    state.lr = 0.005
     state.lr_shrink_time = 70
     state.lr_dc_rate = 0.01
     state.enable_momentum = True
@@ -276,10 +290,11 @@ def tfd_newconv_experiment():
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
     state.batch_size = 100
-    state.w_l1_ratio = 0.0005
+    state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 100
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
+    state.save_frequency = 50
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl")
+    state.coeffs = {'w_l1' : 0.0}
 
     # model params
     state.model = 'new_conv'
@@ -321,15 +336,16 @@ def siamese_experiment():
     state.batch_size = 100
     state.w_l1_ratio = 0.0000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 50
+    state.save_frequency = 10
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
+    state.coeffs = {'w_l1' : 0.0}
 
     # model params
     state.model = 'siamese'
     state.method = 'diff'
     state.fine_tune = False
     #state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
-    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000, 500]
     state.input_corruption_levels = [None, None, None]
@@ -341,10 +357,57 @@ def siamese_experiment():
 
     experiment(state, None)
 
+def siamese_variant_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd_siamese_variant'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2_rotate/{}/".format(state.fold))
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 1000
+    state.lr = 0.0001
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 100
+    state.w_l1_ratio = 0.0000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 50
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
+    state.coeffs = {'sr' : 0.1, 'jacob' : 0.00000001, 'mlp_l1': 0.00005, 'reg_l1': 0.001}
+
+
+
+    # model params
+    state.model = 'siamese_variant'
+    state.method = 'diff'
+    state.fine_tune = False
+    #state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
+    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl")
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [500, 1000]
+    state.input_corruption_levels = [None, None, None]
+    state.hidden_corruption_levels = [0.5, 0.5, 0.5]
+    state.nouts = 6
+    state.act_enc = "rectifier"
+    state.irange = 0.1
+    state.bias_init = 0.1
+
+    experiment(state, None)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
-        'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese'], required = True)
+        'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese', 'siamese_variant'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
@@ -359,5 +422,7 @@ if __name__ == "__main__":
         mnist_experiment()
     elif args.dataset == 'siamese':
         siamese_experiment()
+    elif args.dataset == 'siamese_variant':
+        siamese_variant_experiment()
     elif args.dataset == 'tfd_new_conv':
         tfd_newconv_experiment()
