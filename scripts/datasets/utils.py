@@ -63,12 +63,14 @@ def sigmoid_disortion(X, rng):
 
 def rotate(X, topo, rng, angle_limit = 10):
 
+    angles = range(-angle_limit, angle_limit)
+    y_list = rng.randint(0, len(angles), X.shape[0])
+
     orig_shape = X.shape
     X = X.reshape(topo)
-    angles = rng.uniform(-angle_limit, angle_limit, X.shape[0])
     new_x = []
-    for item, angle in zip(X, angles):
-        new_x.append(scipy.ndimage.interpolation.rotate(item, angle, reshape = False).ravel())
+    for item, y in zip(X, y_list):
+        new_x.append(scipy.ndimage.interpolation.rotate(item, angles[y], reshape = False).ravel())
 
     new_x = numpy.vstack(new_x)
-    return new_x.reshape(orig_shape), numpy.array(angles / angle_limit).astype('float32').reshape((orig_shape[0], 1))
+    return new_x.reshape(orig_shape), y_list.astype('int32')

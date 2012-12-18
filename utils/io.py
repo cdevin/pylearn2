@@ -117,11 +117,11 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_y_p = test_set_p.y
 
         train = shared_dataset(train_x, train_y)
-        train_p = shared_dataset(train_x_p, train_y_p, cast_int = False)
+        train_p = shared_dataset(train_x_p, train_y_p)
         valid = shared_dataset(valid_x, valid_y)
-        valid_p = shared_dataset(valid_x_p, valid_y_p, cast_int = False)
+        valid_p = shared_dataset(valid_x_p, valid_y_p)
         test = shared_dataset(test_x, test_y)
-        test_p = shared_dataset(test_x_p, test_y_p, cast_int = False)
+        test_p = shared_dataset(test_x_p, test_y_p)
 
         return train, train_p, valid, valid_p, test, test_p
 

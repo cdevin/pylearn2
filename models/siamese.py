@@ -200,7 +200,7 @@ class SiameseVariant(object):
         self.x = tensor.matrix('x')
         self.x_p = tensor.matrix('x_p')
         self.y = tensor.ivector('y')
-        self.y_p = tensor.matrix('y_p')
+        self.y_p = tensor.ivector('y_p')
 
 
         # make corruptors:
@@ -239,17 +239,18 @@ class SiameseVariant(object):
         self.mlp = DropOutMLP(input_corruptors = input_corruptors,
                             hidden_corruptors = hidden_corruptors,
                             n_units = n_units,
-                            n_outs = n_outs,
+                            n_outs = n_outs[0],
                             act_enc = "sigmoid",
                             irange = irange,
                             bias_init = bias_init)
 
-        self.mlp_p = DeepDropOutHiddenLayer(input_corruptors = input_corruptors,
+        self.mlp_p = DropOutMLP(input_corruptors = input_corruptors,
                             hidden_corruptors = hidden_corruptors,
-                            n_units = n_units + [1],
+                            n_units = n_units,
+                            n_outs = n_outs[1],
                             act_enc = "sigmoid",
-                            irange = 0.001,
-                            bias_init = 0.0)
+                            irange = irange,
+                            bias_init = bias_init)
 
 
         if fine_tune:
@@ -259,6 +260,9 @@ class SiameseVariant(object):
 
     def negative_log_likelihood(self, x, y):
         return -tensor.mean(tensor.log(self.mlp.p_y_given_x(x))[tensor.arange(y.shape[0]), y])
+
+    def negative_log_likelihood_p(self, x, y):
+        return -tensor.mean(tensor.log(self.mlp_p.p_y_given_x(x))[tensor.arange(y.shape[0]), y])
 
     def squared_error(self, x, y):
         return ((self.mlp_p.encode(x) - y) ** 2).mean()
@@ -280,16 +284,15 @@ class SiameseVariant(object):
 
     def sigmoid_orthogonality(self, x):
 
-        h1 = self.mlp_p.layers[0](x)
-        h2 = self.mlp.hiddens.layers[0](x)
-        j1 = h1 * (1-h1)* self.mlp_p.layers[0].weights
-        j2 = h2 * (1-h2) * self.mlp.hiddens.layers[0].weights
+        h1 = self.mlp.hiddens.layers[0](x)
+        h2 = self.mlp_p.hiddens.layers[0](x)
+        j1 = self.mlp.hiddens.layers[0].weights * (h1 * (1-h1)).dimshuffle(0, 'x', 1)
+        j2 = self.mlp.hiddens.layers[0].weights * (h2 * (1-h2)).dimshuffle(0, 'x', 1)
 
         def multi(x1, x2):
             return (tensor.dot(x1.T, x2) ** 2.).sum()
 
-        #results, _ = theano.scan(fn = multi, sequences = [j1, j2])
-        return (tensor.dot(j1.T, j2) ** 2.).sum()
+        results, _ = theano.scan(fn = multi, sequences = [j1, j2])
         return results.mean()
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
@@ -318,15 +321,14 @@ class SiameseVariant(object):
 
         # compute the gradients with respect to the model parameters
         nll_cost = self.negative_log_likelihood(self.inputs, self.y)
-        sr_cost = self.squared_error(self.inputs, self.y_p)
+        nll_p_cost = self.negative_log_likelihood_p(self.inputs, self.y_p)
         mlp_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights).mean()
         mlp_l1 += tensor.abs_(self.mlp.log_layer.W).mean()
         reg_l1 = numpy.mean([abs(item).mean() for item in self.mlp_p.weights])
-        #jacob_cost = self.jacobians(self.inputs)
         jacob_cost = self.sigmoid_orthogonality(self.inputs)
 
-        #cost = nll_cost + coeffs['sr'] * sr_cost + coeffs['jacob'] * jacob_cost + coeffs['mlp_l1'] * mlp_l1 + coeffs['reg_l1'] * reg_l1
-        cost = nll_cost + coeffs['sr'] * sr_cost + coeffs['jacob'] * jacob_cost
+        #cost = nll_cost + coeffs['nll_p'] * sr_cost + coeffs['jacob'] * jacob_cost + coeffs['l1'] * mlp_l1 + coeffs['l1_p'] * reg_l1
+        cost = nll_cost + coeffs['nll_p'] * nll_p_cost + coeffs['jacob'] * jacob_cost
         gparams = tensor.grad(cost, self.params)
         errors = self.errors(self.inputs, self.y)
 

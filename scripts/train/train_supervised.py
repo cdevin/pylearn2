@@ -289,7 +289,7 @@ def tfd_newconv_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 100
+    state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 50
@@ -377,12 +377,12 @@ def siamese_variant_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 100
+    state.batch_size = 20
     state.w_l1_ratio = 0.0000
     state.act_l1_ratio = 0.0
     state.save_frequency = 50
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese.pkl")
-    state.coeffs = {'sr' : 0.1, 'jacob' : 0.00000001, 'mlp_l1': 0.00005, 'reg_l1': 0.001}
+    state.coeffs = {'nll_p' : 0.1, 'jacob' : 0.01, 'mlp_l1': 0.00005, 'reg_l1': 0.001}
 
 
 
@@ -395,8 +395,8 @@ def siamese_variant_experiment():
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000]
     state.input_corruption_levels = [None, None, None]
-    state.hidden_corruption_levels = [0.5, 0.5, 0.5]
-    state.nouts = 6
+    state.hidden_corruption_levels = [0.0, 0.0, 0.0]
+    state.nouts = [6, 20]
     state.act_enc = "rectifier"
     state.irange = 0.1
     state.bias_init = 0.1
