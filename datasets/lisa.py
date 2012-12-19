@@ -33,7 +33,7 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
             data_x -= 127.5
 
         if shuffle:
-            rng = rng if rng else np.random.RandomState(seed)
+            rng = rng if rng else numpy.random.RandomState(seed)
             rand_idx = rng.permutation(len(data_x))
             data_x = data_x[rand_idx]
             data_y = data_y[rand_idx]
@@ -41,8 +41,8 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
 
         if one_hot:
             one_hot = numpy.zeros((data_y.shape[0], 7), dtype='float32')
-            for i in xrange(dat_y.shape[0]):
-                one_hot[i, dat_y[i]] = 1.
+            for i in xrange(data_y.shape[0]):
+                one_hot[i, data_y[i]] = 1.
             data_y = one_hot
 
         # create view converting for retrieving topological view

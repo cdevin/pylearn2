@@ -36,7 +36,7 @@ class GoogleTFD(dense_design_matrix.DenseDesignMatrix):
             data_x -= 127.5
 
         if shuffle:
-            rng = rng if rng else np.random.RandomState(seed)
+            rng = rng if rng else numpy.random.RandomState(seed)
             rand_idx = rng.permutation(len(data_x))
             data_x = data_x[rand_idx]
             data_y = data_y[rand_idx]
