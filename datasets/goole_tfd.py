@@ -4,12 +4,7 @@ from pylearn2.datasets.tfd import TFD
 from pylearn2.utils.serial import load
 
 class GoogleTFD(dense_design_matrix.DenseDesignMatrix):
-    """
-    Pylearn2 wrapper for the Toronto Face Dataset.
-    http://aclab.ca/users/josh/TFD.html
-    """
 
-    mapper = {'unlabeled': 0, 'train': 1, 'valid': 2, 'test': 3}
 
     def __init__(self, image_size = 48,
                  example_range = None, center = False,
