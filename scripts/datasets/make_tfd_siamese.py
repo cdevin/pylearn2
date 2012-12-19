@@ -15,7 +15,7 @@ from copy import deepcopy
 from noisy_encoder.scripts.datasets.utils import reflect, shuffle, corner_shuffle, apply_lcn
 
 
-def make_data(which, fold, seed = 2322):
+def make_data(which, fold, include_neutral = False, seed = 2322):
 
     rng = numpy.random.RandomState(seed)
 
@@ -40,9 +40,13 @@ def make_data(which, fold, seed = 2322):
         if numpy.any(data.y[ind] == 6):
             neutral = ind[numpy.where(data.y[ind] == 6)[0][0]]
             for emot in data.y[ind]:
-                if emot != 6:
+                if include_neutral:
                     new_x_neutral.append(neutral)
                     new_x_emot.append(ind[numpy.where(data.y[ind] == emot)[0][0]])
+                else:
+                    if emot != 6:
+                        new_x_neutral.append(neutral)
+                        new_x_emot.append(ind[numpy.where(data.y[ind] == emot)[0][0]])
 
     print "Numnber of new samples :{}/{}".format(len(new_x_emot),data.X.shape[0])
 
@@ -70,7 +74,6 @@ def make_data(which, fold, seed = 2322):
     data_neutral.X = data_neutral.X / 255.
     data_emot.X = data_emot.X / 255.
 
-
     data_neutral.use_design_loc(output_dir + '/{}_neutral.npy'.format(which))
     serial.save(output_dir + '/{}_neutral.pkl'.format(which), data_neutral)
     data_emot.use_design_loc(output_dir + '/{}.npy'.format(which))
@@ -78,6 +81,6 @@ def make_data(which, fold, seed = 2322):
 
 
 if __name__ == "__main__":
-    make_data('train', 4)
-    make_data('valid', 4)
-    make_data('test', 4)
+    make_data('train', 0, include_neutral = True)
+    make_data('valid', 0, include_neutral = True)
+    make_data('test', 0, include_neutral = True)
