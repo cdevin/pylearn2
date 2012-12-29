@@ -8,6 +8,7 @@ from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
 #from pylearn2.linear.conv2d import Conv2D
 from noisy_encoder.models.mlp import DropOutMLP
+from noisy_encoder.models.dropouts import DeepDropOutHiddenLayer
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from pylearn2.corruption import GaussianCorruptor
 from theano.tensor.nnet.conv import conv2d
@@ -182,11 +183,6 @@ class LeNet(Block, Model):
                     pool_shapes,
                     batch_size,
                     conv_act,
-                    mlp_act,
-                    mlp_input_corruptors,
-                    mlp_hidden_corruptors,
-                    mlp_nunits,
-                    n_outs,
                     border_mode = 'valid',
                     irange = 0.05,
                     bias_init = 0.0,
@@ -197,7 +193,6 @@ class LeNet(Block, Model):
         self._params = []
 
         self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels[0])
-        self.output_space = VectorSpace(mlp_nunits[-1])
 
         for i in range(len(kernel_shapes)):
             layer = Conv(
@@ -217,35 +212,16 @@ class LeNet(Block, Model):
             image_shape = [(a - b + 1) / c for a, b, c in zip(image_shape,
                             kernel_shapes[i], pool_shapes[i])]
 
-        mlp_nunits.insert(0, numpy.prod(image_shape) * nchannels[-1])
-        self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
-                        hidden_corruptors = mlp_hidden_corruptors,
-                        n_units = mlp_nunits,
-                        n_outs = n_outs,
-                        act_enc = mlp_act,
-                        rng = rng)
+        self.output_space = Conv2DSpace(shape = image_shape, nchannels = nchannels[-1])
 
-        self._params.extend(self.mlp._params)
-
-    def conv_encode(self, x):
-        for layer in self.layers:
-            x = layer(x)
-        return x.flatten(2)
 
     def encode(self, x):
-        return self.mlp.encode(self.conv_encode(x))
-
-    def test_encode(self, x):
-        return self.mlp.test_encode(self.conv_encode(x))
-
-    def p_y_given_x(self, inputs):
-        return self.mlp.p_y_given_x(self.conv_encode(inputs))
-
-    def predict_y(self, inputs):
-        return self.mlp.predict_y(self.conv_encode(inputs))
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
     def __call__(self, inputs):
-        return self.test_encode(inputs)
+        return self.encode(inputs)
 
 class LeNetLearner(object):
     "Temporary class to train LeNet with current non-pylearn sgd"
@@ -288,36 +264,44 @@ class LeNetLearner(object):
 
         # This is the shape pylearn handles images batches
         self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
-        self.model = LeNet(image_shape = image_shape,
+        self.conv = LeNet(image_shape = image_shape,
                     kernel_shapes = kernel_shapes,
                     nchannels = nchannels,
                     pool_shapes = pool_shapes,
                     batch_size = batch_size,
                     conv_act = conv_act,
-                    mlp_act = mlp_act,
-                    mlp_input_corruptors = mlp_input_corruptors,
-                    mlp_hidden_corruptors = mlp_hidden_corruptors,
-                    mlp_nunits = mlp_nunits,
-                    n_outs = n_outs,
                     border_mode = border_mode,
                     irange = irange,
                     bias_init = bias_init,
                     rng=rng)
-        self.input_space = self.model.input_space
-        # TODO change it to self._param
-        self.params = self.model._params
+
+        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.nchannels)
+        self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
+                        hidden_corruptors = mlp_hidden_corruptors,
+                        n_units = mlp_nunits,
+                        n_outs = n_outs,
+                        act_enc = mlp_act,
+                        rng = rng)
+
+
+
+        self.input_space = self.conv.input_space
+        self._params = self.conv._params
+
+    def conv_encode(self, inputs):
+        return self.conv(inputs).flatten(2)
 
     def errors(self, inputs, y):
-        return tensor.mean(tensor.neq(self.model.predict_y(inputs), y))
+        return tensor.mean(tensor.neq(self.mlp.predict_y(self.conv_encode(inputs)), y))
 
     def negative_log_likelihood(self, inputs, y):
-        return -tensor.mean(tensor.log(self.model.p_y_given_x(inputs))[tensor.arange(y.shape[0]), y])
+        return -tensor.mean(tensor.log(self.mlp.p_y_given_x(self.conv_encode(inputs)))[tensor.arange(y.shape[0]), y])
 
     def encode(self, inputs):
-        return self.model.encode(inputs)
+        return self.mlp.encode(self.conv_encode(inputs))
 
     def test_encode(self, inputs):
-        return self.model.test_encode(inputs)
+        return self.mlp.test_encode(self.conv_encode(inputs))
 
     def __call__(self, inputs):
         return self.test_encode(inputs)
@@ -340,17 +324,194 @@ class LeNetLearner(object):
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        w_l1 = tensor.abs_(self.model.mlp.hiddens.layers[-1].weights).mean() * coeffs['w_l1']
+        w_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights).mean() * coeffs['w_l1']
         cost = self.negative_log_likelihood(self.input, self.y) + w_l1
-        gparams = tensor.grad(cost, self.params)
+        gparams = tensor.grad(cost, self._params)
         errors = self.errors(self.input, self.y)
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:
-            for param, gparam in zip(self.params, gparams):
+            for param, gparam in zip(self._params, gparams):
                 updates[param] = param - gparam * learning_rate
         else:
-            for param, gparam in zip(self.params, gparams):
+            for param, gparam in zip(self._params, gparams):
+                inc = sharedX(param.get_value() * 0.)
+                updated_inc = momentum * inc - learning_rate * gparam
+                updates[inc] = updated_inc
+                updates[param] = param + updated_inc
+
+
+        train_fn = theano.function(inputs=[index,
+                theano.Param(learning_rate),
+                theano.Param(momentum)],
+              outputs=[cost, errors],
+              updates=updates,
+              givens={
+                self.x: train_set_x[index * batch_size:
+                                    (index + 1) * batch_size],
+                self.y: train_set_y[index * batch_size:
+                                    (index + 1) * batch_size]})
+
+
+        test_score_i = theano.function([index], errors,
+                 givens={
+                   self.x: test_set_x[index * batch_size:
+                                      (index + 1) * batch_size],
+                   self.y: test_set_y[index * batch_size:
+                                      (index + 1) * batch_size]})
+
+        valid_score_i = theano.function([index], errors,
+              givens={
+                 self.x: valid_set_x[index * batch_size:
+                                     (index + 1) * batch_size],
+                 self.y: valid_set_y[index * batch_size:
+                                     (index + 1) * batch_size]})
+
+        # Create a function that scans the entire validation set
+        def valid_score():
+            return [valid_score_i(i) for i in xrange(n_valid_batches)]
+
+        # Create a function that scans the entire test set
+        def test_score():
+            return [test_score_i(i) for i in xrange(n_test_batches)]
+
+        return train_fn, valid_score, test_score
+
+class LeNetLearnerMultiCategory(object):
+    "Temporary class to train LeNet with current non-pylearn sgd"
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shapes,
+                    nchannels,
+                    pool_shapes,
+                    batch_size,
+                    conv_act,
+                    mlp_act,
+                    mlp_input_corruption_levels,
+                    mlp_hidden_corruption_levels,
+                    mlp_nunits,
+                    n_outs,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    bias_init = 0.0,
+                    rng=9001):
+
+        self.x = tensor.matrix('x')
+        self.y = tensor.matrix('y')
+
+        # make corruptors:
+        mlp_input_corruptors = []
+        for item in mlp_input_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_input_corruptors.extend([None])
+            else:
+                mlp_input_corruptors.extend([GaussianCorruptor(corruption_level = item)])
+
+        mlp_hidden_corruptors = []
+        for item in mlp_hidden_corruption_levels:
+            if item == None or item == 0.0:
+                mlp_hidden_corruptors.extend([None])
+            else:
+                mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
+
+
+        # This is the shape pylearn handles images batches
+        self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
+        self.conv = LeNet(image_shape = image_shape,
+                    kernel_shapes = kernel_shapes,
+                    nchannels = nchannels,
+                    pool_shapes = pool_shapes,
+                    batch_size = batch_size,
+                    conv_act = conv_act,
+                    border_mode = border_mode,
+                    irange = irange,
+                    bias_init = bias_init,
+                    rng=rng)
+        self.input_space = self.conv.input_space
+        self._params = self.conv._params
+
+        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.nchannels)
+        self.hiddens = DeepDropOutHiddenLayer(
+                            input_corruptors = mlp_input_corruptors[:-1],
+                            hidden_corruptors = mlp_hidden_corruptors[:-1],
+                            n_units = mlp_nunits[:-1],
+                            act_enc = mlp_act,
+                            irange = irange,
+                            bias_init = bias_init,
+                            rng = rng)
+
+        self.loglayer = DeepDropOutHiddenLayer(
+                            input_corruptors = [None],
+                            hidden_corruptors = [None],
+                            n_units = mlp_nunits[-2:],
+                            act_enc = "sigmoid",
+                            irange = irange,
+                            bias_init = bias_init,
+                            rng = rng)
+
+
+
+        self._params.extend(self.hiddens._params)
+        self._params.extend(self.loglayer._params)
+
+        self.w_l1 = tensor.sum([abs(item.weights).sum() for item in \
+                self.hiddens.layers]) + abs(self.loglayer.layers[0].weights).sum()
+        self.w_l2 = tensor.sum([(item.weights ** 2).sum() for item in \
+                self.hiddens.layers]) + (self.loglayer.layers[0].weights ** 2).sum()
+
+
+    def cross_entropy(self, x, y):
+        h = self.encode(x)
+        h_ = tensor.switch(tensor.lt(h, 0.00000001), -10, tensor.log(h))
+        h_1 = tensor.switch(tensor.lt(1-h, 0.00000001), -10, tensor.log(1-h))
+        return - (y * h_ + (1-y)*h_1).sum(axis=1).mean()
+
+    def conv_encode(self, inputs):
+        return self.conv(inputs).flatten(2)
+
+    def encode(self, inputs):
+        return self.loglayer.encode(self.hiddens.encode(self.conv_encode(inputs)))
+
+    def test_encode(self, inputs):
+        return self.loglayer.test_encode(self.hiddens.test_encode(self.conv_encode(inputs)))
+
+    def y_pred(self, inputs):
+        return tensor.argmax(self.test_encode(inputs), axis=1)
+
+    def errors(self, inputs, y):
+        y_pred = self.y_pred(inputs)
+        return tensor.mean(tensor.neq(y[tensor.arange(y.shape[0]), y_pred], tensor.ones_like(y_pred)))
+
+    def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
+
+        train_set_x, train_set_y = datasets[0]
+        valid_set_x, valid_set_y = datasets[1]
+        test_set_x, test_set_y = datasets[2]
+
+        # compute number of minibatches for training, validation and testing
+        n_valid_batches = valid_set_x.get_value(borrow=True).shape[0]
+        n_test_batches = test_set_x.get_value(borrow=True).shape[0]
+        n_valid_batches /= batch_size
+        n_test_batches /= batch_size
+
+        index = tensor.lscalar()  # index to a [mini]batch
+        learning_rate = tensor.scalar('lr')
+        if enable_momentum is None:
+            momentum = None
+        else:
+            momentum = tensor.scalar('momentum')
+        cost = self.cross_entropy(self.input, self.y)
+        cost += coeffs['w_l1'] * self.w_l1 + coeffs['w_l2'] * self.w_l2
+        gparams = tensor.grad(cost, self._params)
+        errors = self.errors(self.input, self.y)
+        # compute list of fine-tuning updates
+        updates = {}
+        if momentum is None:
+            for param, gparam in zip(self._params, gparams):
+                updates[param] = param - gparam * learning_rate
+        else:
+            for param, gparam in zip(self._params, gparams):
                 inc = sharedX(param.get_value() * 0.)
                 updated_inc = momentum * inc - learning_rate * gparam
                 updates[inc] = updated_inc

@@ -5,7 +5,7 @@ from jobman import DD, flatten, api0, sql
 from train import DATA_PATH, RESULT_PATH, train_1layer_yaml_string, unsupervised_2layer_yaml
 from train import experiment as train_experiment
 from classify import experiment as classify_experiment
-from l2_svm import experiment as l2_svm_experiment
+#from l2_svm import experiment as l2_svm_experiment
 from train_supervised import experiment as mlp_experiment
 from utils.config import get_experiment_path
 
@@ -656,6 +656,67 @@ def siamese_variant_tfd():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def conv_google():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'google'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 600
+    state.lr = 0.005
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 50
+    state.momentum_inc_end = 100
+    state.batch_size = 10
+    state.w_l1_ratio = 0.000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 50
+    state.save_name = "google_gpu.pkl"
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0.0}
+
+    # model params
+    state.model = 'google_conv'
+    state.image_shape = [48, 48]
+    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
+    state.nchannels = [1, 60, 80, 100]
+    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
+    state.conv_act = "sigmoid"
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.0]
+    state.mlp_nunits = [1000, 7]
+    state.n_outs = 7
+    state.bias_init = 0.1
+    state.irange = 0.1
+    state.description = "google train, lisa test"
+
+
+    ind = 0
+    TABLE_NAME = "conv_google"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.005, 0.0005]:
+        for cor in [0.0, 0.5]:
+            for l1 in [0.0, 0.000001]:
+                for l2 in [0.0, 0.000001]:
+                    state.mlp_hidden_corruption_levels = [cor, 0.0]
+                    state.coeffs['w_l1'] = l1
+                    state.coeffs['w_l2'] = l2
+                    state.lr = lr
+                    sql.insert_job(mlp_experiment, flatten(state), db)
+                    ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 if __name__ == "__main__":
@@ -664,7 +725,8 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', choices = ['layer1_mnist', 'classify_mnist',
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
-                    'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd', 'siamese_variant_tfd'])
+                    'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd', 'siamese_variant_tfd',
+                    'conv_google'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -697,6 +759,8 @@ if __name__ == "__main__":
         siamese_tfd()
     elif args.task == "siamese_variant_tfd":
         siamese_variant_tfd()
+    elif args.task == "conv_google":
+        conv_google()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

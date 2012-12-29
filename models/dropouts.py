@@ -235,6 +235,8 @@ class DeepDropOutHiddenLayer(Autoencoder):
                     bias_init =  0.0,
                     rng = 9001):
 
+        if act_enc == "rectifier":
+            act_enc = rectifier
 
         self.input_space = VectorSpace(n_units[0])
         self.output_space = VectorSpace(n_units[-1])

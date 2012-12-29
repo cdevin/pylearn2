@@ -6,7 +6,7 @@ from utils.config import get_data_path, get_result_path
 from noisy_encoder.utils.io import load_data
 from noisy_encoder.training_algorithms.sgd import sgd
 #from noisy_encoder.models.mlp import MLP
-from noisy_encoder.models.conv import LeNetLearner
+from noisy_encoder.models.conv import LeNetLearner, LeNetLearnerMultiCategory
 from noisy_encoder.models.siamese import Siamese, SiameseVariant
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -43,6 +43,22 @@ def load_model(state, numpy_rng, theano_rng):
                 batch_size = state.batch_size)
     elif state.model == 'new_conv':
         return LeNetLearner(
+                image_shape = state.image_shape,
+                kernel_shapes = state.kernel_shapes,
+                nchannels = state.nchannels,
+                pool_shapes = state.pool_shapes,
+                batch_size = state.batch_size,
+                conv_act = state.conv_act,
+                mlp_act = state.mlp_act,
+                mlp_input_corruption_levels = state.mlp_input_corruption_levels,
+                mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
+                mlp_nunits = state.mlp_nunits,
+                n_outs = state.n_outs,
+                irange = state.irange,
+                bias_init = state.bias_init,
+                rng = numpy_rng)
+    elif state.model == 'google_conv':
+        return LeNetLearnerMultiCategory(
                 image_shape = state.image_shape,
                 kernel_shapes = state.kernel_shapes,
                 nchannels = state.nchannels,
@@ -277,6 +293,7 @@ def tfd_newconv_experiment():
     state.dataset = 'tfd'
     state.fold = 0
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    #state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -307,6 +324,50 @@ def tfd_newconv_experiment():
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
+    state.n_outs = 7
+    state.bias_init = 0.1
+    state.irange = 0.1
+
+    experiment(state, None)
+
+def google_conv_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'google'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.nepochs = 1000
+    state.lr = 0.005
+    state.lr_shrink_time = 70
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 20
+    state.w_l1_ratio = 0.000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 50
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/google_gpu.pkl")
+    state.coeffs = {'w_l1' : 0.01, 'w_l2' : 0.0}
+
+    # model params
+    state.model = 'google_conv'
+    state.image_shape = [48, 48]
+    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
+    state.nchannels = [1, 50, 60, 80]
+    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
+    state.conv_act = "sigmoid"
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.0]
+    state.mlp_nunits = [1000, 7]
     state.n_outs = 7
     state.bias_init = 0.1
     state.irange = 0.1
@@ -407,7 +468,8 @@ def siamese_variant_experiment():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
-        'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese', 'siamese_variant'], required = True)
+        'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese', 'siamese_variant',
+        'conv_google'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
@@ -426,3 +488,5 @@ if __name__ == "__main__":
         siamese_variant_experiment()
     elif args.dataset == 'tfd_new_conv':
         tfd_newconv_experiment()
+    elif args.dataset == 'conv_google':
+        google_conv_experiment()
