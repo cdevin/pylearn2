@@ -198,6 +198,7 @@ class SiameseMix(object):
         self.x = tensor.matrix('x')
         self.x_p = tensor.matrix('x_p')
         self.y = tensor.ivector('y')
+        self.y_ = tensor.matrix('y')
 
 
         # make corruptors:
@@ -218,23 +219,17 @@ class SiameseMix(object):
 
 
         # load base model
-        self.conv = serial.load(base_model)
+        base_model = serial.load(base_model)
+
+        self.conv = base_model.conv
+        self.conv_hideens = base_model.hiddens
+        self.conv_loglayer = base_model.loglayer
 
         self._params = self.conv.conv._params
         self._params.extend(self.conv.hiddens._params)
 
-        inputs = self.x.reshape(image_topo)
-        inputs_p = self.x_p.reshape(image_topo)
-        inputs = self.conv(inputs)
-        inputs_p = self.conv(inputs_p)
-
-        if method == 'diff':
-            self.inputs = inputs - inputs_p
-        elif method == 'kl':
-            self.inputs = inputs * tensor.log(inputs_p) + \
-                            (1 - inputs) * tensor.log(1 - inputs_p)
-        else:
-            raise NameError("Unknown method: {}".format(method))
+        self.inputs = self.x.reshape(image_topo)
+        self.inputs_p = self.x_p.reshape(image_topo)
 
         self.mlp = DropOutMLP(input_corruptors = input_corruptors,
                             hidden_corruptors = hidden_corruptors,
@@ -245,17 +240,47 @@ class SiameseMix(object):
                             bias_init = bias_init)
 
 
-        self._params.extend(self.mlp._params)
-        #self._params = self.mlp._params
 
-    def negative_log_likelihood(self, x, y):
-        return -tensor.mean(tensor.log(self.mlp.p_y_given_x(x))[tensor.arange(y.shape[0]), y])
+        self.conv_prams = self.conv._params + self.conv_hiddens._params + self.conv_loglayer._params
+        self.siamese_pramas = self.conv._praams + self.conv_hiddens._params + self.mlp._params
 
-    def errors(self, x, y):
-        return tensor.mean(tensor.neq(self.mlp.predict_y(x), y))
+
+
+    def conv_encode(self, inputs):
+        return self.conv(inputs).flatten(2)
+
+    def conv_hiddens_encode(self, inputs):
+        return self.conv_hiddens.encode(self.conv_encode(inputs))
+
+    def test_conv_hiddens_encode(self, inputs):
+        return self.conv_hiddens.test_encode(self.conv_encode(inputs))
+
+    def conv_cross_entropy(self, x, y):
+        h = self.conv_loglayer.encode(self.conv_hiddens_encode(x))
+        h_ = tensor.switch(tensor.lt(h, 0.00000001), -10, tensor.log(h))
+        h_1 = tensor.switch(tensor.lt(1-h, 0.00000001), -10, tensor.log(1-h))
+        return -(y * h_ + (1-y)*h_1).sum(axis=1).mean()
+
+    def conv_errors(self, x, y):
+        y_pred = tensor.argmax(self.conv_loglayer.test_encod(self.test_conv_hiddens_encode), axis =1)
+        return tensor.mean(tensor.neq(y[tensor.arange(y.shape[0]), y_pred], tensor.ones_like(y_pred)))
+
+    def siamese_encode(self):
+        h1 = self.test_conv_hiddens_encode(self.inputs)
+        h2 = self.test_conv_hiddens_encode(self.inputs_p)
+        return h1 - h2
+
+    def siamese_negative_log_likelihood(self, y):
+        h = siamese_encode()
+        return -tensor.mean(tensor.log(self.mlp.p_y_given_x(h))[tensor.arange(y.shape[0]), y])
+
+    def siamese_errors(self, y):
+        h = siamese_encode()
+        return tensor.mean(tensor.neq(self.mlp.predict_y(h), y))
 
     def __call__(self):
-        return self.mlp.p_y_given_x(self.inputs)
+        h = self.siamese_encode()
+        return self.mlp.p_y_given_x(h)
 
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
@@ -281,17 +306,17 @@ class SiameseMix(object):
             momentum = tensor.scalar('momentum')
 
         ## siamese
-        cost = self.negative_log_likelihood(self.inputs, self.y)
-        gparams = tensor.grad(cost, self._params)
-        errors = self.errors(self.inputs, self.y)
+        cost = self.siamese_negative_log_likelihood(self.y)
+        gparams = tensor.grad(cost, self.siamese_pramas)
+        errors = self.siamese_errors(self.y)
 
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:
-            for param, gparam in zip(self._params, gparams):
+            for param, gparam in zip(self.siamese_params, gparams):
                 updates[param] = param - gparam * learning_rate
         else:
-            for param, gparam in zip(self._params, gparams):
+            for param, gparam in zip(self.siamese_params, gparams):
                 inc = sharedX(param.get_value() * 0.)
                 updated_inc = momentum * inc - learning_rate * gparam
                 updates[inc] = updated_inc
@@ -299,18 +324,18 @@ class SiameseMix(object):
 
 
         ## conv
-        conv_cost = self.conv.cross_entropy(self.conv.input, self.conv.y)
-        conv_cost += coeffs['conv_w_l1'] * self.conv.w_l1 + coeffs['conv_w_l2'] * self.conv.w_l2
-        conv_gparams = tensor.grad(conv_cost, self.conv._params)
-        conv_errors = self.conv.errors(self.conv.input, self.conv.y)
+        conv_cost = self.conv_cross_entropy(self.inputs, self.y_)
+        #conv_cost += coeffs['conv_w_l1'] * self.conv.w_l1 + coeffs['conv_w_l2'] * self.conv.w_l2
+        conv_gparams = tensor.grad(conv_cost, self.conv_params)
+        conv_errors = self.conv.errors(self.inputs, self.y_)
 
         # compute list of fine-tuning updates
         conv_updates = {}
         if momentum is None:
-            for param, gparam in zip(self.conv._params, conv_gparams):
+            for param, gparam in zip(self.conv_params, conv_gparams):
                 conv_updates[param] = param - gparam * learning_rate
         else:
-            for param, gparam in zip(self.conv._params, conv_gparams):
+            for param, gparam in zip(self.conv_params, conv_gparams):
                 inc = sharedX(param.get_value() * 0.)
                 updated_inc = momentum * inc - learning_rate * gparam
                 conv_updates[inc] = updated_inc
