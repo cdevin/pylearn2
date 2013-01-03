@@ -80,7 +80,48 @@ def make_data(which, fold, include_neutral = False, seed = 2322):
     serial.save(output_dir + '/{}.pkl'.format(which), data_emot)
 
 
+def make_all(shuffle = True, seed = 2322, rng = None):
+
+    DATA_PATH = get_data_path()
+    data_dir = DATA_PATH + "faces/TFD"
+    output_dir = data_dir + '/siamese/all'
+    serial.mkdir( output_dir )
+
+    train = serial.load(data_dir + '/siamese/0/train.pkl')
+    train_neutral = serial.load(data_dir + '/siamese/0/train_neutral.pkl')
+    valid = serial.load(data_dir + '/siamese/0/valid.pkl')
+    valid_neutral = serial.load(data_dir + '/siamese/0/valid_neutral.pkl')
+    test = serial.load(data_dir + '/siamese/0/test.pkl')
+    test_neutral = serial.load(data_dir + '/siamese/0/test_neutral.pkl')
+
+    # merge data
+    data = train
+    data.X = numpy.vstack([train.X, valid.X, test.X])
+    data.y = numpy.concatenate([train.y, valid.y, test.y])
+
+    data_neutral = train_neutral
+    data_neutral.X = numpy.vstack([train_neutral.X, valid_neutral.X, test_neutral.X])
+    data_neutral.y = numpy.concatenate([train_neutral.y, valid_neutral.y, test_neutral.y])
+
+    #shuffle
+    if shuffle:
+        rng = rng if rng else numpy.random.RandomState(seed)
+        rand_idx = rng.permutation(data.X.shape[0])
+        data.X = data.X[rand_idx]
+        data_neutral.X = data_neutral.X[rand_idx]
+        data.y = data.y[rand_idx]
+        data_neutral.y = data_neutral.y[rand_idx]
+
+    #save
+    data.use_design_loc(output_dir + '/train.npy')
+    serial.save(output_dir + '/train.pkl', data)
+    data_neutral.use_design_loc(output_dir + '/train_neutral.npy')
+    serial.save(output_dir + '/train_neutral.pkl', data_neutral)
+
+
+
 if __name__ == "__main__":
-    make_data('train', 0, include_neutral = True)
-    make_data('valid', 0, include_neutral = True)
-    make_data('test', 0, include_neutral = True)
+    #make_data('train', 0, include_neutral = True)
+    #make_data('valid', 0, include_neutral = True)
+    #make_data('test', 0, include_neutral = True)
+    make_all()

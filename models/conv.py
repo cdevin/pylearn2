@@ -462,7 +462,7 @@ class LeNetLearnerMultiCategory(object):
 
 
     def cross_entropy(self, x, y):
-        h = self.encode(x)
+        h = self.p_y_given_x(x)
         h_ = tensor.switch(tensor.lt(h, 0.00000001), -10, tensor.log(h))
         h_1 = tensor.switch(tensor.lt(1-h, 0.00000001), -10, tensor.log(1-h))
         return - (y * h_ + (1-y)*h_1).sum(axis=1).mean()
@@ -471,17 +471,26 @@ class LeNetLearnerMultiCategory(object):
         return self.conv(inputs).flatten(2)
 
     def encode(self, inputs):
-        return self.loglayer.encode(self.hiddens.encode(self.conv_encode(inputs)))
+        return self.hiddens.encode(self.conv_encode(inputs))
 
     def test_encode(self, inputs):
-        return self.loglayer.test_encode(self.hiddens.test_encode(self.conv_encode(inputs)))
+        return self.hiddens.test_encode(self.conv_encode(inputs))
+
+    def p_y_given_x(self, inputs):
+        return self.loglayer.encode(self.encode(inputs))
+
+    def p_y_given_x_test(self, inputs):
+        return self.loglayer.test_encode(self.test_encode(inputs))
 
     def y_pred(self, inputs):
-        return tensor.argmax(self.test_encode(inputs), axis=1)
+        return tensor.argmax(self.p_y_given_x_test(inputs), axis=1)
 
     def errors(self, inputs, y):
         y_pred = self.y_pred(inputs)
         return tensor.mean(tensor.neq(y[tensor.arange(y.shape[0]), y_pred], tensor.ones_like(y_pred)))
+
+    def __call__(self, inputs):
+        return self.test_encode(inputs)
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
 

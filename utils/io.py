@@ -140,6 +140,32 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_p = shared_dataset(test_x_p, test_y_p)
 
         return train, train_p, valid, valid_p, test, test_p
+    elif dataset == 'google_siamese':
+        train_set = serial.load(data_path[0] + 'train.pkl')
+        train_set_p = serial.load(data_path[0] + 'train_neutral.pkl')
+        train_x = train_set.X
+        train_x_p = train_set_p.X
+        train_y = train_set.y
+        train_y_p = train_set_p.y
+
+        train_siamese = shared_dataset(train_x, train_y)
+        train_p = shared_dataset(train_x_p, train_y_p)
+
+        train_set = serial.load(data_path[1] + 'train.pkl')
+        valid_set = serial.load(data_path[1] + 'valid.pkl')
+        test_set = serial.load(data_path[1] + 'test.pkl')
+        train_x = train_set.X
+        train_y = train_set.y
+        valid_x = valid_set.X
+        valid_y = valid_set.y
+        test_x = test_set.X
+        test_y = test_set.y
+
+        train = shared_dataset(train_x, train_y, cast_int = False)
+        valid = shared_dataset(valid_x, valid_y, cast_int = False)
+        test = shared_dataset(test_x, test_y, cast_int = False)
+
+        return (train_siamese, train_p), (train, valid, test)
 
     else:
         raise NameError('Unknown dataset: {}'.format(dataset))

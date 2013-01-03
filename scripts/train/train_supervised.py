@@ -4,10 +4,10 @@ import argparse
 from jobman.tools import DD
 from utils.config import get_data_path, get_result_path
 from noisy_encoder.utils.io import load_data
-from noisy_encoder.training_algorithms.sgd import sgd
+from noisy_encoder.training_algorithms.sgd import sgd, sgd_mix
 #from noisy_encoder.models.mlp import MLP
 from noisy_encoder.models.conv import LeNetLearner, LeNetLearnerMultiCategory
-from noisy_encoder.models.siamese import Siamese, SiameseVariant
+from noisy_encoder.models.siamese import Siamese, SiameseVariant, SiameseMix
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from theano.tensor.shared_randomstreams import RandomStreams
 
@@ -73,6 +73,20 @@ def load_model(state, numpy_rng, theano_rng):
                 irange = state.irange,
                 bias_init = state.bias_init,
                 rng = numpy_rng)
+    elif state.model == 'google_siamese':
+        return SiameseMix(numpy_rng = numpy_rng,
+                theano_rng = theano_rng,
+                image_topo = state.image_topo,
+                base_model = state.base_model,
+                n_units = state.n_units,
+                input_corruption_levels = state.input_corruption_levels,
+                hidden_corruption_levels = state.hidden_corruption_levels,
+                n_outs = state.nouts,
+                act_enc = state.act_enc,
+                irange = state.irange,
+                bias_init = state.bias_init,
+                method = state.method,
+                fine_tune = state.fine_tune)
     elif state.model == 'siamese':
         return Siamese(numpy_rng = numpy_rng,
                 theano_rng = theano_rng,
@@ -117,7 +131,11 @@ def experiment(state, channel):
                         state.norm,
                         state.fold)
     model = load_model(state, numpy_rng, theano_rng)
-    state.test_score, state.valid_score = sgd(model = model,
+    if state.train_alg == "sgd":
+        train_alg = sgd
+    else:
+        train_alg = sgd_mix
+    state.test_score, state.valid_score = train_alg(model = model,
                                 datasets = datasets,
                                 learning_rate_init = state.lr,
                                 training_epochs = state.nepochs,
@@ -341,6 +359,7 @@ def google_conv_experiment():
     state.scale = False
     state.norm = False
     state.shuffle = False
+    state.train_alg = 'sgd'
     state.nepochs = 1000
     state.lr = 0.005
     state.lr_shrink_time = 70
@@ -452,7 +471,7 @@ def siamese_variant_experiment():
     state.method = 'diff'
     state.fine_tune = False
     #state.base_model = os.path.join(RESULT_PATH, "models/tfd_conv/{}.pkl".format(state.fold))
-    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000]
     state.input_corruption_levels = [None, None, None]
@@ -464,12 +483,58 @@ def siamese_variant_experiment():
 
     experiment(state, None)
 
+def google_siamese_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'google_siamese'
+    state.fold = 0
+    state.data_path = [os.path.join(DATA_PATH, "faces/TFD/siamese/all/"),
+            os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")]
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.train_alg = 'sgd_mix'
+    state.nepochs = 1000
+    state.lr = 0.01
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 10
+    state.w_l1_ratio = 0.0000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 10
+    state.save_name = os.path.join(RESULT_PATH, "naenc/google/siamese.pkl")
+    state.coeffs = {'conv_w_l1' : 0.0, 'conv_w_l2' : 0.0}
+
+    # model params
+    state.model = 'google_siamese'
+    state.method = 'diff'
+    state.fine_tune = False
+    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_gpu.pkl")
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [1000, 500]
+    state.input_corruption_levels = [None, None, None]
+    state.hidden_corruption_levels = [0.5, 0.5, 0.5]
+    state.nouts = 6
+    state.act_enc = "rectifier"
+    state.irange = 0.1
+    state.bias_init = 0.1
+
+    experiment(state, None)
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
         'cifar100', 'timit', 'tfd', 'tfd_new_conv', 'siamese', 'siamese_variant',
-        'conv_google'], required = True)
+        'conv_google', 'siamese_google'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
@@ -490,3 +555,5 @@ if __name__ == "__main__":
         tfd_newconv_experiment()
     elif args.dataset == 'conv_google':
         google_conv_experiment()
+    elif args.dataset == 'siamese_google':
+        google_siamese_experiment()
