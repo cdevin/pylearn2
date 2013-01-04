@@ -717,6 +717,66 @@ def conv_google():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def conv_tfd_lisa_aug():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.train_alg = "sgd"
+    state.nepochs = 700
+    state.lr = 0.005
+    state.lr_shrink_time = 70
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 40
+    state.momentum_inc_end = 80
+    state.batch_size = 20
+    state.w_l1_ratio = 0.000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 50
+    state.save_name = "conv_gpu.pkl"
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0.0}
+
+    # model params
+    state.model = 'new_conv'
+    state.image_shape = [48, 48]
+    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
+    state.nchannels = [1, 60, 80, 100]
+    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
+    state.conv_act = "rectifier"
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
+    state.mlp_nunits = [1000, 500]
+    state.n_outs = 7
+    state.bias_init = 0.1
+    state.irange = 0.1
+    state.description = "tfd augment train, lisa test"
+
+
+    ind = 0
+    TABLE_NAME = "conv_tfd_aug_lisa"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.005, 0.0005]:
+        for l1 in [0.0, 0.000001]:
+            for l2 in [0.0, 0.000001]:
+                state.coeffs['w_l1'] = l1
+                state.coeffs['w_l2'] = l2
+                state.lr = lr
+                sql.insert_job(mlp_experiment, flatten(state), db)
+                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 if __name__ == "__main__":
@@ -726,7 +786,7 @@ if __name__ == "__main__":
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
                     'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd', 'siamese_variant_tfd',
-                    'conv_google'])
+                    'conv_google', 'tfd_lisa'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -761,6 +821,8 @@ if __name__ == "__main__":
         siamese_variant_tfd()
     elif args.task == "conv_google":
         conv_google()
+    elif args.task == "tfd_lisa":
+        conv_tfd_lisa_aug()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

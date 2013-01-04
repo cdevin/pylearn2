@@ -288,6 +288,12 @@ class LeNetLearner(object):
         self.input_space = self.conv.input_space
         self._params = self.conv._params + self.mlp._params
 
+        self.w_l1 = tensor.sum([abs(item.weights).sum() for item in \
+                self.mlp.hiddens.layers]) + abs(self.mlp.log_layer.W).sum()
+        self.w_l2 = tensor.sum([(item.weights ** 2).sum() for item in \
+                self.mlp.hiddens.layers]) + (self.mlp.log_layer.W ** 2).sum()
+
+
     def conv_encode(self, inputs):
         return self.conv(inputs).flatten(2)
 
@@ -324,8 +330,8 @@ class LeNetLearner(object):
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        w_l1 = tensor.abs_(self.mlp.hiddens.layers[-1].weights).mean() * coeffs['w_l1']
-        cost = self.negative_log_likelihood(self.input, self.y) + w_l1
+        cost = self.negative_log_likelihood(self.input, self.y)
+        cost += coeffs['w_l1'] * self.w_l1 + coeffs['w_l2'] * self.w_l2
         gparams = tensor.grad(cost, self._params)
         errors = self.errors(self.input, self.y)
         # compute list of fine-tuning updates

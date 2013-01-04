@@ -310,11 +310,12 @@ def tfd_newconv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
-    #state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")
+    #state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
+    state.train_alg = "sgd"
     state.nepochs = 1000
     state.lr = 0.005
     state.lr_shrink_time = 70
@@ -328,8 +329,8 @@ def tfd_newconv_experiment():
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 50
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/conv_gpu.pkl")
-    state.coeffs = {'w_l1' : 0.0}
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_gpu.pkl")
+    state.coeffs = {'w_l1' : 0e-06, 'w_l2' : 0e-06}
 
     # model params
     state.model = 'new_conv'
@@ -355,7 +356,7 @@ def google_conv_experiment():
     # train params
     state.dataset = 'google'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa_aug/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -373,7 +374,7 @@ def google_conv_experiment():
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 50
-    state.save_name = os.path.join(RESULT_PATH, "naenc/google/conv_gpu.pkl")
+    state.save_name = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
     state.coeffs = {'w_l1' : 1e-06, 'w_l2' : 1e-06}
 
     # model params

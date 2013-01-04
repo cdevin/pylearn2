@@ -19,9 +19,6 @@ def shared_dataset(data_x, data_y, borrow = True, cast_int = True):
         shared_y = tensor.cast(shared_y, 'int32')
     return shared_x, shared_y
 
-
-
-
 def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, fold = 0):
 
     print "Loading data..."
