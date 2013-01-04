@@ -168,8 +168,8 @@ def sgd_mix(model,
     train_set_x, train_set_y = datasets[0][0]
 
     # compute number of minibatches for training, validation and testing
-    n_train_batches_0 = datasets[0][0][0].get_value(borrow=True).shape[0] / batch_size
-    n_train_batches_1 = datasets[0][1][0].get_value(borrow=True).shape[0] / batch_size
+    n_train_batches_0 = datasets[1][0][0].get_value(borrow=True).shape[0] / batch_size
+    n_train_batches_1 = datasets[0][0][0].get_value(borrow=True).shape[0] / batch_size
 
     # get the training, validation and testing function for the model
     print '... getting the training functions'
@@ -181,7 +181,7 @@ def sgd_mix(model,
 
     print '... training the model'
     # early-stopping parameters
-    patience = 5
+    patience = 20
     patience_increase = 2
     improvement_threshold = 0.995
     validation_frequency = 1
@@ -200,9 +200,11 @@ def sgd_mix(model,
     while (epoch < training_epochs) and (not done_looping):
         # Adjust learning rate
         if epoch > lr_shrink_time:
-            learning_rate = learning_rate_init / (1. + lr_dc_rate * epoch)
+            learning_rate_0 = learning_rate_init[0] / (1. + lr_dc_rate * epoch)
+            learning_rate_1 = learning_rate_init[1] / (1. + lr_dc_rate * epoch)
         else:
-            learning_rate = learning_rate_init
+            learning_rate_0 = learning_rate_init[0]
+            learning_rate_1 = learning_rate_init[1]
         # Adjust Momentum
         if epoch < momentum_inc_start:
             momentum = init_momentum
@@ -215,7 +217,7 @@ def sgd_mix(model,
         cost_0 = []
         train_score_0 = []
         for minibatch_index in xrange(n_train_batches_0):
-            cost, train_score = train_fn_0(minibatch_index, learning_rate, momentum)
+            cost, train_score = train_fn_0(minibatch_index, learning_rate_0, momentum)
             if numpy.isnan(cost):
                 done_looping = True
                 break
@@ -224,20 +226,18 @@ def sgd_mix(model,
         cost_0 = numpy.mean(cost_0)
         train_score_0 = numpy.mean(train_score_0)
 
-        ## second train
-        #cost_1 = []
-        #train_score_1 = []
-        #for minibatch_index in xrange(n_train_batches_1):
-            #cost, train_score = train_fn_1(minibatch_index, learning_rate, momentum)
-            #if numpy.isnan(cost):
-                #done_looping = True
-                #break
-            #cost_1.append(cost)
-            #train_score_1.append(train_score)
-        #cost_1 = numpy.mean(cost_1)
-        #train_score_1 = numpy.mean(train_score_1)
-        cost_1 = 0
-        train_score_1 = 0
+        # second train
+        cost_1 = []
+        train_score_1 = []
+        for minibatch_index in xrange(n_train_batches_1):
+            cost, train_score = train_fn_1(minibatch_index, learning_rate_1, momentum)
+            if numpy.isnan(cost):
+                done_looping = True
+                break
+            cost_1.append(cost)
+            train_score_1.append(train_score)
+        cost_1 = numpy.mean(cost_1)
+        train_score_1 = numpy.mean(train_score_1)
 
         if (epoch + 1) % validation_frequency == 0:
             validation_losses = validate_model()

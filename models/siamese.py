@@ -199,6 +199,8 @@ class SiameseMix(object):
         self.x_p = tensor.matrix('x_p')
         self.y = tensor.ivector('y')
         self.y_ = tensor.matrix('y')
+        self.inputs = self.x.reshape(image_topo)
+        self.inputs_p = self.x_p.reshape(image_topo)
 
 
         # make corruptors:
@@ -220,16 +222,10 @@ class SiameseMix(object):
 
         # load base model
         base_model = serial.load(base_model)
-
         self.conv = base_model.conv
-        self.conv_hideens = base_model.hiddens
+        self.conv_hiddens = base_model.hiddens
         self.conv_loglayer = base_model.loglayer
 
-        self._params = self.conv.conv._params
-        self._params.extend(self.conv.hiddens._params)
-
-        self.inputs = self.x.reshape(image_topo)
-        self.inputs_p = self.x_p.reshape(image_topo)
 
         self.mlp = DropOutMLP(input_corruptors = input_corruptors,
                             hidden_corruptors = hidden_corruptors,
@@ -240,11 +236,13 @@ class SiameseMix(object):
                             bias_init = bias_init)
 
 
+        self.conv_params = self.conv._params + self.conv_hiddens._params + self.conv_loglayer._params
+        self.siamese_params = self.conv._params + self.conv_hiddens._params + self.mlp._params
 
-        self.conv_prams = self.conv._params + self.conv_hiddens._params + self.conv_loglayer._params
-        self.siamese_pramas = self.conv._praams + self.conv_hiddens._params + self.mlp._params
-
-
+        self.conv_wl1 = tensor.sum([abs(item.weights).sum() for item in \
+                self.conv_hiddens.layers]) + abs(self.conv_loglayer.layers[0].weights).sum()
+        self.conv_wl2 = tensor.sum([(item.weights ** 2).sum() for item in \
+                self.conv_hiddens.layers]) + (self.conv_loglayer.layers[0].weights ** 2).sum()
 
     def conv_encode(self, inputs):
         return self.conv(inputs).flatten(2)
@@ -262,7 +260,7 @@ class SiameseMix(object):
         return -(y * h_ + (1-y)*h_1).sum(axis=1).mean()
 
     def conv_errors(self, x, y):
-        y_pred = tensor.argmax(self.conv_loglayer.test_encod(self.test_conv_hiddens_encode), axis =1)
+        y_pred = tensor.argmax(self.conv_loglayer.test_encode(self.test_conv_hiddens_encode(x)), axis =1)
         return tensor.mean(tensor.neq(y[tensor.arange(y.shape[0]), y_pred], tensor.ones_like(y_pred)))
 
     def siamese_encode(self):
@@ -271,11 +269,11 @@ class SiameseMix(object):
         return h1 - h2
 
     def siamese_negative_log_likelihood(self, y):
-        h = siamese_encode()
+        h = self.siamese_encode()
         return -tensor.mean(tensor.log(self.mlp.p_y_given_x(h))[tensor.arange(y.shape[0]), y])
 
     def siamese_errors(self, y):
-        h = siamese_encode()
+        h = self.siamese_encode()
         return tensor.mean(tensor.neq(self.mlp.predict_y(h), y))
 
     def __call__(self):
@@ -307,7 +305,7 @@ class SiameseMix(object):
 
         ## siamese
         cost = self.siamese_negative_log_likelihood(self.y)
-        gparams = tensor.grad(cost, self.siamese_pramas)
+        gparams = tensor.grad(cost, self.siamese_params)
         errors = self.siamese_errors(self.y)
 
         # compute list of fine-tuning updates
@@ -317,17 +315,17 @@ class SiameseMix(object):
                 updates[param] = param - gparam * learning_rate
         else:
             for param, gparam in zip(self.siamese_params, gparams):
-                inc = sharedX(param.get_value() * 0.)
-                updated_inc = momentum * inc - learning_rate * gparam
-                updates[inc] = updated_inc
+                inc_s = sharedX(param.get_value() * 0.)
+                updated_inc = momentum * inc_s - learning_rate * gparam
+                updates[inc_s] = updated_inc
                 updates[param] = param + updated_inc
 
 
         ## conv
         conv_cost = self.conv_cross_entropy(self.inputs, self.y_)
-        #conv_cost += coeffs['conv_w_l1'] * self.conv.w_l1 + coeffs['conv_w_l2'] * self.conv.w_l2
+        conv_cost += coeffs['conv_w_l1'] * self.conv_wl1 + coeffs['conv_w_l2'] * self.conv_wl2
         conv_gparams = tensor.grad(conv_cost, self.conv_params)
-        conv_errors = self.conv.errors(self.inputs, self.y_)
+        conv_errors = self.conv_errors(self.inputs, self.y_)
 
         # compute list of fine-tuning updates
         conv_updates = {}
@@ -336,9 +334,9 @@ class SiameseMix(object):
                 conv_updates[param] = param - gparam * learning_rate
         else:
             for param, gparam in zip(self.conv_params, conv_gparams):
-                inc = sharedX(param.get_value() * 0.)
-                updated_inc = momentum * inc - learning_rate * gparam
-                conv_updates[inc] = updated_inc
+                inc_c = sharedX(param.get_value() * 0.)
+                updated_inc = momentum * inc_c - learning_rate * gparam
+                conv_updates[inc_c] = updated_inc
                 conv_updates[param] = param + updated_inc
 
 
@@ -362,24 +360,24 @@ class SiameseMix(object):
               outputs=[conv_cost, conv_errors],
               updates=conv_updates,
               givens={
-                self.conv.x: conv_train_set_x[index * batch_size:
+                self.x: conv_train_set_x[index * batch_size:
                                     (index + 1) * batch_size],
-                self.conv.y: conv_train_set_y[index * batch_size:
+                self.y_: conv_train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
 
         test_score_i = theano.function([index], conv_errors,
                  givens={
-                   self.conv.x: conv_test_set_x[index * batch_size:
+                   self.x: conv_test_set_x[index * batch_size:
                                       (index + 1) * batch_size],
-                   self.conv.y: conv_test_set_y[index * batch_size:
+                   self.y_: conv_test_set_y[index * batch_size:
                                       (index + 1) * batch_size]})
 
         valid_score_i = theano.function([index], conv_errors,
               givens={
-                 self.conv.x: conv_valid_set_x[index * batch_size:
+                 self.x: conv_valid_set_x[index * batch_size:
                                      (index + 1) * batch_size],
-                 self.conv.y: conv_valid_set_y[index * batch_size:
+                 self.y_: conv_valid_set_y[index * batch_size:
                                      (index + 1) * batch_size]})
 
         # for now valid and test score and conv path on lisa dataset
@@ -389,7 +387,7 @@ class SiameseMix(object):
         def test_score():
             return [test_score_i(i) for i in xrange(conv_test_set_x.get_value(borrow = True).shape[0] / batch_size)]
 
-        return train_fn_siamese, train_fn_conv, valid_score, test_score
+        return train_fn_conv, train_fn_siamese, valid_score, test_score
 
 class SiameseVariant(object):
 

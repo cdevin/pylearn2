@@ -286,7 +286,7 @@ class LeNetLearner(object):
 
 
         self.input_space = self.conv.input_space
-        self._params = self.conv._params
+        self._params = self.conv._params + self.mlp._params
 
     def conv_encode(self, inputs):
         return self.conv(inputs).flatten(2)
@@ -399,6 +399,7 @@ class LeNetLearnerMultiCategory(object):
 
         self.x = tensor.matrix('x')
         self.y = tensor.matrix('y')
+        self._params = []
 
         # make corruptors:
         mlp_input_corruptors = []
@@ -429,7 +430,7 @@ class LeNetLearnerMultiCategory(object):
                     bias_init = bias_init,
                     rng=rng)
         self.input_space = self.conv.input_space
-        self._params = self.conv._params
+        self._params.extend(self.conv._params)
 
         mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.nchannels)
         self.hiddens = DeepDropOutHiddenLayer(
