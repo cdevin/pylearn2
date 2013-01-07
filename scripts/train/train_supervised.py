@@ -492,7 +492,7 @@ def google_siamese_experiment():
     state.dataset = 'google_siamese'
     state.fold = 0
     state.data_path = [os.path.join(DATA_PATH, "faces/TFD/siamese/all/"),
-            os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")]
+            os.path.join(DATA_PATH, "faces/google_tfd_lisa_aug/pylearn2/")]
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -506,7 +506,7 @@ def google_siamese_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 10
+    state.batch_size = 20
     state.w_l1_ratio = 0.0000
     state.act_l1_ratio = 0.0
     state.save_frequency = 10
@@ -517,7 +517,7 @@ def google_siamese_experiment():
     state.model = 'google_siamese'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [1000, 500]
     state.input_corruption_levels = [None, None, None]
