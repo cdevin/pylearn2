@@ -21,6 +21,7 @@ class DropOutMLP(Block, Model):
         if act_enc == "rectifier":
             act_enc = rectifier
 
+        self._params = []
         self.hiddens = DeepDropOutHiddenLayer(input_corruptors = input_corruptors,
                                         hidden_corruptors = hidden_corruptors,
                                         n_units = n_units,
@@ -29,7 +30,7 @@ class DropOutMLP(Block, Model):
                                         bias_init = bias_init,
                                         rng = rng)
 
-        self._params = self.hiddens._params
+        self._params.extend(self.hiddens._params)
         self.weights = self.hiddens.weights
 
         # We now need to add a logistic layer on top of the MLP

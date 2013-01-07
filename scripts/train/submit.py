@@ -777,6 +777,123 @@ def conv_tfd_lisa_aug():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def google_siamese_mix():
+    state = DD()
+
+    # train params
+    state.dataset = 'google_siamese'
+    state.fold = 0
+    state.data_path = [os.path.join(DATA_PATH, "faces/TFD/siamese/all/"),
+            os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")]
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.train_alg = 'sgd_mix'
+    state.nepochs = 1000
+    state.lr = [0.005, 0.005]
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 10
+    state.w_l1_ratio = 0.0000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 10
+    state.save_name = "siamese_gpu.pkl"
+    state.coeffs = {'conv_w_l1' : 0.0, 'conv_w_l2' : 0.000001}
+
+    # model params
+    state.model = 'google_siamese'
+    state.method = 'diff'
+    state.fine_tune = False
+    state.base_model = os.path.join(RESULT_PATH, "best/google/conv_gpu.pkl")
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [1000, 500]
+    state.input_corruption_levels = [None, None, None]
+    state.hidden_corruption_levels = [0.5, 0.0]
+    state.nouts = 7
+    state.act_enc = "sigmoid"
+    state.irange = 0.1
+    state.bias_init = 0.1
+
+    ind = 0
+    TABLE_NAME = "google_siamese_mix"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.005, 0.0005]:
+        for cor in [0.0, 0.5]:
+            for l2 in [0.0, 0.000001]:
+                state.mlp_hidden_corruption_levels = [0.5, cor]
+                state.coeffs['w_l2'] = l2
+                state.lr = lr
+                sql.insert_job(mlp_experiment, flatten(state), db)
+                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
+
+
+def tfd_siamese_mix()
+    state = DD()
+
+    # train params
+    state.dataset = 'tfd_siamese_mix'
+    state.fold = 0
+    state.data_path = [os.path.join(DATA_PATH, "faces/TFD/siamese/all/"),
+            os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")]
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.train_alg = 'sgd_mix'
+    state.nepochs = 1000
+    state.lr = [0.005, 0.005]
+    state.lr_shrink_time = 100
+    state.lr_dc_rate = 0.01
+    state.enable_momentum = True
+    state.init_momentum = 0.5
+    state.final_momentum = 0.9
+    state.momentum_inc_start = 30
+    state.momentum_inc_end = 70
+    state.batch_size = 20
+    state.w_l1_ratio = 0.0000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 10
+    state.save_name = "siamese_mix.pkl"
+    state.coeffs = {'conv_w_l1' : 0.0, 'conv_w_l2' : 0.000001}
+
+    # model params
+    state.model = 'tfd_siamese_mix'
+    state.method = 'diff'
+    state.fine_tune = False
+    state.base_model = os.path.join(RESULT_PATH, "best/tfd/conv_gpu.pkl")
+    state.image_topo = (state.batch_size, 48, 48, 1)
+    state.n_units = [500, 1000,500]
+    state.input_corruption_levels = [None, None, None]
+    state.hidden_corruption_levels = [0.5, 0.0, 0.0]
+    state.nouts = 7
+    state.act_enc = "sigmoid"
+    state.irange = 0.1
+    state.bias_init = 0.1
+
+    ind = 0
+    TABLE_NAME = "tfd_siamese_mix"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.01, 0.005, 0.0005]:
+        for cor in [0.0, 0.5]:
+            for l2 in [0.0, 0.000001]:
+                state.mlp_hidden_corruption_levels = [0.5, cor]
+                state.coeffs['w_l2'] = l2
+                state.lr = lr
+                sql.insert_job(mlp_experiment, flatten(state), db)
+                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 if __name__ == "__main__":
