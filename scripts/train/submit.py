@@ -809,11 +809,11 @@ def google_siamese_mix():
     state.model = 'google_siamese'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "best/google/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/best/google/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [1000, 500]
     state.input_corruption_levels = [None, None, None]
-    state.hidden_corruption_levels = [0.5, 0.0]
+    state.hidden_corruption_levels = [0.5, 0.5]
     state.nouts = 7
     state.act_enc = "sigmoid"
     state.irange = 0.1
@@ -822,22 +822,16 @@ def google_siamese_mix():
     ind = 0
     TABLE_NAME = "google_siamese_mix"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.005, 0.0005]:
-        for cor in [0.0, 0.5]:
-            for l2 in [0.0, 0.000001]:
-                state.mlp_hidden_corruption_levels = [0.5, cor]
-                state.coeffs['w_l2'] = l2
-                state.lr = lr
-                sql.insert_job(mlp_experiment, flatten(state), db)
-                ind += 1
+    for lr1 in [0.01, 0.005, 0.0005]:
+        for lr2 in [0.01, 0.005, 0.0005]:
+            state.lr = [lr1, lr2]
+            sql.insert_job(mlp_experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-
-
-
-def tfd_siamese_mix()
+def tfd_siamese_mix():
     state = DD()
 
     # train params
@@ -869,11 +863,11 @@ def tfd_siamese_mix()
     state.model = 'tfd_siamese_mix'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "best/tfd/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/best/tfd/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000,500]
     state.input_corruption_levels = [None, None, None]
-    state.hidden_corruption_levels = [0.5, 0.0, 0.0]
+    state.hidden_corruption_levels = [0.5, 0.5, 0.0]
     state.nouts = 7
     state.act_enc = "sigmoid"
     state.irange = 0.1
@@ -882,14 +876,11 @@ def tfd_siamese_mix()
     ind = 0
     TABLE_NAME = "tfd_siamese_mix"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.005, 0.0005]:
-        for cor in [0.0, 0.5]:
-            for l2 in [0.0, 0.000001]:
-                state.mlp_hidden_corruption_levels = [0.5, cor]
-                state.coeffs['w_l2'] = l2
-                state.lr = lr
-                sql.insert_job(mlp_experiment, flatten(state), db)
-                ind += 1
+    for lr1 in [0.01, 0.005, 0.0005]:
+        for lr2 in [0.01, 0.005, 0.0005]:
+            state.lr = [lr1, lr2]
+            sql.insert_job(mlp_experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
@@ -903,7 +894,7 @@ if __name__ == "__main__":
                     'layer1_cifar', 'classify_cifar', 'classify_mnist_l2_svm', 'mlp_timit',
                     'classify_cifar_l1_svm', 'mlp_cifar', 'mlp_cifar_g', 'mlp_cifar100',
                     'mlp_mnist', 'uns_cifar100', 'conv_tfd', 'siamese_tfd', 'siamese_variant_tfd',
-                    'conv_google', 'tfd_lisa'])
+                    'conv_google', 'tfd_lisa', 'tfd_siamese_mix', 'google_siamese_mix'])
     args = parser.parse_args()
 
     if args.task == 'layer1_mnist':
@@ -940,6 +931,10 @@ if __name__ == "__main__":
         conv_google()
     elif args.task == "tfd_lisa":
         conv_tfd_lisa_aug()
+    elif args.task == "tfd_siamese_mix":
+        tfd_siamese_mix()
+    elif args.task == "google_siamese_mix":
+        google_siamese_mix()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

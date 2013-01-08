@@ -342,7 +342,7 @@ def tfd_newconv_experiment():
     state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 5
+    state.save_frequency = 20
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
 
@@ -355,7 +355,7 @@ def tfd_newconv_experiment():
     state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
-    state.mlp_hidden_corruption_levels = [0.5, 0.5]
+    state.mlp_hidden_corruption_levels = [0.5, 0.0]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
     state.bias_init = 0.1
@@ -576,7 +576,7 @@ def tfd_siamese_mix_experiment():
     state.model = 'tfd_siamese_mix'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "best/tfd_conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/best/tfd/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000,500]
     state.input_corruption_levels = [None, None, None]

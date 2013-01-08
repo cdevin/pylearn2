@@ -468,7 +468,7 @@ class SiameseMixSingleCategory(object):
 
     def conv_cross_entropy(self, x, y):
         h = self.conv_mlp.p_y_given_x(self.conv_encode(x))
-        return -tensor.mean(tensor.log(h)[tensor.arange(y.shape[0])])
+        return -tensor.mean(tensor.log(h)[tensor.arange(y.shape[0]), y])
 
     def conv_errors(self, x, y):
         return tensor.mean(tensor.neq(self.conv_mlp.predict_y(self.conv_encode(x)), y))
