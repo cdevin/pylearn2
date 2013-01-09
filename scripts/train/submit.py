@@ -822,14 +822,11 @@ def google_siamese_mix():
     ind = 0
     TABLE_NAME = "google_siamese_mix"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.01, 0.005, 0.0005]:
-        for cor in [0.0, 0.5]:
-            for l2 in [0.0, 0.000001]:
-                state.mlp_hidden_corruption_levels = [0.5, cor]
-                state.coeffs['w_l2'] = l2
-                state.lr = lr
-                sql.insert_job(mlp_experiment, flatten(state), db)
-                ind += 1
+    for lr1 in [0.01, 0.005, 0.0005]:
+        for lr2 in [0.01, 0.005, 0.0005]:
+            state.lr = [lr1, lr2]
+            sql.insert_job(mlp_experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
