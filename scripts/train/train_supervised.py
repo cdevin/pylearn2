@@ -342,7 +342,7 @@ def tfd_newconv_experiment():
     state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 5
+    state.save_frequency = 20
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
 
@@ -355,7 +355,7 @@ def tfd_newconv_experiment():
     state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
-    state.mlp_hidden_corruption_levels = [0.5, 0.5]
+    state.mlp_hidden_corruption_levels = [0.5, 0.0]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
     state.bias_init = 0.1
@@ -506,7 +506,7 @@ def google_siamese_experiment():
     state.dataset = 'google_siamese'
     state.fold = 0
     state.data_path = [os.path.join(DATA_PATH, "faces/TFD/siamese/all/"),
-            os.path.join(DATA_PATH, "faces/google_tfd_lisa/pylearn2/")]
+            os.path.join(DATA_PATH, "faces/google_tfd_lisa_aug/pylearn2/")]
     state.scale = False
     state.norm = False
     state.shuffle = False
@@ -520,7 +520,7 @@ def google_siamese_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 30
     state.momentum_inc_end = 70
-    state.batch_size = 10
+    state.batch_size = 20
     state.w_l1_ratio = 0.0000
     state.act_l1_ratio = 0.0
     state.save_frequency = 10
@@ -531,7 +531,7 @@ def google_siamese_experiment():
     state.model = 'google_siamese'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [1000, 500]
     state.input_corruption_levels = [None, None, None]
@@ -576,7 +576,7 @@ def tfd_siamese_mix_experiment():
     state.model = 'tfd_siamese_mix'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "best/tfd_conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/best/tfd/conv_gpu.pkl")
     state.image_topo = (state.batch_size, 48, 48, 1)
     state.n_units = [500, 1000,500]
     state.input_corruption_levels = [None, None, None]
