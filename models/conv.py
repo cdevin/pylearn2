@@ -1,79 +1,20 @@
 import numpy
 import theano
 from theano import tensor
+from theano.tensor.signal import downsample
 from theano.tensor.shared_randomstreams import RandomStreams
 from pylearn2.base import Block
 from pylearn2.models import Model
+from pylearn2.linear.conv2d import Conv2D
 from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
-#from pylearn2.linear.conv2d import Conv2D
+from pylearn2.corruption import GaussianCorruptor
 from noisy_encoder.models.mlp import DropOutMLP
 from noisy_encoder.models.dropouts import DeepDropOutHiddenLayer
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
-from pylearn2.corruption import GaussianCorruptor
-from theano.tensor.nnet.conv import conv2d
-from theano.tensor.signal import downsample
+from noisy_encoder.utils.normalize import LocalResponseNormalize
 from noisy_encoder.models.base import rectifier
 
-class Conv2D:
-    """ A temporarily solution for pylearn2.linear.conv2d.Conv2D
-    slowness problem.
-    TODO: It should be replaced by pylearn2 version after issue is resolved
-    """
-    def __init__(self,
-                filters,
-                batch_size,
-                input_space,
-                output_axes = ('b', 0, 1, 'c'),
-                subsample = (1, 1),
-                border_mode = 'valid',
-                filters_shape = None,
-                message = ""):
-
-        self.filters = filters
-        self.input_space = input_space
-        self.output_axes = output_axes
-        self.img_shape = (batch_size, input_space.nchannels,
-                        input_space.shape[0], input_space.shape[1])
-        self.subsample = subsample
-        self.border_mode = border_mode
-        self.filters_shape = filters.get_value(borrow=True).shape
-
-
-    def lmul(self, x):
-
-        assert x.ndim == 4
-        axes = self.input_space.axes
-        assert len(axes) == 4
-
-        op_axes = ('b', 'c', 0, 1)
-
-        if tuple(axes) != op_axes:
-            x = x.dimshuffle(
-                axes.index('b'),
-                axes.index('c'),
-                axes.index(0),
-                axes.index(1))
-
-
-        conv_out = conv2d(x, self.filters,
-                        image_shape = self.img_shape,
-                        filter_shape = self.filters_shape,
-                        border_mode = self.border_mode)
-
-        rval = downsample.max_pool_2d(input = conv_out,
-                ds = self.subsample, ignore_border = True)
-
-        axes = self.output_axes
-        assert len(axes) == 4
-
-        if tuple(axes) != op_axes:
-            rval = rval.dimshuffle(
-                    op_axes.index(axes[0]),
-                    op_axes.index(axes[1]),
-                    op_axes.index(axes[2]),
-                    op_axes.index(axes[3]))
-        return rval
 
 class Conv(Block, Model):
     """ A convolution - pool block """
@@ -86,6 +27,7 @@ class Conv(Block, Model):
                     pool_shape,
                     batch_size,
                     act_enc,
+                    normalizers,
                     border_mode = 'valid',
                     irange = 0.05,
                     bias_init = 0.0,
@@ -97,6 +39,7 @@ class Conv(Block, Model):
             self.rng = rng
 
         self.nchannels_output = nchannels_output
+        self.pool_shape = pool_shape
 
         self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
         self.output_space = Conv2DSpace(shape = [(a-b+1) / c for a, b, c in \
@@ -129,6 +72,9 @@ class Conv(Block, Model):
 
         self.act_enc = _resolve_callable(locals(), 'act_enc')
 
+        assert isinstance(normalizers, list)
+        self.normalizers = normalizers
+
         # store parameters of this layer
         self._params = [self.weights, self.hidbias]
 
@@ -136,7 +82,7 @@ class Conv(Block, Model):
                 batch_size = batch_size,
                 input_space = self.input_space,
                 output_axes = self.output_space.axes,
-                subsample = pool_shape,
+                subsample = (1, 1),
                 border_mode = border_mode,
                 filters_shape = self.weights.get_value().shape, message = "")
 
@@ -152,6 +98,15 @@ class Conv(Block, Model):
     def _convolve(self, x):
         return self.transformer.lmul(x)
 
+    def _pool(self, x):
+        axes = self.output_space.axes
+        op_axes = ('b', 'c', 0, 1)
+        x = Conv2DSpace.convert(x, axes, op_axes)
+        x = downsample.max_pool_2d(input = x,
+                ds = self.pool_shape,
+                ignore_border = True)
+        return Conv2DSpace.convert(x, op_axes, axes)
+
     def _hidden_input(self, x):
         return self._convolve(x) + self.hidbias
 
@@ -162,9 +117,25 @@ class Conv(Block, Model):
             act_enc = self.act_enc
         return act_enc(self._hidden_input(x))
 
+    def _normalize(self, x):
+        if len(self.normalizers) == 0:
+            return x
+
+        axes = self.output_space.axes
+        op_axes = ('b', 'c', 0, 1)
+        x = Conv2DSpace.convert(x, axes, op_axes)
+
+        for normalizer in self.normalizers:
+            if normalizer != None:
+                x = normalizer(x)
+
+        return Conv2DSpace.convert(x, op_axes, axes)
+
     def encode(self, inputs):
         if isinstance(inputs, tensor.Variable):
-            return self._hidden_activation(inputs)
+            inputs = self._hidden_activation(inputs)
+            inputs = self._normalize(inputs)
+            return self._pool(inputs)
         else:
             return [self.encode(v) for v in inputs]
 
@@ -183,6 +154,7 @@ class LeNet(Block, Model):
                     pool_shapes,
                     batch_size,
                     conv_act,
+                    normalizer = None,
                     border_mode = 'valid',
                     irange = 0.05,
                     bias_init = 0.0,
@@ -203,6 +175,7 @@ class LeNet(Block, Model):
                     pool_shape = pool_shapes[i],
                     batch_size = batch_size,
                     act_enc = conv_act,
+                    normalizers = [normalizer[i]],
                     irange = irange,
                     bias_init = bias_init,
                     rng = rng)
@@ -233,6 +206,7 @@ class LeNetLearner(object):
                     pool_shapes,
                     batch_size,
                     conv_act,
+                    normalize_params,
                     mlp_act,
                     mlp_input_corruption_levels,
                     mlp_hidden_corruption_levels,
@@ -261,6 +235,14 @@ class LeNetLearner(object):
             else:
                 mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
 
+        # make normalizers
+        if normalize_params is None:
+            normalizers = None
+        else:
+            normalizers = []
+            for i, param in enumerate(normalize_params):
+                normalizers.extend([LocalResponseNormalize(batch_size, **param)])
+
 
         # This is the shape pylearn handles images batches
         self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
@@ -270,6 +252,7 @@ class LeNetLearner(object):
                     pool_shapes = pool_shapes,
                     batch_size = batch_size,
                     conv_act = conv_act,
+                    normalizer = normalizers,
                     border_mode = border_mode,
                     irange = irange,
                     bias_init = bias_init,

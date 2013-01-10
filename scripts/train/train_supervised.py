@@ -49,6 +49,7 @@ def load_model(state, numpy_rng, theano_rng):
                 pool_shapes = state.pool_shapes,
                 batch_size = state.batch_size,
                 conv_act = state.conv_act,
+                normalize_params = state.normalize_params,
                 mlp_act = state.mlp_act,
                 mlp_input_corruption_levels = state.mlp_input_corruption_levels,
                 mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
@@ -339,7 +340,7 @@ def tfd_newconv_experiment():
     state.final_momentum = 0.9
     state.momentum_inc_start = 40
     state.momentum_inc_end = 80
-    state.batch_size = 20
+    state.batch_size = 50
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 20
@@ -349,9 +350,12 @@ def tfd_newconv_experiment():
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
-    state.kernel_shapes = [(7,7), (4, 4), (4, 4)]
-    state.nchannels = [1, 60, 80, 100]
+    state.kernel_shapes = [(7,7), (4, 4)]
+    state.nchannels = [1, 30, 60]
     state.pool_shapes = [(2,2), (2, 2), (2, 2)]
+    state.normalize_params = [{'n': 3, 'k': 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 42, 'nkernels' : 30 },
+            {'n' : 3, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 18, 'nkernels': 60},
+            {'n' : 2, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 3, 'nkernels' : 100}]
     state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
