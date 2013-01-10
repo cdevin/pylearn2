@@ -282,7 +282,7 @@ def sgd_mix(model,
         if (epoch + 1) % save_frequency == 0:
             print "Saving the model"
             serial.save(save_name, best_model)
-            serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+            serial.save(save_name.rstrip('.pkl') + 'monitor.pkl', monitors)
 
     print "Saving the model"
     serial.save(save_name, best_model)

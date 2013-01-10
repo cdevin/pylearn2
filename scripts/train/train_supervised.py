@@ -350,16 +350,15 @@ def tfd_newconv_experiment():
     # model params
     state.model = 'new_conv'
     state.image_shape = [48, 48]
-    state.kernel_shapes = [(7,7), (4, 4)]
-    state.nchannels = [1, 30, 60]
-    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
-    state.normalize_params = [{'n': 3, 'k': 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 42, 'nkernels' : 30 },
-            {'n' : 3, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 18, 'nkernels': 60},
-            {'n' : 2, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 3, 'nkernels' : 100}]
+    state.kernel_shapes = [(7,7), (5, 5)]
+    state.nchannels = [1, 50, 60]
+    state.pool_shapes = [(3,3), (2, 2)]
+    state.normalize_params = [{'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':42, 'nkernels':50 },
+            {'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':10, 'nkernels':60}]
     state.conv_act = "rectifier"
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
-    state.mlp_hidden_corruption_levels = [0.5, 0.0]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
     state.mlp_nunits = [1000, 500]
     state.n_outs = 7
     state.bias_init = 0.1
