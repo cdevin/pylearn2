@@ -10,7 +10,7 @@ from noisy_encoder.scripts.datasets.utils import reflect, shuffle, corner_shuffl
 
 mapper = {'train' : 0, 'valid' : 1, 'test': 2}
 
-def make_data(which, seed = 2322):
+def make_data(which, seed = 2322, num_aug = 3, partition = False, partition_size = 50000):
 
     assert which in mapper.keys()
 
@@ -28,6 +28,13 @@ def make_data(which, seed = 2322):
         data.X, data.y = reflect(data.X, data.y, (data.X.shape[0], 48, 48))
         data.X, data.y = corner_shuffle(data.X, data.y, (data.X.shape[0], 48, 48), 3, rng)
         data.X, data.y = shuffle(data.X, data.y, rng)
+
+        if partition:
+            for i in xrange(data.X.shape[0]/partition_size):
+                print i
+                numpy.save(output_dir + '/{}_train_x.npy'.format(i), data.X[i * partition_size: (i+1) * partition_size])
+                numpy.save(output_dir + '/{}_train_y.npy'.format(i), data.y[i * partition_size: (i+1) * partition_size])
+            return
     else:
         data = Lisa(which, shuffle = True, one_hot = True)
 
@@ -37,6 +44,6 @@ def make_data(which, seed = 2322):
 
 
 if __name__ == "__main__":
-    make_data('train')
+    make_data('train', partition = True)
     make_data('valid')
     make_data('test')

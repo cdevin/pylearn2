@@ -4,8 +4,7 @@ import argparse
 from jobman.tools import DD
 from utils.config import get_data_path, get_result_path
 from noisy_encoder.utils.io import load_data
-from noisy_encoder.training_algorithms.sgd import sgd, sgd_mix
-#from noisy_encoder.models.mlp import MLP
+from noisy_encoder.training_algorithms.sgd import sgd, sgd_mix, sgd_large
 from noisy_encoder.models.conv import LeNetLearner, LeNetLearnerMultiCategory
 from noisy_encoder.models.siamese import Siamese, SiameseVariant, SiameseMix, SiameseMixSingleCategory
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
@@ -136,23 +135,22 @@ def experiment(state, channel):
     model = load_model(state, numpy_rng, theano_rng)
     if state.train_alg == "sgd":
         train_alg = sgd
-    else:
+    elif state.train_alg == "sgd_mix":
         train_alg = sgd_mix
+    elif state.train_alg == "sgd_large":
+        train_alg = sgd_large
+    else:
+        raise NameError("Unknown training algorithms: {}".format(train_alg))
     state.test_score, state.valid_score = train_alg(model = model,
                                 datasets = datasets,
-                                learning_rate_init = state.lr,
                                 training_epochs = state.nepochs,
                                 batch_size = state.batch_size,
                                 coeffs = state.coeffs,
-                                lr_shrink_time = state.lr_shrink_time,
-                                lr_dc_rate = state.lr_dc_rate,
+                                lr_params = state.lr_params,
                                 save_frequency = state.save_frequency,
                                 save_name = state.save_name,
                                 enable_momentum = state.enable_momentum,
-                                init_momentum = state.init_momentum,
-                                final_momentum = state.final_momentum,
-                                momentum_inc_start = state.momentum_inc_start,
-                                momentum_inc_end = state.momentum_inc_end)
+                                momentum_params = state.momentum_params)
 
     return channel.COMPLETE
 
@@ -265,7 +263,6 @@ def mnist_experiment():
 
     experiment(state, None)
 
-
 def tfd_conv_experiment():
 
     state = DD()
@@ -336,6 +333,46 @@ def google_conv_experiment():
     state.momentum_inc_start = 50
     state.momentum_inc_end = 100
     state.batch_size = 20
+    state.save_frequency = 1
+    state.save_name = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 1e-06}
+
+    # model params
+    state.model = 'google_conv'
+    state.image_shape = [48, 48]
+    state.kernel_shapes = [(7,7), (5, 5)]
+    state.nchannels = [1, 64, 64]
+    state.pool_shapes = [(3,3), (2, 2), (2, 2)]
+    state.normalize_params = [{'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':42, 'nkernels':64 },
+            {'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':10, 'nkernels':64}]
+    state.conv_act = "rectifier"
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
+    state.mlp_nunits = [1000, 7]
+    state.n_outs = 7
+    state.bias_init = 0.1
+    state.irange = 0.1
+
+    experiment(state, None)
+
+def google_large_conv_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'google_large'
+    state.fold = 0
+    state.data_path = os.path.join(DATA_PATH, "faces/google_tfd_lisa_aug/pylearn2/")
+    state.scale = False
+    state.norm = False
+    state.shuffle = False
+    state.train_alg = 'sgd_large'
+    state.nepochs = 1000
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.05, 'dc_rate' : 0.001}
+    state.enable_momentum = True
+    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.batch_size = 10
     state.save_frequency = 1
     state.save_name = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 1e-06}
@@ -539,14 +576,11 @@ def tfd_siamese_mix_experiment():
 
     experiment(state, None)
 
-
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'supervised trainer')
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
         'cifar100', 'timit', 'tfd', 'tfd_conv', 'siamese', 'siamese_variant',
-        'conv_google', 'siamese_google', 'tfd_siamese_mix'], required = True)
+        'conv_google', 'siamese_google', 'tfd_siamese_mix', 'google_large_conv'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
@@ -571,3 +605,5 @@ if __name__ == "__main__":
         google_siamese_experiment()
     elif args.dataset == 'tfd_siamese_mix':
         tfd_siamese_mix_experiment()
+    elif args.dataset == 'google_large_conv':
+        google_large_conv_experiment()

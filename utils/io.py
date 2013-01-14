@@ -5,6 +5,7 @@ from theano import tensor
 from sklearn.preprocessing import Scaler
 from pylearn2.utils import serial
 from noisy_encoder.scripts.train.classify import  norm
+from noisy_encoder.datasets.iterator import DatasetIterator
 
 def shared_dataset(data_x, data_y, borrow = True, cast_int = True):
 
@@ -77,6 +78,19 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         test_y = test_set.y
 
         train = shared_dataset(train_x, train_y, cast_int = False)
+        valid = shared_dataset(valid_x, valid_y, cast_int = False)
+        test = shared_dataset(test_x, test_y, cast_int = False)
+
+        return train, valid, test
+    elif dataset in ['google_large']:
+        train = DatasetIterator(data_path, 'train')
+        valid_set = serial.load(data_path + 'valid.pkl')
+        test_set = serial.load(data_path + 'test.pkl')
+        valid_x = valid_set.X
+        valid_y = valid_set.y
+        test_x = test_set.X
+        test_y = test_set.y
+
         valid = shared_dataset(valid_x, valid_y, cast_int = False)
         test = shared_dataset(test_x, test_y, cast_int = False)
 

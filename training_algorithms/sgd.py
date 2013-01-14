@@ -2,7 +2,7 @@ import time, sys, os
 import numpy
 from copy import deepcopy
 from pylearn2.utils import serial
-
+from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, MomentumAdjuster
 
 def sgd(model,
             datasets,
@@ -292,3 +292,118 @@ def sgd_mix(model,
                           ' ran for %.2fm' % ((end_time - start_time) / 60.))
 
     return test_score * 100., best_validation_loss * 100.
+
+def sgd_large(model,
+            datasets,
+            training_epochs,
+            batch_size,
+            coeffs,
+            lr_params,
+            save_frequency,
+            save_name,
+            enable_momentum,
+            momentum_params):
+
+    train_set = datasets[0]
+    train_set_x, train_set_y = train_set.init_shared()
+
+
+    # get the training, validation and testing function for the model
+    print '... getting the training functions'
+    train_fn, validate_model, test_model = model.build_finetune_functions(
+                datasets= [(train_set_x, train_set_y), datasets[1], datasets[2]],
+                batch_size=batch_size,
+                coeffs=coeffs,
+                enable_momentum = enable_momentum)
+
+    print '... training the model'
+    # early-stopping parameters
+    n_train_batches = train_set.current_size
+    patience = 10000 * n_train_batches  # look as this many examples regardless
+    patience_increase = 2  # wait this much longer when a new best is
+                            # found
+    improvement_threshold = 0.995  # a relative improvement of this much is
+                                   # considered significant
+    validation_frequency = 1
+
+    best_params = None
+    best_model = None
+    best_validation_loss = numpy.inf
+    test_score = 0.
+    start_time = time.clock()
+
+    done_looping = False
+    epoch = 0
+
+    monitors = {'cost': [],  'train' : [], 'valid' : [], 'test': []}
+    lr_adjuster = LearningRateAdjuster(**lr_params)
+    momentum_adjuster = MomentumAdjuster(**momentum_params)
+    while (epoch < training_epochs) and (not done_looping):
+        # loop over shreded datasets
+        for train_size in train_set:
+            n_train_batches = train_size / batch_size
+            for minibatch_index in xrange(n_train_batches):
+                learning_rate = lr_adjuster.get_value(epoch)
+                momentum = momentum_adjuster.get_value(epoch)
+
+                minibatch_avg_cost, train_score = train_fn(minibatch_index, learning_rate, momentum)
+                if numpy.isnan(minibatch_avg_cost):
+                    done_looping = True
+                    break
+
+        if (epoch + 1) % validation_frequency == 0:
+            validation_losses = validate_model()
+            this_validation_loss = numpy.mean(validation_losses)
+            print('%i, cost %f, lr %f, validation error %f %%' %
+                  (epoch, minibatch_avg_cost, learning_rate, this_validation_loss * 100.))
+
+            #save monitors
+
+            monitors['cost'].append(minibatch_avg_cost)
+            monitors['train'].append(train_score)
+            monitors['valid'].append(this_validation_loss)
+            monitors['test'].append(test_score)
+
+            # if we got the best validation score until now
+            if this_validation_loss < best_validation_loss:
+
+                #improve patience if loss improvement is good enough
+                if (this_validation_loss < best_validation_loss *
+                    improvement_threshold):
+                    patience = max(patience, epoch * patience_increase)
+
+                # save best validation score and iteration number
+                best_validation_loss = this_validation_loss
+                best_iter = epoch
+
+                # test it on the test set
+                test_losses = test_model()
+                test_score = numpy.mean(test_losses)
+                best_model = deepcopy(model)
+                print(('\t\t\t\t\tepoch %i, minibatch %i/%i, test error of '
+                       'best model %f %%') %
+                      (epoch, minibatch_index + 1, n_train_batches,
+                       test_score * 100.))
+
+        if patience <= epoch:
+            done_looping = True
+            break
+        epoch = epoch + 1
+        if (epoch + 1) % save_frequency == 0:
+            print "Saving the model"
+            serial.save(save_name, best_model)
+            serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
+
+    print "Saving the model"
+    serial.save(save_name, best_model)
+    serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+    end_time = time.clock()
+    print(('Optimization complete with best validation score of %f %%,'
+           'with test performance %f %%') %
+                 (best_validation_loss * 100., test_score * 100.))
+    print >> sys.stderr, ('The training code for file ' +
+                          os.path.split(__file__)[1] +
+                          ' ran for %.2fm' % ((end_time - start_time) / 60.))
+
+    return test_score * 100., best_validation_loss * 100.
+
