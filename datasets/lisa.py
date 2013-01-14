@@ -20,14 +20,14 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
         data_y_idendity = data['idendity']
 
         if which_set == 'test':
-            # the first 972 images are images from idendities 0..15
-            data_x = data_x[:972]
-            data_y = data_y[:972]
-            data_y_idendity = data_y_idendity[:972]
+            # the first 978 images are images from idendities 0..16
+            data_x = data_x[:979]
+            data_y = data_y[:979]
+            data_y_idendity = data_y_idendity[:979]
         else:
-            data_x = data_x[972:]
-            data_y = data_y[972:]
-            data_y_idendity = data_y_idendity[972:]
+            data_x = data_x[979:]
+            data_y = data_y[979:]
+            data_y_idendity = data_y_idendity[979:]
 
         if center:
             data_x -= 127.5
@@ -55,4 +55,5 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
 
         assert not numpy.any(numpy.isnan(self.X))
 
-
+if __name__ == "__main__":
+    Lisa("valid")

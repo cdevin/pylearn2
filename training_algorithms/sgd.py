@@ -80,10 +80,6 @@ def sgd(model,
             if numpy.isnan(minibatch_avg_cost):
                 done_looping = True
                 break
-            #if epoch == 2:
-                #import ipdb
-                #ipdb.set_trace()
-            #minibatch_avg_cost, train_score = train_fn(minibatch_index, learning_rate, momentum)
 
             if (iter + 1) % validation_frequency == 0:
                 #print model.mlp.hiddens.layers[0].weights.get_value().mean()
@@ -130,7 +126,7 @@ def sgd(model,
         if (epoch + 1) % save_frequency == 0:
             print "Saving the model"
             serial.save(save_name, best_model)
-            serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+            serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
 
     print "Saving the model"
     serial.save(save_name, best_model)
@@ -282,7 +278,7 @@ def sgd_mix(model,
         if (epoch + 1) % save_frequency == 0:
             print "Saving the model"
             serial.save(save_name, best_model)
-            serial.save(save_name.rstrip('.pkl') + 'monitor.pkl', monitors)
+            serial.save(save_name.rstrip('.pkl') + '_monitor.pkl', monitors)
 
     print "Saving the model"
     serial.save(save_name, best_model)

@@ -33,11 +33,11 @@ def shuffle(X, Y, rng):
     Y = Y[rand_idx]
     return X, Y
 
-def corner_shuffle(X, Y, topo, rng):
+def corner_shuffle(X, Y, topo, num_copy, rng):
 
 
     def corner(img):
-        rnd = lambda: rng.rand() * 5.
+        rnd = lambda: rng.rand() * 7.
         new_cord = [rnd(), rnd(),
                     rnd(), 48-rnd(),
                     48-rnd(), 48-rnd(),
@@ -49,10 +49,11 @@ def corner_shuffle(X, Y, topo, rng):
     orig_shape = X.shape
     X = X.reshape(topo)
     new_x = []
-    for item in X:
-        new_x.append(corner(item))
-    X = numpy.vstack((X, numpy.array(new_x))).reshape(orig_shape[0] * 2, orig_shape[1])
-    Y = numpy.concatenate((Y, Y))
+    for i in xrange(num_copy):
+        for item in X:
+            new_x.append(corner(item))
+    X = numpy.vstack((X, numpy.array(new_x))).reshape(orig_shape[0] * (num_copy + 1), orig_shape[1])
+    Y = numpy.concatenate([Y for i in xrange(num_copy + 1)])
 
     return X, Y
 

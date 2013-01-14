@@ -217,8 +217,8 @@ class LeNetLearner(object):
                     bias_init = 0.0,
                     rng=9001):
 
-        self.x = tensor.matrix('x')
-        self.y = tensor.ivector('y')
+        # This is the shape pylearn handles images batches
+        self.image_topo = (batch_size, image_shape[0], image_shape[1], nchannels[0])
 
         # make corruptors:
         mlp_input_corruptors = []
@@ -244,8 +244,6 @@ class LeNetLearner(object):
                 normalizers.extend([LocalResponseNormalize(batch_size, **param)])
 
 
-        # This is the shape pylearn handles images batches
-        self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
         self.conv = LeNet(image_shape = image_shape,
                     kernel_shapes = kernel_shapes,
                     nchannels = nchannels,
@@ -277,8 +275,9 @@ class LeNetLearner(object):
                 self.mlp.hiddens.layers]) + (self.mlp.log_layer.W ** 2).sum()
 
 
-    def conv_encode(self, inputs):
-        return self.conv(inputs).flatten(2)
+    def conv_encode(self, x):
+        x = x.reshape(self.image_topo)
+        return self.conv(x).flatten(2)
 
     def errors(self, inputs, y):
         return tensor.mean(tensor.neq(self.mlp.predict_y(self.conv_encode(inputs)), y))
@@ -308,15 +307,18 @@ class LeNetLearner(object):
         n_test_batches /= batch_size
 
         index = tensor.lscalar()  # index to a [mini]batch
+        x = tensor.matrix('x')
+        y = tensor.ivector('y')
         learning_rate = tensor.scalar('lr')
+
         if enable_momentum is None:
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        cost = self.negative_log_likelihood(self.input, self.y)
+        cost = self.negative_log_likelihood(x, y)
         cost += coeffs['w_l1'] * self.w_l1 + coeffs['w_l2'] * self.w_l2
         gparams = tensor.grad(cost, self._params)
-        errors = self.errors(self.input, self.y)
+        errors = self.errors(x, y)
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:
@@ -336,24 +338,24 @@ class LeNetLearner(object):
               outputs=[cost, errors],
               updates=updates,
               givens={
-                self.x: train_set_x[index * batch_size:
+                x: train_set_x[index * batch_size:
                                     (index + 1) * batch_size],
-                self.y: train_set_y[index * batch_size:
+                y: train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
 
         test_score_i = theano.function([index], errors,
                  givens={
-                   self.x: test_set_x[index * batch_size:
+                   x: test_set_x[index * batch_size:
                                       (index + 1) * batch_size],
-                   self.y: test_set_y[index * batch_size:
+                   y: test_set_y[index * batch_size:
                                       (index + 1) * batch_size]})
 
         valid_score_i = theano.function([index], errors,
               givens={
-                 self.x: valid_set_x[index * batch_size:
+                 x: valid_set_x[index * batch_size:
                                      (index + 1) * batch_size],
-                 self.y: valid_set_y[index * batch_size:
+                 y: valid_set_y[index * batch_size:
                                      (index + 1) * batch_size]})
 
         # Create a function that scans the entire validation set
@@ -376,6 +378,7 @@ class LeNetLearnerMultiCategory(object):
                     pool_shapes,
                     batch_size,
                     conv_act,
+                    normalize_params,
                     mlp_act,
                     mlp_input_corruption_levels,
                     mlp_hidden_corruption_levels,
@@ -386,9 +389,9 @@ class LeNetLearnerMultiCategory(object):
                     bias_init = 0.0,
                     rng=9001):
 
-        self.x = tensor.matrix('x')
-        self.y = tensor.matrix('y')
         self._params = []
+        # This is the shape pylearn handles images batches
+        self.image_topo = (batch_size, image_shape[0], image_shape[1], nchannels[0])
 
         # make corruptors:
         mlp_input_corruptors = []
@@ -405,15 +408,22 @@ class LeNetLearnerMultiCategory(object):
             else:
                 mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
 
+        # make normalizers
+        if normalize_params is None:
+            normalizers = None
+        else:
+            normalizers = []
+            for i, param in enumerate(normalize_params):
+                normalizers.extend([LocalResponseNormalize(batch_size, **param)])
 
-        # This is the shape pylearn handles images batches
-        self.input = self.x.reshape((batch_size, image_shape[0], image_shape[1], nchannels[0]))
+
         self.conv = LeNet(image_shape = image_shape,
                     kernel_shapes = kernel_shapes,
                     nchannels = nchannels,
                     pool_shapes = pool_shapes,
                     batch_size = batch_size,
                     conv_act = conv_act,
+                    normalizer = normalizers,
                     border_mode = border_mode,
                     irange = irange,
                     bias_init = bias_init,
@@ -457,8 +467,9 @@ class LeNetLearnerMultiCategory(object):
         h_1 = tensor.switch(tensor.lt(1-h, 0.00000001), -10, tensor.log(1-h))
         return - (y * h_ + (1-y)*h_1).sum(axis=1).mean()
 
-    def conv_encode(self, inputs):
-        return self.conv(inputs).flatten(2)
+    def conv_encode(self, x):
+        x = x.reshape(self.image_topo)
+        return self.conv(x).flatten(2)
 
     def encode(self, inputs):
         return self.hiddens.encode(self.conv_encode(inputs))
@@ -482,6 +493,10 @@ class LeNetLearnerMultiCategory(object):
     def __call__(self, inputs):
         return self.test_encode(inputs)
 
+    def apply(self, inputs):
+        x = tensor.matrix('x')
+        return theano.function([x], self.p_y_given_x_test(inputs))
+
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
 
         train_set_x, train_set_y = datasets[0]
@@ -495,15 +510,18 @@ class LeNetLearnerMultiCategory(object):
         n_test_batches /= batch_size
 
         index = tensor.lscalar()  # index to a [mini]batch
+        x = tensor.matrix('x')
+        y = tensor.matrix('y')
+
         learning_rate = tensor.scalar('lr')
         if enable_momentum is None:
             momentum = None
         else:
             momentum = tensor.scalar('momentum')
-        cost = self.cross_entropy(self.input, self.y)
+        cost = self.cross_entropy(x, y)
         cost += coeffs['w_l1'] * self.w_l1 + coeffs['w_l2'] * self.w_l2
         gparams = tensor.grad(cost, self._params)
-        errors = self.errors(self.input, self.y)
+        errors = self.errors(x, y)
         # compute list of fine-tuning updates
         updates = {}
         if momentum is None:
@@ -523,24 +541,24 @@ class LeNetLearnerMultiCategory(object):
               outputs=[cost, errors],
               updates=updates,
               givens={
-                self.x: train_set_x[index * batch_size:
+                x: train_set_x[index * batch_size:
                                     (index + 1) * batch_size],
-                self.y: train_set_y[index * batch_size:
+                y: train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
 
         test_score_i = theano.function([index], errors,
                  givens={
-                   self.x: test_set_x[index * batch_size:
+                   x: test_set_x[index * batch_size:
                                       (index + 1) * batch_size],
-                   self.y: test_set_y[index * batch_size:
+                   y: test_set_y[index * batch_size:
                                       (index + 1) * batch_size]})
 
         valid_score_i = theano.function([index], errors,
               givens={
-                 self.x: valid_set_x[index * batch_size:
+                 x: valid_set_x[index * batch_size:
                                      (index + 1) * batch_size],
-                 self.y: valid_set_y[index * batch_size:
+                 y: valid_set_y[index * batch_size:
                                      (index + 1) * batch_size]})
 
         # Create a function that scans the entire validation set
@@ -552,5 +570,4 @@ class LeNetLearnerMultiCategory(object):
             return [test_score_i(i) for i in xrange(n_test_batches)]
 
         return train_fn, valid_score, test_score
-
 
