@@ -324,16 +324,11 @@ def google_conv_experiment():
     state.shuffle = False
     state.train_alg = 'sgd'
     state.nepochs = 1000
-    state.lr = 0.005
-    state.lr_shrink_time = 100
-    state.lr_dc_rate = 0.01
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
     state.enable_momentum = True
-    state.init_momentum = 0.5
-    state.final_momentum = 0.9
-    state.momentum_inc_start = 50
-    state.momentum_inc_end = 100
+    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 20
-    state.save_frequency = 1
+    state.save_frequency = 10
     state.save_name = os.path.join(RESULT_PATH, "naenc/google/conv_aug_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 1e-06}
 
@@ -369,7 +364,7 @@ def google_large_conv_experiment():
     state.shuffle = False
     state.train_alg = 'sgd_large'
     state.nepochs = 1000
-    state.lr_params = {'shrink_time': 10, 'init_value' : 0.05, 'dc_rate' : 0.001}
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.0005, 'dc_rate' : 0.001}
     state.enable_momentum = True
     state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 10

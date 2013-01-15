@@ -6,19 +6,14 @@ from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, Moment
 
 def sgd(model,
             datasets,
-            learning_rate_init,
             training_epochs,
             batch_size,
             coeffs,
-            lr_shrink_time,
-            lr_dc_rate,
+            lr_params,
             save_frequency,
             save_name,
             enable_momentum,
-            init_momentum,
-            final_momentum,
-            momentum_inc_start,
-            momentum_inc_end):
+            momentum_params):
 
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
@@ -59,21 +54,13 @@ def sgd(model,
     epoch = 0
 
     monitors = {'cost': [],  'train' : [], 'valid' : [], 'test': []}
+    lr_adjuster = LearningRateAdjuster(**lr_params)
+    momentum_adjuster = MomentumAdjuster(**momentum_params)
 
     while (epoch < training_epochs) and (not done_looping):
         for minibatch_index in xrange(n_train_batches):
-            # Adjust learning rate
-            if epoch > lr_shrink_time:
-                learning_rate = learning_rate_init / (1. + lr_dc_rate * epoch)
-            else:
-                learning_rate = learning_rate_init
-            # Adjust Momentum
-            if epoch < momentum_inc_start:
-                momentum = init_momentum
-            elif epoch < momentum_inc_end:
-                momentum = init_momentum + ((final_momentum - init_momentum) / (momentum_inc_end - momentum_inc_start)) * (epoch - momentum_inc_start)
-            else:
-                momentum = final_momentum
+            learning_rate = lr_adjuster.get_value(epoch)
+            momentum = momentum_adjuster.get_value(epoch)
 
             minibatch_avg_cost, train_score = train_fn(minibatch_index, learning_rate, momentum)
             iter = epoch * n_train_batches + minibatch_index

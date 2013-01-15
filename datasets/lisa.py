@@ -13,6 +13,7 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
         assert which_set in self.mapper.keys()
 
         path = '${PYLEARN2_DATA_PATH}/faces/lisa/lisa.pkl'
+        path = '/data/lisatmp2/mirzamom/data/lisa_preprocessed.pkl'
         data = load(path)
 
         data_x = data['image']
