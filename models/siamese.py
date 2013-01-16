@@ -510,7 +510,7 @@ class SiameseMixSingleCategory(object):
         return self.mlp.test_p_y_given_x(h)
 
     def conv_score(self, x):
-        return self.conv_loglayer.test_encode(self.test_conv_hiddens_encode(x))
+        return self.conv_mlp.test_p_y_given_x(self.conv_encode(x))
 
     def __call__(self, x1, x2 = None):
         if x2 is None:

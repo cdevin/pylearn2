@@ -58,7 +58,7 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
     elif dataset in ['tfd', 'timit']:
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
-        test_set = serial.load(data_path + 'test.pkl')
+        #test_set = serial.load(data_path + 'test.pkl')
         train_x = train_set.X
         train_y = train_set.y
         valid_x = valid_set.X
@@ -69,17 +69,18 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
     elif dataset in ['google']:
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
-        test_set = serial.load(data_path + 'test.pkl')
+        #test_set = serial.load(data_path + 'test.pkl')
         train_x = train_set.X
         train_y = train_set.y
         valid_x = valid_set.X
         valid_y = valid_set.y
-        test_x = test_set.X
-        test_y = test_set.y
+        #test_x = test_set.X
+        #test_y = test_set.y
 
         train = shared_dataset(train_x, train_y, cast_int = False)
         valid = shared_dataset(valid_x, valid_y, cast_int = False)
-        test = shared_dataset(test_x, test_y, cast_int = False)
+        #test = shared_dataset(test_x, test_y, cast_int = False)
+        test = valid
 
         return train, valid, test
     elif dataset in ['google_large']:
@@ -174,8 +175,8 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
 
         train = shared_dataset(train_x, train_y, cast_int = False)
         valid = shared_dataset(valid_x, valid_y, cast_int = False)
-        test = shared_dataset(test_x, test_y, cast_int = False)
-
+        #test = shared_dataset(test_x, test_y, cast_int = False)
+        test = valid
         return (train_siamese, train_p), (train, valid, test)
     elif dataset == 'tfd_siamese_mix':
         train_set = serial.load(data_path[0] + 'train.pkl')
@@ -200,8 +201,8 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
 
         train = shared_dataset(train_x, train_y, cast_int = True)
         valid = shared_dataset(valid_x, valid_y, cast_int = True)
-        test = shared_dataset(test_x, test_y, cast_int = True)
-
+        #test = shared_dataset(test_x, test_y, cast_int = True)
+        test = valid
         return (train_siamese, train_p), (train, valid, test)
 
 
@@ -225,8 +226,8 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
 
     train = shared_dataset(train_x, train_y)
     valid = shared_dataset(valid_x, valid_y)
-    test = shared_dataset(test_x, test_y)
-
+    #test = shared_dataset(test_x, test_y)
+    test = valid
     del train_x, train_y, valid_x, valid_y, test_x, test_y
     gc.collect()
     return train, valid, test

@@ -58,7 +58,7 @@ def make_data_aug(which, seed = 2322):
     if which == 'train':
         data= GoogleTFDAug(shuffle = True)
     else:
-        data = Lisa(which, shuffle = True, one_hot = True)
+        data = Lisa('all', shuffle = True, one_hot = True)
 
     data.X = data.X / 255.
     data.use_design_loc(output_dir + '/{}.npy'.format(which))

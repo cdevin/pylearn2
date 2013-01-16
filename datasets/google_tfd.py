@@ -70,8 +70,8 @@ class GoogleTFDAug(dense_design_matrix.DenseDesignMatrix):
         tfd_y = one_hot
 
         # augment tfd
-        tfd_x, tfd_y = reflect(tfd_x, tfd_y, (tfd_x.shape[0], 48, 48))
         tfd_x, tfd_y = corner_shuffle(tfd_x, tfd_y, (tfd_x.shape[0], 48, 48), 1, rng)
+        tfd_x, tfd_y = reflect(tfd_x, tfd_y, (tfd_x.shape[0], 48, 48))
         #tfd_x, tfd_y = shuffle(tfd_x, tfd_y, rng)
 
 

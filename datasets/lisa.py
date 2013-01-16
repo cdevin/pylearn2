@@ -4,7 +4,7 @@ from pylearn2.utils.serial import load
 
 class Lisa(dense_design_matrix.DenseDesignMatrix):
 
-    mapper = {'valid' :0, 'test': 1}
+    mapper = {'valid' :0, 'test': 1, 'all' :2}
 
     def __init__(self, which_set, one_hot = False,
                  image_size = 48, example_range = None,
@@ -12,7 +12,7 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
 
         assert which_set in self.mapper.keys()
 
-        path = '${PYLEARN2_DATA_PATH}/faces/lisa/lisa.pkl'
+        #path = '${PYLEARN2_DATA_PATH}/faces/lisa/lisa.pkl'
         path = '/data/lisatmp2/mirzamom/data/lisa_preprocessed.pkl'
         data = load(path)
 
@@ -25,10 +25,12 @@ class Lisa(dense_design_matrix.DenseDesignMatrix):
             data_x = data_x[:979]
             data_y = data_y[:979]
             data_y_idendity = data_y_idendity[:979]
-        else:
+        elif which_set == 'valid':
             data_x = data_x[979:]
             data_y = data_y[979:]
             data_y_idendity = data_y_idendity[979:]
+        else:
+            pass
 
         if center:
             data_x -= 127.5
