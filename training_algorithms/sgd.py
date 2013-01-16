@@ -117,7 +117,7 @@ def sgd(model,
 
     print "Saving the model"
     serial.save(save_name, best_model)
-    serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+    serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
            'with test performance %f %%') %
@@ -130,19 +130,14 @@ def sgd(model,
 
 def sgd_mix(model,
             datasets,
-            learning_rate_init,
             training_epochs,
             batch_size,
             coeffs,
-            lr_shrink_time,
-            lr_dc_rate,
+            lr_params,
             save_frequency,
             save_name,
             enable_momentum,
-            init_momentum,
-            final_momentum,
-            momentum_inc_start,
-            momentum_inc_end):
+            momentum_params):
 
     """
     This SGD train in turn on two set of mini-batches
@@ -179,22 +174,15 @@ def sgd_mix(model,
     epoch = 0
 
     monitors = {'cost_0': [], 'cost_1' :[], 'train_0' : [], 'train_1' : [], 'valid' : [], 'test': []}
+    lr_adjuster_0 = LearningRateAdjuster(**lr_params[0])
+    lr_adjuster_1 = LearningRateAdjuster(**lr_params[1])
+    momentum_adjuster = MomentumAdjuster(**momentum_params)
 
     while (epoch < training_epochs) and (not done_looping):
         # Adjust learning rate
-        if epoch > lr_shrink_time:
-            learning_rate_0 = learning_rate_init[0] / (1. + lr_dc_rate * epoch)
-            learning_rate_1 = learning_rate_init[1] / (1. + lr_dc_rate * epoch)
-        else:
-            learning_rate_0 = learning_rate_init[0]
-            learning_rate_1 = learning_rate_init[1]
-        # Adjust Momentum
-        if epoch < momentum_inc_start:
-            momentum = init_momentum
-        elif epoch < momentum_inc_end:
-            momentum = init_momentum + ((final_momentum - init_momentum) / (momentum_inc_end - momentum_inc_start)) * (epoch - momentum_inc_start)
-        else:
-            momentum = final_momentum
+        learning_rate_0 = lr_adjuster_1.get_value(epoch)
+        learning_rate_1 = lr_adjuster_0.get_value(epoch)
+        momentum = momentum_adjuster.get_value(epoch)
 
         # first train
         cost_0 = []
@@ -269,7 +257,7 @@ def sgd_mix(model,
 
     print "Saving the model"
     serial.save(save_name, best_model)
-    serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+    serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
            'with test performance %f %%') %
@@ -383,7 +371,7 @@ def sgd_large(model,
 
     print "Saving the model"
     serial.save(save_name, best_model)
-    serial.save('monitor.pkl', save_name.rstrip('pkl') + 'monitor.pkl')
+    serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
     end_time = time.clock()
     print(('Optimization complete with best validation score of %f %%,'
            'with test performance %f %%') %

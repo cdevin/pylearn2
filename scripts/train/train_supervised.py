@@ -277,19 +277,14 @@ def tfd_conv_experiment():
     state.shuffle = False
     state.train_alg = "sgd"
     state.nepochs = 1000
-    state.lr = 0.005
-    state.lr_shrink_time = 70
-    state.lr_dc_rate = 0.01
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
     state.enable_momentum = True
-    state.init_momentum = 0.5
-    state.final_momentum = 0.9
-    state.momentum_inc_start = 40
-    state.momentum_inc_end = 80
+    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 50
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 20
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_gpu.pkl")
+    state.save_frequency = 1
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_cpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
 
     # model params
@@ -304,7 +299,7 @@ def tfd_conv_experiment():
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [1000, 500]
+    state.mlp_nunits = [1000]
     state.n_outs = 7
     state.bias_init = 0.1
     state.irange = 0.1
@@ -324,7 +319,7 @@ def google_conv_experiment():
     state.shuffle = False
     state.train_alg = 'sgd'
     state.nepochs = 1000
-    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.05, 'dc_rate' : 0.001}
     state.enable_momentum = True
     state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 20
@@ -540,28 +535,26 @@ def tfd_siamese_mix_experiment():
     state.shuffle = False
     state.train_alg = 'sgd_mix'
     state.nepochs = 1000
-    state.lr = [0.005, 0.005]
-    state.lr_shrink_time = 100
-    state.lr_dc_rate = 0.01
+    state.lr_params = [{'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001},
+            {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}]
+
     state.enable_momentum = True
-    state.init_momentum = 0.5
-    state.final_momentum = 0.9
-    state.momentum_inc_start = 30
-    state.momentum_inc_end = 70
-    state.batch_size = 20
+    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.batch_size = 50
     state.w_l1_ratio = 0.0000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 10
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese_mix.pkl")
+    state.save_frequency = 1
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/siamese_mix_cpu.pkl")
     state.coeffs = {'conv_w_l1' : 0.0, 'conv_w_l2' : 0.000001}
 
     # model params
     state.model = 'tfd_siamese_mix'
     state.method = 'diff'
     state.fine_tune = False
-    state.base_model = os.path.join(RESULT_PATH, "naenc/best/tfd/conv_gpu.pkl")
+    state.base_model = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_gpu.pkl")
+    state.base_model = "/data/lisatmp2/mirzamom/results/naenc/tfd/lisa_conv_cpu.pkl"
     state.image_topo = (state.batch_size, 48, 48, 1)
-    state.n_units = [500, 1000,500]
+    state.n_units = [1000, 1000]
     state.input_corruption_levels = [None, None, None]
     state.hidden_corruption_levels = [0.5, 0.0, 0.0]
     state.nouts = 7

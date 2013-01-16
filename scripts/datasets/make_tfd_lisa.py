@@ -37,8 +37,8 @@ def make_data(which, seed = 2322):
         data.y = numpy.concatenate([train.y, valid.y, test.y]).reshape(data.X.shape[0])
 
         # augumnet
-        data.X, data.y = corner_shuffle(data.X, data.y, (data.X.shape[0], 48, 48), rng)
         data.X, data.y = reflect(data.X, data.y, (data.X.shape[0], 48, 48))
+        data.X, data.y = corner_shuffle(data.X, data.y, (data.X.shape[0], 48, 48), 2, rng)
         data.X, data.y = shuffle(data.X, data.y, rng)
     else:
         data = Lisa(which, shuffle = True, one_hot = False)

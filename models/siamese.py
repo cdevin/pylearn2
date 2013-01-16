@@ -273,7 +273,7 @@ class SiameseMix(object):
 
     def siamese_score(self, x1, x2):
         h = self.siamese_encode(x1, x2)
-        return self.mlp.p_y_given_x(h)
+        return self.mlp.test_p_y_given_x(h)
 
     def conv_score(self, x):
         return self.conv_loglayer.test_encode(self.test_conv_hiddens_encode(x))
@@ -476,7 +476,7 @@ class SiameseMixSingleCategory(object):
                 self.conv_mlp.weights])
 
     def conv_encode(self, x):
-        x = x.reshape(image_topo)
+        x = x.reshape(self.image_topo)
         return self.conv(x).flatten(2)
 
     def conv_hiddens_encode(self, inputs):
@@ -505,11 +505,28 @@ class SiameseMixSingleCategory(object):
         h = self.siamese_encode(x1, x2)
         return tensor.mean(tensor.neq(self.mlp.predict_y(h), y))
 
-    def __call__(self, x1 , x2 = None):
-        if x2 == None:
-            r
-        h = self.siamese_encode()
-        return self.mlp.p_y_given_x(h)
+    def siamese_score(self, x1, x2):
+        h = self.siamese_encode(x1, x2)
+        return self.mlp.test_p_y_given_x(h)
+
+    def conv_score(self, x):
+        return self.conv_loglayer.test_encode(self.test_conv_hiddens_encode(x))
+
+    def __call__(self, x1, x2 = None):
+        if x2 is None:
+            return self.conv_score(x1)
+        else:
+            return self.siamese_score(x1, x2)
+
+    def apply(self, siamese = False):
+        x1 = tensor.matrix('x1')
+        if siamese:
+            x2 = tensor.matrix('x2')
+            return theano.function([x1, x2], self.__call__(x1, x2))
+        else:
+            return theano.function([x1], self.__call__(x1))
+
+
 
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
@@ -528,6 +545,10 @@ class SiameseMixSingleCategory(object):
 
 
         index = tensor.lscalar('index')  # index to a [mini]batch
+        x1 = tensor.matrix('x1')
+        x2 = tensor.matrix('x2')
+        y = tensor.ivector('y')
+        y_ = tensor.ivector('y_')
         learning_rate = tensor.scalar('lr')
         if enable_momentum is None:
             momentum = None
@@ -535,9 +556,9 @@ class SiameseMixSingleCategory(object):
             momentum = tensor.scalar('momentum')
 
         ## siamese
-        cost = self.siamese_negative_log_likelihood(self.y)
+        cost = self.siamese_negative_log_likelihood(x1, x2, y)
         gparams = tensor.grad(cost, self.siamese_params)
-        errors = self.siamese_errors(self.y)
+        errors = self.siamese_errors(x1, x2, y)
 
         # compute list of fine-tuning updates
         updates = {}
@@ -553,10 +574,10 @@ class SiameseMixSingleCategory(object):
 
 
         ## conv
-        conv_cost = self.conv_cross_entropy(self.inputs, self.y_)
+        conv_cost = self.conv_cross_entropy(x1, y_)
         conv_cost += coeffs['conv_w_l1'] * self.conv_wl1 + coeffs['conv_w_l2'] * self.conv_wl2
         conv_gparams = tensor.grad(conv_cost, self.conv_params)
-        conv_errors = self.conv_errors(self.inputs, self.y_)
+        conv_errors = self.conv_errors(x1, y_)
 
         # compute list of fine-tuning updates
         conv_updates = {}
@@ -578,11 +599,11 @@ class SiameseMixSingleCategory(object):
               outputs=[cost, errors],
               updates=updates,
               givens={
-                self.x: siamese_train_set_x[index * batch_size:
+                x1: siamese_train_set_x[index * batch_size:
                                     (index + 1) * batch_size],
-                self.x_p: siamese_train_set_x_p[index * batch_size:
+                x2: siamese_train_set_x_p[index * batch_size:
                                     (index + 1) * batch_size],
-                self.y: siamese_train_set_y[index * batch_size:
+                y: siamese_train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
         train_fn_conv = theano.function(inputs=[index,
@@ -591,24 +612,24 @@ class SiameseMixSingleCategory(object):
               outputs=[conv_cost, conv_errors],
               updates=conv_updates,
               givens={
-                self.x: conv_train_set_x[index * batch_size:
+                x1: conv_train_set_x[index * batch_size:
                                     (index + 1) * batch_size],
-                self.y_: conv_train_set_y[index * batch_size:
+                y_: conv_train_set_y[index * batch_size:
                                     (index + 1) * batch_size]})
 
 
         test_score_i = theano.function([index], conv_errors,
                  givens={
-                   self.x: conv_test_set_x[index * batch_size:
+                   x1: conv_test_set_x[index * batch_size:
                                       (index + 1) * batch_size],
-                   self.y_: conv_test_set_y[index * batch_size:
+                   y_: conv_test_set_y[index * batch_size:
                                       (index + 1) * batch_size]})
 
         valid_score_i = theano.function([index], conv_errors,
               givens={
-                 self.x: conv_valid_set_x[index * batch_size:
+                 x1: conv_valid_set_x[index * batch_size:
                                      (index + 1) * batch_size],
-                 self.y_: conv_valid_set_y[index * batch_size:
+                 y_: conv_valid_set_y[index * batch_size:
                                      (index + 1) * batch_size]})
 
         # for now valid and test score and conv path on lisa dataset
