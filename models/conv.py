@@ -215,6 +215,7 @@ class LeNetLearner(object):
                     border_mode = 'valid',
                     irange = 0.05,
                     bias_init = 0.0,
+                    random_filters = False,
                     rng=9001):
 
         # This is the shape pylearn handles images batches
@@ -267,7 +268,10 @@ class LeNetLearner(object):
 
 
         self.input_space = self.conv.input_space
-        self._params = self.conv._params + self.mlp._params
+        if random_filters:
+            self._params = self.mlp._params
+        else:
+            self._params = self.conv._params + self.mlp._params
 
         self.w_l1 = tensor.sum([abs(item.weights).sum() for item in \
                 self.mlp.hiddens.layers]) + abs(self.mlp.log_layer.W).sum()
