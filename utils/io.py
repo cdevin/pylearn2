@@ -58,9 +58,9 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
     elif dataset in ['tfd', 'timit']:
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
-        #test_set = serial.load(data_path + 'test.pkl')
-        train_x = train_set.X
-        train_y = train_set.y
+        test_set = serial.load(data_path + 'test.pkl')
+        train_x = train_set.X[:100]
+        train_y = train_set.y[:100]
         valid_x = valid_set.X
         valid_y = valid_set.y
         test_x = test_set.X
@@ -103,10 +103,10 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         valid_set_p = serial.load(data_path + 'valid_neutral.pkl')
         test_set = serial.load(data_path + 'test.pkl')
         test_set_p = serial.load(data_path + 'test_neutral.pkl')
-        train_x = train_set.X
-        train_x_p = train_set_p.X
-        train_y = train_set.y
-        train_y_p = train_set_p.y
+        train_x = train_set.X[:100]
+        train_x_p = train_set_p.X[:100]
+        train_y = train_set.y[:100]
+        train_y_p = train_set_p.y[:100]
         valid_x = valid_set.X
         valid_x_p = valid_set_p.X
         valid_y = valid_set.y
@@ -181,10 +181,10 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
     elif dataset == 'tfd_siamese_mix':
         train_set = serial.load(data_path[0] + 'train.pkl')
         train_set_p = serial.load(data_path[0] + 'train_neutral.pkl')
-        train_x = train_set.X
-        train_x_p = train_set_p.X
-        train_y = train_set.y
-        train_y_p = train_set_p.y
+        train_x = train_set.X[:100]
+        train_x_p = train_set_p.X[:100]
+        train_y = train_set.y[:100]
+        train_y_p = train_set_p.y[:100]
 
         train_siamese = shared_dataset(train_x, train_y)
         train_p = shared_dataset(train_x_p, train_y_p)
@@ -192,8 +192,8 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         train_set = serial.load(data_path[1] + 'train.pkl')
         valid_set = serial.load(data_path[1] + 'valid.pkl')
         test_set = serial.load(data_path[1] + 'test.pkl')
-        train_x = train_set.X
-        train_y = train_set.y
+        train_x = train_set.X[:100]
+        train_y = train_set.y[:100]
         valid_x = valid_set.X
         valid_y = valid_set.y
         test_x = test_set.X

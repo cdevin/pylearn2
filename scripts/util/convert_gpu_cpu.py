@@ -31,9 +31,9 @@ def test_siamese_mix_single_category(cpu, gpu):
         assert numpy.array_equal(cpu_p.get_value(), gpu_p.get_value())
 
 if __name__ == "__main__":
-    cpu = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_cpu.pkl'
-    gpu = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_gpu.pkl'
-    save_path = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_cpu_correct.pkl'
+    cpu = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_cpu2.pkl'
+    gpu = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_gpu_briee_3.pkl'
+    save_path = '/data/lisatmp/mirzamom/tmp/best/siamese_mix_cpu_correct_briee_3.pkl'
     print 'converting'
     siamese_mix_single_category(cpu, gpu, save_path)
     print 'testing'
