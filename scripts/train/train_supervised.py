@@ -29,13 +29,8 @@ def load_model(state, numpy_rng, theano_rng):
                 group_corruption_levels = state.group_corruption_levels)
     elif state.model == 'conv':
         return LeNetLearner(
-                image_shape = state.image_shape,
-                kernel_shapes = state.kernel_shapes,
-                nchannels = state.nchannels,
-                pool_shapes = state.pool_shapes,
+                conv_layers = state.conv_layers,
                 batch_size = state.batch_size,
-                conv_act = state.conv_act,
-                normalize_params = state.normalize_params,
                 mlp_act = state.mlp_act,
                 mlp_input_corruption_levels = state.mlp_input_corruption_levels,
                 mlp_hidden_corruption_levels = state.mlp_hidden_corruption_levels,
@@ -43,6 +38,7 @@ def load_model(state, numpy_rng, theano_rng):
                 n_outs = state.n_outs,
                 irange = state.irange,
                 bias_init = state.bias_init,
+                random_filters = state.random_filters,
                 rng = numpy_rng)
     elif state.model == 'google_conv':
         return LeNetLearnerMultiCategory(
@@ -270,32 +266,46 @@ def tfd_conv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    #state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
-    state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.train_alg = "sgd"
     state.nepochs = 1000
-    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.05, 'dc_rate' : 0.001}
     state.enable_momentum = True
     state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
-    state.batch_size = 1
+    state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 1
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/lisa_conv_cpu2.pkl")
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/tfd_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
 
     # model params
     state.model = 'conv'
-    state.image_shape = [48, 48]
-    state.kernel_shapes = [(7,7), (5, 5)]
-    state.nchannels = [1, 64, 128]
-    state.pool_shapes = [(3,3), (2, 2)]
-    state.normalize_params = [{'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':42, 'nkernels':64 },
-            {'n':4, 'k':1, 'alpha':0e-04, 'beta':0.75, 'image_size':10, 'nkernels':128}]
-    state.conv_act = "rectifier"
+    state.conv_layers = [
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : [48, 48],
+                            'kernel_shape' : [7, 7],
+                            'nchannels_input' : 1,
+                            'nchannels_output' : 60,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'rectifier',}},
+                {'name' : 'Pool',
+                    'params' : {'image_shape' : [42, 42],
+                        'pool_shape' : (2, 2),
+                        'nchannels' : 60}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : [21, 21],
+                            'batch_size' : state.batch_size,
+                            'nchannels' : 60,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75
+                            }}]
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
@@ -303,6 +313,7 @@ def tfd_conv_experiment():
     state.n_outs = 7
     state.bias_init = 0.1
     state.irange = 0.1
+    state.random_filters = True
 
     experiment(state, None)
 
