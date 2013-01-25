@@ -27,8 +27,8 @@ class Convolution(Block, Model):
     def __init__(self,
                     image_shape,
                     kernel_shape,
-                    nchannels_input,
-                    nchannels_output,
+                    num_channels_input,
+                    num_channels_output,
                     batch_size,
                     act_enc,
                     border_mode = 'valid',
@@ -41,13 +41,13 @@ class Convolution(Block, Model):
         else:
             self.rng = rng
 
-        self.nchannels_output = nchannels_output
+        self.num_channels_output = num_channels_output
 
-        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels_input)
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels_input)
         self.output_space = Conv2DSpace(shape = [(a-b+1)  for a, b in \
-                zip(image_shape, kernel_shape)], nchannels = nchannels_output)
+                zip(image_shape, kernel_shape)], num_channels = num_channels_output)
 
-        self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.nchannels, self.input_space.nchannels, \
+        self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.num_channels, self.input_space.num_channels, \
                       kernel_shape[0], kernel_shape[1])))
         self._initialize_hidbias(bias_init)
 
@@ -88,7 +88,7 @@ class Convolution(Block, Model):
 
     def _initialize_hidbias(self, bias_init):
         self.hidbias = sharedX(
-            numpy.ones(self.nchannels_output) * bias_init,
+            numpy.ones(self.num_channels_output) * bias_init,
              name='hb',
             borrow=True
         )
@@ -120,11 +120,11 @@ class Convolution(Block, Model):
 
 class Pool(Block, Model):
 
-    def __init__(self, image_shape, pool_shape, nchannels):
+    def __init__(self, image_shape, pool_shape, num_channels):
         self.pool_shape = pool_shape
-        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels)
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         self.output_space = Conv2DSpace(shape = [a / b for a, b in \
-                zip(image_shape, pool_shape)], nchannels = nchannels)
+                zip(image_shape, pool_shape)], num_channels = num_channels)
 
     def _apply(self, x):
         axes = self.output_space.axes
@@ -142,19 +142,19 @@ class Pool(Block, Model):
 
 class LocalResponseNormalize(Block, Model):
 
-    def __init__(self, image_shape, batch_size, nchannels, n, k, alpha, beta):
+    def __init__(self, image_shape, batch_size, num_channels, n, k, alpha, beta):
         self.batch_size = batch_size
         self.image_shape = image_shape
-        self.nchannels = nchannels
+        self.num_channels = num_channels
         self.n = n
         self.k = k
         self.alpha = alpha
         self.beta = beta
 
-        self.filters =  sharedX(numpy.ones((nchannels, nchannels, n, n), dtype = theano.config.floatX))
+        self.filters =  sharedX(numpy.ones((num_channels, num_channels, n, n), dtype = theano.config.floatX))
 
-        self.input_space = Conv2DSpace(shape = image_shape, nchannels = nchannels)
-        self.output_space = Conv2DSpace(shape = image_shape, nchannels = nchannels)
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
+        self.output_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
 
 
     def _normalize(self, x):
@@ -162,8 +162,8 @@ class LocalResponseNormalize(Block, Model):
         out = x / ((1 + (alpha / n **2) * conv(x ** 2, n) )) ** beta
         """
 
-        base = conv2d(x ** 2, self.filters, filter_shape = (self.nchannels, self.nchannels, self.n, self.n),
-                image_shape = (self.batch_size, self.nchannels, self.image_shape[0], self.image_shape[1]),
+        base = conv2d(x ** 2, self.filters, filter_shape = (self.num_channels, self.num_channels, self.n, self.n),
+                image_shape = (self.batch_size, self.num_channels, self.image_shape[0], self.image_shape[1]),
                 border_mode = 'full')
 
         #TODO don't assume image is square
@@ -203,7 +203,7 @@ class LeNet(Block, Model):
 
         self.input_space = self.layers[0].input_space
         self.output_space = self.layers[-1].output_space
-        self.image_topo = (batch_size, self.input_space.shape[0], self.input_space.shape[1], self.input_space.nchannels)
+        self.image_topo = (batch_size, self.input_space.shape[0], self.input_space.shape[1], self.input_space.num_channels)
 
     def encode(self, x):
         x = x.reshape(self.image_topo)
@@ -248,8 +248,8 @@ class LeNetLearner(object):
 
 
         self.conv = LeNet(conv_layers, batch_size, rng)
-
-        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.nchannels)
+        mlp_nunits = list(mlp_nunits)
+        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.num_channels)
         self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
                         hidden_corruptors = mlp_hidden_corruptors,
                         n_units = mlp_nunits,
@@ -368,7 +368,7 @@ class LeNetLearnerMultiCategory(object):
     def __init__(self,
                     image_shape,
                     kernel_shapes,
-                    nchannels,
+                    num_channels,
                     pool_shapes,
                     batch_size,
                     conv_act,
@@ -385,7 +385,7 @@ class LeNetLearnerMultiCategory(object):
 
         self._params = []
         # This is the shape pylearn handles images batches
-        self.image_topo = (batch_size, image_shape[0], image_shape[1], nchannels[0])
+        self.image_topo = (batch_size, image_shape[0], image_shape[1], num_channels[0])
 
         # make corruptors:
         mlp_input_corruptors = []
@@ -413,7 +413,7 @@ class LeNetLearnerMultiCategory(object):
 
         self.conv = LeNet(image_shape = image_shape,
                     kernel_shapes = kernel_shapes,
-                    nchannels = nchannels,
+                    num_channels = num_channels,
                     pool_shapes = pool_shapes,
                     batch_size = batch_size,
                     conv_act = conv_act,
@@ -425,7 +425,7 @@ class LeNetLearnerMultiCategory(object):
         self.input_space = self.conv.input_space
         self._params.extend(self.conv._params)
 
-        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.nchannels)
+        mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.num_channels)
         self.hiddens = DeepDropOutHiddenLayer(
                             input_corruptors = mlp_input_corruptors[:-1],
                             hidden_corruptors = mlp_hidden_corruptors[:-1],

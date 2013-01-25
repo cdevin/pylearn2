@@ -286,6 +286,14 @@ def tfd_conv_experiment():
     # model params
     state.model = 'conv'
     state.conv_layers = [
+             {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : [48, 48],
+                            'batch_size' : state.batch_size,
+                            'nchannels' : 1,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}},
                 {'name' : 'Convolution',
                     'params' : {'image_shape' : [48, 48],
                             'kernel_shape' : [7, 7],
