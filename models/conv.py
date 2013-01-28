@@ -4,7 +4,8 @@ import theano
 from theano import tensor
 from theano.tensor.signal import downsample
 from theano.tensor.shared_randomstreams import RandomStreams
-#TODO It's used in pooling, change it to use pylearn version
+from theano.gof.op import get_debug_values
+#TODO It's used in normalization, change it to use pylearn version
 from theano.tensor.nnet.conv import conv2d
 from pylearn2.base import Block
 from pylearn2.models import Model
@@ -18,8 +19,7 @@ from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
 from noisy_encoder.models.base import rectifier
 
 
-def str_to_class(str):
-    return getattr(sys.modules[__name__], str)
+# TODO repalce rng with seed, and put rng
 
 class Convolution(Block, Model):
     """ A convolution - pool block """
@@ -34,12 +34,13 @@ class Convolution(Block, Model):
                     border_mode = 'valid',
                     irange = 0.05,
                     bias_init = 0.0,
-                    rng=9001):
+                    np_rng = None,
+                    th_rng = None,
+                    seed = 9001):
 
-        if not hasattr(rng, 'randn'):
-            self.rng = numpy.random.RandomState([2012,11,6,9])
-        else:
-            self.rng = rng
+        if np_rng is None:
+            np_rng = numpy.random.RandomState(seed)
+        self.np_rng = np_rng
 
         self.num_channels_output = num_channels_output
 
@@ -47,7 +48,7 @@ class Convolution(Block, Model):
         self.output_space = Conv2DSpace(shape = [(a-b+1)  for a, b in \
                 zip(image_shape, kernel_shape)], num_channels = num_channels_output)
 
-        self.weights = sharedX(self.rng.uniform(-irange,irange,(self.output_space.num_channels, self.input_space.num_channels, \
+        self.weights = sharedX(self.np_rng.uniform(-irange,irange,(self.output_space.num_channels, self.input_space.num_channels, \
                       kernel_shape[0], kernel_shape[1])))
         self._initialize_hidbias(bias_init)
 
@@ -118,9 +119,8 @@ class Convolution(Block, Model):
     def get_weights(self):
         return self.weights
 
-class Pool(Block, Model):
-
-    def __init__(self, image_shape, pool_shape, num_channels):
+class MaxPool(Block, Model):
+    def __init__(self, image_shape, pool_shape, num_channels, np_rng = None, th_rng = None):
         self.pool_shape = pool_shape
         self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         self.output_space = Conv2DSpace(shape = [a / b for a, b in \
@@ -140,9 +140,39 @@ class Pool(Block, Model):
             return self._apply(inputs)
         return [self._apply(inp) for inp in inputs]
 
-class LocalResponseNormalize(Block, Model):
+class StochasticMaxPool(Block, Model):
+    def __init__(self, image_shape, num_channels, pool_shape, pool_stride, np_rng = None, th_rng = None):
+        self.rng = th_rng
+        self.image_shape = image_shape
+        self.pool_shape = pool_shape
+        self.pool_stride = pool_stride
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
+        self.output_space = Conv2DSpace(shape = [self._out_shape(a, b, c) for a, b, c in \
+                zip(image_shape, pool_shape, pool_stride)], num_channels = num_channels)
 
-    def __init__(self, image_shape, batch_size, num_channels, n, k, alpha, beta):
+    @staticmethod
+    def _out_shape(im_shape, pool_shape, pool_stride):
+        rval = numpy.ceil(float(im_shape - pool_shape) / pool_stride)
+        return int(rval) + 1
+
+    def _apply(self, x):
+        axes = self.output_space.axes
+        op_axes = ('b', 'c', 0, 1)
+        x = Conv2DSpace.convert(x, axes, op_axes)
+        x = stochastic_max_pool(bc01 = x,
+                pool_shape = self.pool_shape,
+                pool_stride = self.pool_stride,
+                image_shape = self.image_shape,
+                rng = self.rng)
+        return Conv2DSpace.convert(x, op_axes, axes)
+
+    def __call__(self, inputs):
+        if isinstance(inputs, tensor.Variable):
+            return self._apply(inputs)
+        return [self._apply(inp) for inp in inputs]
+
+class LocalResponseNormalize(Block, Model):
+    def __init__(self, image_shape, batch_size, num_channels, n, k, alpha, beta, np_rng = None, th_rng = None):
         self.batch_size = batch_size
         self.image_shape = image_shape
         self.num_channels = num_channels
@@ -189,14 +219,13 @@ class LocalResponseNormalize(Block, Model):
         return [self._apply(inp) for inp in inputs]
 
 class LeNet(Block, Model):
-
-    def __init__(self, layers, batch_size, rng=9001):
+    def __init__(self, layers, batch_size, th_rng= None, np_rng = None, seed = 9001):
 
         self.layers = []
         self._params = []
 
         for layer in layers:
-            layer = str_to_class(layer['name'])(**layer['params'])
+            layer = str_to_class(layer['name'])(th_rng = th_rng, np_rng = np_rng, **layer['params'])
             self.layers.append(layer)
             if hasattr(layer, '_params'):
                 self._params.extend(layer._params)
@@ -228,8 +257,14 @@ class LeNetLearner(object):
                     irange = 0.05,
                     bias_init = 0.0,
                     random_filters = False,
-                    rng=9001):
+                    th_rng = None,
+                    np_rng = None,
+                    seed=9001):
 
+        if th_rng is None:
+            th_rng = RandomStreams(seed)
+        if np_rng is None:
+            np_rng = numpy.random.RandomState(seed)
 
         # make corruptors:
         mlp_input_corruptors = []
@@ -247,7 +282,7 @@ class LeNetLearner(object):
                 mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
 
 
-        self.conv = LeNet(conv_layers, batch_size, rng)
+        self.conv = LeNet(conv_layers, batch_size, np_rng = np_rng, th_rng = th_rng)
         mlp_nunits = list(mlp_nunits)
         mlp_nunits.insert(0, numpy.prod(self.conv.output_space.shape) * self.conv.output_space.num_channels)
         self.mlp = DropOutMLP(input_corruptors = mlp_input_corruptors,
@@ -255,7 +290,7 @@ class LeNetLearner(object):
                         n_units = mlp_nunits,
                         n_outs = n_outs,
                         act_enc = mlp_act,
-                        rng = rng)
+                        seed = seed)
 
 
         if random_filters:
@@ -564,4 +599,74 @@ class LeNetLearnerMultiCategory(object):
             return [test_score_i(i) for i in xrange(n_test_batches)]
 
         return train_fn, valid_score, test_score
+
+### functions
+def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
+    """
+    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
+    Matthew D. Zeiler, Rob Fergus
+
+    bc01: minibatch in format (batch size, channels, rows, cols),
+        IMPORTANT: All values should be poitivie
+    pool_shape: shape of the pool region (rows, cols)
+    pool_stride: strides between pooling regions (row stride, col stride)
+    image_shape: avoid doing some of the arithmetic in theano
+    """
+    r, c = image_shape
+    pr, pc = pool_shape
+    rs, cs = pool_stride
+
+    batch = bc01.shape[0]
+    channel = bc01.shape[1]
+
+    if rng is None:
+        rng = RandomStreams(2022)
+
+    # Compute index in pooled space of last needed pool
+    # (needed = each input pixel must appear in at least one pool)
+    def last_pool(im_shp, p_shp, p_strd):
+        rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
+        assert p_strd * rval + p_shp >= im_shp
+        assert p_strd * (rval - 1) + p_shp < im_shp
+        return rval
+    # Compute starting row of the last pool
+    last_pool_r = last_pool(image_shape[0] ,pool_shape[0], pool_stride[0]) * pool_stride[0]
+    # Compute number of rows needed in image for all indexes to work out
+    required_r = last_pool_r + pr
+
+    last_pool_c = last_pool(image_shape[1] ,pool_shape[1], pool_stride[1]) * pool_stride[1]
+    required_c = last_pool_c + pc
+
+    for bc01v in get_debug_values(bc01):
+        assert not numpy.any(numpy.isinf(bc01v))
+        assert bc01v.shape[2] == image_shape[0]
+        assert bc01v.shape[3] == image_shape[1]
+
+    wide_infinity = tensor.alloc(0.0, batch, channel, required_r, required_c)
+
+    name = bc01.name
+    if name is None:
+        name = 'anon_bc01'
+    bc01 = tensor.set_subtensor(wide_infinity[:,:, 0:r, 0:c], bc01)
+    bc01.name = 'infinite_padded_' + name
+
+    res_r = int(numpy.floor(last_pool_r/rs)) + 1
+    res_c = int(numpy.floor(last_pool_c/cs)) + 1
+    res = tensor.alloc(0.0, batch, channel, res_r, res_c)
+
+    for r in xrange(res_r):
+        for c in xrange(res_c):
+            window = bc01[:, :, r*rs:r*rs+pr, c*cs:c*cs+pc]
+            norm = window.sum(axis = [2, 3])
+            norm = tensor.switch(tensor.eq(norm, 0.0), 1., norm)
+            window = window / norm.dimshuffle(0, 1, 'x', 'x')
+            prob = rng.multinomial(pvals = window.reshape((batch, channel, pr * pc)))
+            val = (bc01[:,:,r*rs:r*rs+pr, c*cs:c*cs+pc] * prob.reshape((batch, channel, pr, pc))).max(axis=[2, 3])
+            res = tensor.set_subtensor(res[:,:,r,c], val)
+
+    return res
+
+def str_to_class(str):
+    return getattr(sys.modules[__name__], str)
+
 

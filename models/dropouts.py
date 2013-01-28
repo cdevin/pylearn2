@@ -7,6 +7,8 @@ from pylearn2.space import VectorSpace
 from noisy_encoder.models.base import rectifier
 
 
+# TODO Remove inheritance from Autoencoder
+
 class DropOutAutoencoder(Autoencoder):
 
     def __init__(self, input_corruptor, hidden_corruptor,
@@ -52,7 +54,7 @@ class DropOutHiddenLayer(Autoencoder):
     def __init__(self, input_corruptor,
             hidden_corruptor,
             nvis, nhid, act_enc,
-            irange=1., bias_init = 1., rng=9001):
+            irange=1., bias_init = 1., seed=9001):
 
         """
         irange : flaot, optional
@@ -68,7 +70,7 @@ class DropOutHiddenLayer(Autoencoder):
         act_dec = None,
         tied_weights = True,
         irange = irange,
-        rng = rng)
+        rng = seed)
 
         self.input_corruptor = input_corruptor
         self.hidden_corruptor = hidden_corruptor
@@ -124,7 +126,6 @@ class DropOutHiddenLayer(Autoencoder):
         act_grad = self._activation_grad(inputs)
         jacobian = self.weights * act_grad.dimshuffle(0, 'x', 1)
         return jacobian
-
 
 class BalancedDropOutHiddenLayer(Autoencoder):
 
@@ -233,7 +234,7 @@ class DeepDropOutHiddenLayer(Autoencoder):
                     act_enc,
                     irange = 1e-3,
                     bias_init =  0.0,
-                    rng = 9001):
+                    seed = 9001):
 
         if act_enc == "rectifier":
             act_enc = rectifier
@@ -253,7 +254,7 @@ class DeepDropOutHiddenLayer(Autoencoder):
                                 act_enc = act_enc,
                                 irange = irange,
                                 bias_init = bias_init,
-                                rng = rng))
+                                seed = seed))
             self._params.extend(self.layers[-1]._params)
             self.weights.append(self.layers[-1].weights)
 

@@ -39,7 +39,8 @@ def load_model(state, numpy_rng, theano_rng):
                 irange = state.irange,
                 bias_init = state.bias_init,
                 random_filters = state.random_filters,
-                rng = numpy_rng)
+                th_rng = theano_rng,
+                np_rng = numpy_rng)
     elif state.model == 'google_conv':
         return LeNetLearnerMultiCategory(
                 image_shape = state.image_shape,
@@ -282,33 +283,33 @@ def tfd_conv_experiment():
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/tfd_gpu.pkl")
     state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
-
     # model params
     state.model = 'conv'
     state.conv_layers = [
              {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : [48, 48],
                             'batch_size' : state.batch_size,
-                            'nchannels' : 1,
+                            'num_channels' : 1,
                             'n' : 4,
                             'k' : 1,
                             'alpha' : 0e-04,
                             'beta' : 0.75}},
                 {'name' : 'Convolution',
                     'params' : {'image_shape' : [48, 48],
-                            'kernel_shape' : [7, 7],
-                            'nchannels_input' : 1,
-                            'nchannels_output' : 60,
+                            'kernel_shape' : [9, 9],
+                            'num_channels_input' : 1,
+                            'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                {'name' : 'Pool',
-                    'params' : {'image_shape' : [42, 42],
-                        'pool_shape' : (2, 2),
-                        'nchannels' : 60}},
+                {'name' : 'StochasticMaxPool',
+                    'params' : {'image_shape' : [40, 40],
+                        'num_channels' : 64,
+                        'pool_shape' : (5, 5),
+                        'pool_stride' : (5, 5)}},
                 {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : [21, 21],
+                    'params' : {'image_shape' : [8, 8],
                             'batch_size' : state.batch_size,
-                            'nchannels' : 60,
+                            'num_channels' : 64,
                             'n' : 4,
                             'k' : 1,
                             'alpha' : 0e-04,

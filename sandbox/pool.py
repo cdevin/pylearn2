@@ -32,10 +32,10 @@ from pylearn2.utils import sharedX
 
 
 
-def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape):
+def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng):
     """
-    Theano's max pooling op only support pool_stride = pool_shape
-    so here we have a graph that does max pooling with strides
+    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
+    Matthew D. Zeiler, Rob Fergus
 
     bc01: minibatch in format (batch size, channels, rows, cols)
     pool_shape: shape of the pool region (rows, cols)
@@ -50,9 +50,8 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape):
     batch = bc01.shape[0]
     channel = bc01.shape[1]
 
-
-    rng = T.shared_randomstreams.RandomStreams(2022)
-    #rng = theano.sandbox.rng_mrg.MRG_RandomStreams(2001)
+    if rng is None:
+        rng = T.shared_randomstreams.RandomStreams(2022)
 
     # Compute index in pooled space of last needed pool
     # (needed = each input pixel must appear in at least one pool)
@@ -89,8 +88,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape):
     for r in xrange(res_r):
         for c in xrange(res_c):
             window = bc01[:, :, r*rs:r*rs+pr, c*cs:c*cs+pc]
-            norm = window.sum(axis = [2,3])
-            window = window / norm.dimshuffle(0, 1, 'x', 'x')
+            window = window / window.sum(axis = [2, 3]).dimshuffle(0, 1, 'x', 'x')
             prob = rng.multinomial(pvals = window.reshape((batch, channel, pr * pc)))
             val = (bc01[:,:,r*rs:r*rs+pr, c*cs:c*cs+pc] * prob.reshape((batch, channel, pr, pc))).max(axis=[2, 3])
             res = T.set_subtensor(res[:,:,r,c], val)

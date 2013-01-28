@@ -15,8 +15,17 @@ class PickableLambda(object):
         return x
 
 class DropOutMLP(Block, Model):
-    def __init__(self, input_corruptors, hidden_corruptors, n_units, n_outs, act_enc, irange = 0.05, bias_init = 0.0,  rng = 9001):
-
+    def __init__(self,
+                input_corruptors,
+                hidden_corruptors,
+                n_units,
+                n_outs,
+                act_enc,
+                irange = 0.05,
+                bias_init = 0.0,
+                np_rng = None,
+                th_rng = None,
+                seed = 9001):
 
         if act_enc == "rectifier":
             act_enc = rectifier
@@ -28,7 +37,7 @@ class DropOutMLP(Block, Model):
                                         act_enc = act_enc,
                                         irange = irange,
                                         bias_init = bias_init,
-                                        rng = rng)
+                                        seed = seed)
 
         self._params.extend(self.hiddens._params)
         self.weights = self.hiddens.weights
