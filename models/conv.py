@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano import tensor
 from theano.tensor.signal import downsample
-from theano.tensor.shared_randomstreams import RandomStreams
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from theano.gof.op import get_debug_values
 #TODO It's used in normalization, change it to use pylearn version
 from theano.tensor.nnet.conv import conv2d
@@ -27,7 +27,7 @@ class Convolution(Block, Model):
     def __init__(self,
                     image_shape,
                     kernel_shape,
-                    num_channels_input,
+                    num_channels,
                     num_channels_output,
                     batch_size,
                     act_enc,
@@ -44,7 +44,7 @@ class Convolution(Block, Model):
 
         self.num_channels_output = num_channels_output
 
-        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels_input)
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         self.output_space = Conv2DSpace(shape = [(a-b+1)  for a, b in \
                 zip(image_shape, kernel_shape)], num_channels = num_channels_output)
 
@@ -224,7 +224,10 @@ class LeNet(Block, Model):
         self.layers = []
         self._params = []
 
-        for layer in layers:
+        for i, layer in enumerate(layers):
+            # infere next layer shapes
+            if i > 0:
+                layer = update_convnet_param(layer, layers[i-1])
             layer = str_to_class(layer['name'])(th_rng = th_rng, np_rng = np_rng, **layer['params'])
             self.layers.append(layer)
             if hasattr(layer, '_params'):
@@ -359,7 +362,6 @@ class LeNetLearner(object):
                 updated_inc = momentum * inc - learning_rate * gparam
                 updates[inc] = updated_inc
                 updates[param] = param + updated_inc
-
 
         train_fn = theano.function(inputs=[index,
                 theano.Param(learning_rate),
@@ -601,7 +603,6 @@ class LeNetLearnerMultiCategory(object):
         return train_fn, valid_score, test_score
 
 ### functions
-
 def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     """
     Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
@@ -675,7 +676,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
     norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x')
     # get prob
-    prob = rng.multinomial(pvals = norm.reshape((batch, channel, res_r * res_c, pr * pc)))
+    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
     # select
     res = (window * prob.reshape((batch, channel, res_r * res_c,  pr, pc))).max(axis=[3, 4])
     res.name = 'pooled_' + name
@@ -685,4 +686,21 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
 
+def update_convnet_param(layer_u, layer_d):
+    """
+    Infer next layer params
+    """
 
+    if layer_d['name'] == 'Convolution':
+        layer_u['params']['image_shape'] = [im - k + 1 for im,
+                k in zip(layer_d['params']['image_shape'], layer_d['params']['kernel_shape'])]
+        layer_u['params']['num_channels'] = layer_d['params']['num_channels_output']
+    elif layer_d['name'] == 'StochasticMaxPool':
+        layer_u['params']['image_shape'] = [int(numpy.ceil(float(im - p)/ s)) + 1 for im, p,
+                s in zip(layer_d['params']['image_shape'], layer_d['params']['pool_shape'], layer_d['params']['pool_stride'])]
+        layer_u['params']['num_channels'] = layer_d['params']['num_channels']
+    elif layer_d['name'] == 'LocalResponseNormalize':
+        layer_u['params']['image_shape'] = layer_d['params']['image_shape']
+        layer_u['params']['num_channels'] = layer_d['params']['num_channels']
+
+    return layer_u

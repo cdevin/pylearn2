@@ -5,7 +5,7 @@ from pylearn2.utils import serial
 from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, MomentumAdjuster
 
 
-def sgd(model,
+def sgd2(model,
             datasets,
             training_epochs,
             batch_size,
@@ -98,10 +98,9 @@ def sgd(model,
     print "SGD finieshed with best validation error at epoch {} with:\n\ttrain error: {}\n\tvalid error: {}\n\ttest error: {}".format(
                     best_epoch, best_train, best_valid, best_test)
     print "The code took {}".format((end_time - start_time) / 60.)
-
     return best_test * 100., best_valid * 100.
 
-def sgd_es(model,
+def sgd(model,
             datasets,
             training_epochs,
             batch_size,

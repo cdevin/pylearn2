@@ -5,7 +5,7 @@ from theano import tensor
 from pylearn2.utils import serial
 from pylearn2.datasets.mnist import MNIST
 from pylearn2.models.svm import DenseMulticlassSVM
-from utils.datasets.cifar10_bw import CIFAR10_BW
+from my_utils.datasets.cifar10_bw import CIFAR10_BW
 #from noisy_encoder.models.mlp import run_mlp
 from sklearn.preprocessing import Scaler
 from jobman.tools import DD

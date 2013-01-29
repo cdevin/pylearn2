@@ -1,7 +1,7 @@
 import numpy
 import theano
 from theano import tensor
-from theano.tensor.shared_randomstreams import RandomStreams
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from pylearn2.base import Block
 from pylearn2.models import Model
 from pylearn2.classifier import LogisticRegressionLayer

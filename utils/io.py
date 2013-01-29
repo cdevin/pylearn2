@@ -30,7 +30,7 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
             train_size = 50000
             nouts = 10
         elif dataset == 'cifar10':
-            train_size = 40000
+            train_size = 45000
             nouts = 10
         elif dataset == 'cifar100':
             train_size = 40000
