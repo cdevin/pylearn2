@@ -273,11 +273,11 @@ def tfd_conv_experiment():
     state.norm = False
     state.shuffle = False
     state.train_alg = "sgd"
-    state.nepochs = 1000
-    state.lr_params = {'shrink_time': 10, 'init_value' : 0.05, 'dc_rate' : 0.001}
+    state.nepochs = 200
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
     state.enable_momentum = True
     state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
-    state.batch_size = 20
+    state.batch_size = 100
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
@@ -306,6 +306,10 @@ def tfd_conv_experiment():
                         'num_channels' : 64,
                         'pool_shape' : (5, 5),
                         'pool_stride' : (5, 5)}},
+                #{'name' : 'MaxPool',
+                    #'params' : {'image_shape' : [40, 40],
+                        #'num_channels' : 64,
+                        #'pool_shape' : (5, 5)}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : [8, 8],
                             'batch_size' : state.batch_size,

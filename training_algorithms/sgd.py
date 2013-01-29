@@ -4,6 +4,7 @@ from copy import deepcopy
 from pylearn2.utils import serial
 from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, MomentumAdjuster
 
+
 def sgd(model,
             datasets,
             training_epochs,
@@ -14,6 +15,106 @@ def sgd(model,
             save_name,
             enable_momentum,
             momentum_params):
+
+    """
+    Stochastic Gradient Decent
+    """
+
+    train_set_x, train_set_y = datasets[0]
+    valid_set_x, valid_set_y = datasets[1]
+    test_set_x, test_set_y = datasets[2]
+
+    # compute number of minibatches for training, validation and testing
+    n_train_batches = train_set_x.get_value(borrow=True).shape[0]
+    n_train_batches /= batch_size
+
+    # get the training, validation and testing function for the model
+    print '... getting the training functions'
+    train_fn, validate_model, test_model = model.build_finetune_functions(
+                datasets=datasets,
+                batch_size=batch_size,
+                coeffs=coeffs,
+                enable_momentum = enable_momentum)
+
+    print '... training the model'
+
+    best_model = None
+    best_epoch = 0
+    best_train = numpy.inf
+    best_valid = numpy.inf
+    best_test = numpy.inf
+    start_time = time.clock()
+
+
+    monitors = {'cost': [],  'train' : [], 'valid' : [], 'test': []}
+    lr_adjuster = LearningRateAdjuster(**lr_params)
+    momentum_adjuster = MomentumAdjuster(**momentum_params)
+
+    for epoch in xrange(training_epochs):
+        learning_rate = lr_adjuster.get_value(epoch)
+        momentum = momentum_adjuster.get_value(epoch)
+
+        cost = []
+        train_error = []
+        for minibatch_index in xrange(n_train_batches):
+            b_cost, b_train_error = train_fn(minibatch_index, learning_rate, momentum)
+            if numpy.isnan(b_cost):
+                print "NaN values showed up, have to stop here."
+                break
+            cost.append(b_cost)
+            train_error.append(b_train_error)
+
+        cost = numpy.mean(cost)
+        train_error = numpy.mean(train_error)
+        valid_error = numpy.mean(validate_model())
+        test_error = numpy.mean(test_model())
+        print "epoch {}, cost: {}, train: {}, valid: {}, test:{}".format(epoch, cost, train_error, valid_error, test_error)
+
+        #save monitors
+        monitors['cost'].append(cost)
+        monitors['train'].append(train_error)
+        monitors['valid'].append(valid_error)
+        monitors['test'].append(test_error)
+
+        # if we got the best validation score until now
+        if valid_error < best_valid:
+            best_valid = valid_error
+            best_test = test_error
+            best_train = train_error
+            best_epoch = epoch
+            best_model = deepcopy(model)
+            print "\tBest one so far!"
+
+        if (epoch + 1) % save_frequency == 0:
+            print "Saving the model"
+            serial.save(save_name, best_model)
+            serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
+
+    print "Saving the model"
+    serial.save(save_name, best_model)
+    serial.save(save_name.rstrip('pkl') + '_monitor.pkl', monitors)
+    end_time = time.clock()
+
+    print "SGD finieshed with best validation error at epoch {} with:\n\ttrain error: {}\n\tvalid error: {}\n\ttest error: {}".format(
+                    best_epoch, best_train, best_valid, best_test)
+    print "The code took {}".format((end_time - start_time) / 60.)
+
+    return best_test * 100., best_valid * 100.
+
+def sgd_es(model,
+            datasets,
+            training_epochs,
+            batch_size,
+            coeffs,
+            lr_params,
+            save_frequency,
+            save_name,
+            enable_momentum,
+            momentum_params):
+
+    """
+    Early stopping Stochastic Gradient Decent
+    """
 
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]

@@ -642,27 +642,33 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
         assert bc01v.shape[2] == image_shape[0]
         assert bc01v.shape[3] == image_shape[1]
 
-    wide_infinity = tensor.alloc(0.0, batch, channel, required_r, required_c)
+    wide_infinity = tensor.cast(tensor.alloc(0.0, batch, channel, required_r, required_c), theano.config.floatX)
 
     name = bc01.name
     if name is None:
         name = 'anon_bc01'
     bc01 = tensor.set_subtensor(wide_infinity[:,:, 0:r, 0:c], bc01)
-    bc01.name = 'infinite_padded_' + name
+    bc01.name = 'zero_padded_' + name
 
     res_r = int(numpy.floor(last_pool_r/rs)) + 1
     res_c = int(numpy.floor(last_pool_c/cs)) + 1
-    res = tensor.alloc(0.0, batch, channel, res_r, res_c)
+    res = tensor.cast(tensor.alloc(0.0, batch, channel, res_r, res_c), theano.config.floatX)
+    res.name = 'result'
+    one_value = numpy.array(1.).astype(theano.config.floatX)
 
     for r in xrange(res_r):
         for c in xrange(res_c):
+            # normalize
             window = bc01[:, :, r*rs:r*rs+pr, c*cs:c*cs+pc]
             norm = window.sum(axis = [2, 3])
-            norm = tensor.switch(tensor.eq(norm, 0.0), 1., norm)
+            norm = tensor.switch(tensor.eq(norm, 0.0), one_value, norm)
             window = window / norm.dimshuffle(0, 1, 'x', 'x')
+            # get prob
             prob = rng.multinomial(pvals = window.reshape((batch, channel, pr * pc)))
+            # select
             val = (bc01[:,:,r*rs:r*rs+pr, c*cs:c*cs+pc] * prob.reshape((batch, channel, pr, pc))).max(axis=[2, 3])
-            res = tensor.set_subtensor(res[:,:,r,c], val)
+            # prob returns int64 which forces val to float64. so as a hack have to cast below
+            res = tensor.set_subtensor(res[:,:,r,c], tensor.cast(val, theano.config.floatX))
 
     return res
 
