@@ -59,8 +59,8 @@ def load_data(dataset, data_path, shuffle = False, scale = False, norm = False, 
         train_set = serial.load(data_path + 'train.pkl')
         valid_set = serial.load(data_path + 'valid.pkl')
         test_set = serial.load(data_path + 'test.pkl')
-        train_x = train_set.X[:100]
-        train_y = train_set.y[:100]
+        train_x = train_set.X
+        train_y = train_set.y
         valid_x = valid_set.X
         valid_y = valid_set.y
         test_x = test_set.X

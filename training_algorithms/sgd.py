@@ -200,7 +200,11 @@ def sgd(model,
                     # test it on the test set
                     test_losses = test_model()
                     test_score = numpy.mean(test_losses)
-                    best_model = deepcopy(model)
+                    try:
+                        best_model = deepcopy(model)
+                    except RuntimeError:
+                        sys.setrecursionlimit(1500)
+                        best_model = deepcopy(model)
                     print(('\t\t\t\t\tepoch %i, minibatch %i/%i, test error of '
                            'best model %f %%') %
                           (epoch, minibatch_index + 1, n_train_batches,

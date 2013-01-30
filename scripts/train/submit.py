@@ -490,60 +490,98 @@ def conv_tfd():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
+    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.train_alg = "sgd"
-    state.nepochs = 600
-    state.lr = 0.005
-    state.lr_shrink_time = 70
-    state.lr_dc_rate = 0.01
+    state.nepochs = 500
+    state.lr_params = {'shrink_time': 50, 'init_value' : 0.005, 'dc_rate' : 0.001}
     state.enable_momentum = True
-    state.init_momentum = 0.5
-    state.final_momentum = 0.9
-    state.momentum_inc_start = 40
-    state.momentum_inc_end = 80
-    state.batch_size = 50
+    state.momentum_params = {'inc_start' : 70, 'inc_end' : 120, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
-    state.save_frequency = 50
-    state.save_name = "conv_gpu.pkl"
-    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
-
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/tfd_gpu.pkl")
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0.0}
     # model params
-    state.model = 'new_conv'
-    state.image_shape = [48, 48]
-    state.kernel_shapes = [(10,10)]
-    state.nchannels = [1, 30]
-    state.pool_shapes = [(2,2), (2, 2), (2, 2)]
-    state.normalize_params = [{'n': 3, 'k': 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 42, 'nkernels' : 30 }]
-    state.conv_act = "rectifier"
+    state.model = 'conv'
+    state.conv_layers = [
+             {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : [48, 48],
+                            'batch_size' : state.batch_size,
+                            'num_channels' : 1,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}},
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : [48, 48],
+                            'kernel_shape' : [7, 7],
+                            'num_channels' : 1,
+                            'num_channels_output' : 64,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'rectifier',}},
+                {'name' : 'MaxPool',
+                    'params' : {'image_shape' : None,
+                        'num_channels' : None,
+                        'pool_shape' : (3, 3),}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : None,
+                            'batch_size' : state.batch_size,
+                            'num_channels' : None,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75
+                            }},
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : None,
+                            'kernel_shape' : [5, 5],
+                            'num_channels' : None,
+                            'num_channels_output' : 64,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'rectifier',}},
+                {'name' : 'MaxPool',
+                    'params' : {'image_shape' : None,
+                        'num_channels' : None,
+                        'pool_shape' : (3, 3),}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : None,
+                            'batch_size' : state.batch_size,
+                            'num_channels' :None ,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75
+                            }}]
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [1000, 500]
+    state.mlp_nunits = [1200]
     state.n_outs = 7
     state.bias_init = 0.1
     state.irange = 0.1
-    state.description = "train conv net on tfd augumented, test on lisa for ach exploration"
-
-
+    state.random_filters = True
 
     ind = 0
-    TABLE_NAME = "tfd_lisa_conv_arch"
+    TABLE_NAME = "tfd_random_conv_arch"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.005]:
-        for ker, pool in zip([10, 9, 9, 7, 7, 6, 5, 3], [1,  2, 3, 2, 4, 3, 2, 3]):
-            for map in [20, 50, 90]:
-                state.kernel_shapes = [(7,7), (ker, ker)]
-                state.pool_shapes = [(3, 3), (pool, pool)]
-                state.normalize_params = [{'n' : 4, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 42 , 'nkernels': 20},
-                        {'n' : 4, 'k' : 1, 'alpha' : 0e-04, 'beta' : 0.75, 'image_size' : 14 - ker + 1 , 'nkernels': map}]
-                state.lr = lr
-                state.nchannels = [1, 20, map]
-                sql.insert_job(mlp_experiment, flatten(state), db)
-                ind += 1
+    for lr in [0.005, 0.0005]:
+        for ker1 in [[9, 9], [7, 7], [5, 5]]:
+            for ker2 in [[7, 7], [5, 5]]:
+                for pool1 in [[4, 4], [3, 3], [2, 2]:
+                    for pool2 in [[3, 3], [2,2]]:
+                        state.lr_params['init_value'] = lr
+                        state.conv_layers[1]['kernel_shape'] = ker1
+                        state.conv_layers[4]['kernel_shape'] = ker2
+                        state.conv_layers[2]['pool_shape'] = pool1
+                        state.conv_layers[5]['pool_shape'] = pool2
+
+                        sql.insert_job(mlp_experiment, flatten(state), db)
+                        ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)

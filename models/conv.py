@@ -702,5 +702,8 @@ def update_convnet_param(layer_u, layer_d):
     elif layer_d['name'] == 'LocalResponseNormalize':
         layer_u['params']['image_shape'] = layer_d['params']['image_shape']
         layer_u['params']['num_channels'] = layer_d['params']['num_channels']
+    elif layer_d['name'] == 'MaxPool':
+        layer_u['params']['image_shape'] = [im / p for im, p in zip(layer_d['params']['image_shape'], layer_d['params']['pool_shape'])]
+        layer_u['params']['num_channels'] = layer_d['params']['num_channels']
 
     return layer_u
