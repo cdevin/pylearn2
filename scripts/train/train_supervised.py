@@ -343,7 +343,7 @@ def tfd_conv_experiment():
 
     # train params
     state.dataset = 'tfd'
-    state.fold = 4
+    state.fold = 0
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
