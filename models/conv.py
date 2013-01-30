@@ -678,7 +678,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     # get prob
     prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
     # select
-    res = (window * prob.reshape((batch, channel, res_r * res_c,  pr, pc))).max(axis=[3, 4])
+    res = (window * prob.reshape((batch, channel, res_r * res_c,  pr, pc))).max(axis=4).max(axis=3)
     res.name = 'pooled_' + name
 
     return tensor.cast(res.reshape((batch, channel, res_r, res_c)), theano.config.floatX)

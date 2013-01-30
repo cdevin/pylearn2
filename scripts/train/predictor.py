@@ -13,9 +13,7 @@ class Predictor(object):
         else:
             return self.f_double(input, input2)
 
-
 def make_function(model_path):
-
     model = serial.load(model_path)
     f_single = model.apply()
     f_double = model.apply(True)

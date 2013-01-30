@@ -7,7 +7,7 @@ from train import experiment as train_experiment
 from classify import experiment as classify_experiment
 #from l2_svm import experiment as l2_svm_experiment
 from train_supervised import experiment as mlp_experiment
-from utils.config import get_experiment_path
+from my_utils.config import get_experiment_path
 
 def train_layer1_mnist():
 

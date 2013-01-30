@@ -11,7 +11,7 @@ import theano.tensor as T
 import pylearn2
 import pylearn2.config
 from pylearn2.utils import serial
-from utils.config import get_data_path, get_result_path
+from my_utils.config import get_data_path, get_result_path
 from jobman.tools import DD
 
 DATA_PATH = get_data_path()

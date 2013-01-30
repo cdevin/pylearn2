@@ -343,23 +343,23 @@ def tfd_conv_experiment():
 
     # train params
     state.dataset = 'tfd'
-    state.fold = 0
+    state.fold = 4
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
     state.norm = False
     state.shuffle = False
     state.train_alg = "sgd"
-    state.nepochs = 500
-    state.lr_params = {'shrink_time': 50, 'init_value' : 0.005, 'dc_rate' : 0.001}
+    state.nepochs = 300
+    state.lr_params = {'shrink_time': 50, 'init_value' : 0.009, 'dc_rate' : 0.001}
     state.enable_momentum = True
-    state.momentum_params = {'inc_start' : 70, 'inc_end' : 120, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.momentum_params = {'inc_start' : 100, 'inc_end' : 150, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 20
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
     state.save_frequency = 100
     state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/tfd_gpu.pkl")
-    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0.0}
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-5}
     # model params
     state.model = 'conv'
     state.conv_layers = [
@@ -378,15 +378,15 @@ def tfd_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                #{'name' : 'StochasticMaxPool',
-                    #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : (3, 3),
-                        #'pool_stride' : (2, 2)}},
-                {'name' : 'MaxPool',
+                {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : (3, 3),}},
+                        'pool_shape' : (3, 3),
+                        'pool_stride' : (2, 2)}},
+                #{'name' : 'MaxPool',
+                    #'params' : {'image_shape' : None,
+                        #'num_channels' : None,
+                        #'pool_shape' : (3, 3),}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -403,15 +403,15 @@ def tfd_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                #{'name' : 'StochasticMaxPool',
-                    #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : (3, 3),
-                        #'pool_stride' : (2, 2)}},
-                {'name' : 'MaxPool',
+                {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : (2, 2),}},
+                        'pool_shape' : (3, 3),
+                        'pool_stride' : (2, 2)}},
+                #{'name' : 'MaxPool',
+                    #'params' : {'image_shape' : None,
+                        #'num_channels' : None,
+                        #'pool_shape' : (2, 2),}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -454,7 +454,7 @@ def tfd_conv_experiment():
     state.n_outs = 7
     state.bias_init = 0.1
     state.irange = 0.1
-    state.random_filters = True
+    state.random_filters = False
 
     experiment(state, None)
 

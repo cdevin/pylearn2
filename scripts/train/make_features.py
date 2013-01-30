@@ -7,9 +7,6 @@ import theano
 from scipy.io import savemat
 from theano import tensor
 from pylearn2.utils import serial
-from pylearn2.datasets.mnist import MNIST
-from pylearn2.datasets.cifar10 import CIFAR10
-from utils.datasets.cifar10_bw import CIFAR10_BW
 from sklearn.preprocessing import Scaler
 
 def norm(X):
@@ -21,21 +18,10 @@ def norm(X):
 def load_data(dataset):
 
     print "Loading data..."
-    if dataset == 'mnist':
-        train_set = MNIST('train')
-        test_set = MNIST('test')
-    elif dataset == 'cifar10_bw':
-        train_set = CIFAR10_BW('train')
-        test_set = CIFAR10_BW('test')
-    elif dataset == 'cifar10':
-        train_set = CIFAR10('train')
-        test_set = CIFAR10('test')
-    else:
-        raise NameError('Unknown dataset: {}').format(dataset)
+    return serial.load(dataset)
 
-    return train_set, test_set
 
-def save(train, test, path, name, file_format):
+def save(data, path, file_format):
 
     if file_format == 'mat':
         if name == 'labels':
@@ -44,34 +30,33 @@ def save(train, test, path, name, file_format):
         else:
             data = {'train_x': train, 'test_x' : test}
             savemat(path + name, data)
+
+    elif file_format == 'npy':
+        numpy.save(path, data)
     else:
         raise NameError('Unknown format: {}'.format(file_format))
 
-def convert(train_x, test_x, model_f, dataset, scale, normalize):
+def convert(data, batch_size, model_f, dataset):
 
-    if model_f != None:
-        print "Transforming data..."
-        x = tensor.matrix()
-        rep = serial.load(model_f)
-        rep.fn = theano.function([x], rep.test_encode(x))
+    print "Transforming data..."
+    x = tensor.matrix()
+    model = serial.load(model_f)
+    res = model.conv_encode(x)
+    for layer in model.mlp.hiddens.layers:
+        res = layer.test_encode(res)
+    fn = theano.function([x], res)
 
-        train_feat = rep.perform(train_x)
-        test_feat = rep.perform(test_x)
+    feat = []
+    n_batches = data.shape[0] / batch_size
+    for i in xrange(n_batches):
+        feat.append(fn(data[i*batch_size:(i+1) * batch_size]))
+    if numpy.mod(data.shape[0], batch_size) != 0:
+        rem = numpy.concatenate([data[n_batches * batch_size :],
+            numpy.random.random((batch_size - numpy.mod(data.shape[0], batch_size), data.shape[1])).astype('float32')])
+        feat.append(fn(rem))
 
-    if scale:
-        print "Scaling data..."
-        scaler = Scaler()
-        scaler.fit(train_feat)
-        train_feat = scaler.transform(train_feat)
-        test_feat = scaler.transform(test_feat)
-
-    if normalize:
-        print "Normalizing..."
-        train_feat = numpy.vstack([norm(x) for x in train_feat])
-        test_feat = numpy.vstack([norm(x) for x in test_feat])
-
-    return train_feat, test_feat
-
+    feat = numpy.concatenate(feat)[:data.shape[0]]
+    return feat
 
 
 
@@ -79,30 +64,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'save features of model')
     parser.add_argument('-p', '--path', help = "path to model files", required=True)
-    parser.add_argument('--pattern', help = "pattern of files", default = "*.pkl")
-    parser.add_argument('-s', '--scale', action = "store_true", default = False, help = "scale data")
-    parser.add_argument('-n', '--norm', action = "store_true", default = False, help = "normalize data")
-    parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10_bw', 'cifar10'], required = True)
-    parser.add_argument('-f', '--format', choices = ['mat'], default = 'mat')
+    parser.add_argument('-s', '--save_path', help = "path to save", required=True)
+    parser.add_argument('-d', '--dataset',  required = True)
+    parser.add_argument('-f', '--format', choices = ['mat', 'npy'], default = 'npy')
     args = parser.parse_args()
 
-    # find files
-    matches = []
-    for root, dirnames, filenames in os.walk(args.path):
-        for filename in fnmatch.filter(filenames, args.pattern):
-            matches.append(os.path.join(root, filename))
-
-
     # load datasets
-    train_set, test_set = load_data(args.dataset)
+    data = load_data(args.dataset)
 
     # save features
-    for item in matches:
-        train_feat, test_feat = convert(train_set.X, test_set.X, item, args.dataset, args.scale, args.norm)
-        save_path = item.rstrip(item.split('/')[-1])
-        name = item.split('/')[-1].rstrip('.pkl')
-        save(train_feat, test_feat, save_path, name, args.format)
+    feat = convert(data.X, 20, args.path, args.dataset)
+    save(feat, args.save_path, args.format)
 
 
     # save labels
-    save(train_set.y, test_set.y, args.path, 'labels', args.format)
+    save_path = args.save_path.rstrip('.npy') + '_y.npy'
+    save(data.y, save_path, args.format)
