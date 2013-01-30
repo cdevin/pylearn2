@@ -788,7 +788,7 @@ def probability_weighting_pool(bc01, pool_shape, pool_stride, image_shape, rng =
     norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
     norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x')
     # average
-    res = (window * norm).mean(axis=4).mean(axis=3)
+    res = (window * norm).sum(axis=[3,4])
     res.name = 'pooled_' + name
 
     return res.reshape((batch, channel, res_r, res_c))
