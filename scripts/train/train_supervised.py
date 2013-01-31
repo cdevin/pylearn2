@@ -123,12 +123,7 @@ def experiment(state, channel):
     numpy_rng = numpy.random.RandomState(89677)
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
 
-    datasets = load_data(state.dataset,
-                        state.data_path,
-                        state.shuffle,
-                        state.scale,
-                        state.norm,
-                        state.fold)
+    datasets = load_data(state.dataset, state.dataset_params)
     model = load_model(state, numpy_rng, theano_rng)
     if state.train_alg == "sgd":
         train_alg = sgd
@@ -260,17 +255,96 @@ def mnist_experiment():
 
     experiment(state, None)
 
+def mnist_conv_experiment():
+
+    state = DD()
+
+    # train params
+    state.dataset = 'mnist'
+    data_path = os.path.join(DATA_PATH, "mnist/pylearn2/")
+    state.dataset_params = {'shuffle' : False, 'valid_size' : 5000, 'data_path' : data_path}
+    state.train_alg = "sgd"
+    state.nepochs = 300
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
+    state.enable_momentum = True
+    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.batch_size = 100
+    state.w_l1_ratio = 0.000
+    state.act_l1_ratio = 0.0
+    state.save_frequency = 100
+    state.save_name = os.path.join(RESULT_PATH, "naenc/mnist/tfd_gpu.pkl")
+    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-06}
+    # model params
+    state.model = 'conv'
+    state.conv_layers = [
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : [28, 28],
+                            'batch_size' : state.batch_size,
+                            'num_channels' : 1,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}},
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : None,
+                            'kernel_shape' : [5, 5],
+                            'num_channels' : None,
+                            'num_channels_output' : 64,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'rectifier',}},
+                {'name' : 'StochasticMaxPool',
+                    'params' : {'image_shape' : None,
+                        'num_channels' : None,
+                        'pool_shape' : (3, 3),
+                        'pool_stride' : (2, 2)}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : None,
+                            'batch_size' : state.batch_size,
+                            'num_channels' : None,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}},
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : None,
+                            'kernel_shape' : [5, 5],
+                            'num_channels' : None,
+                            'num_channels_output' : 64,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'rectifier',}},
+                {'name' : 'StochasticMaxPool',
+                    'params' : {'image_shape' : None,
+                        'num_channels' : None,
+                        'pool_shape' : (3, 3),
+                        'pool_stride' : (2, 2)}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : None,
+                            'batch_size' : state.batch_size,
+                            'num_channels' : None,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}}]
+
+    state.mlp_act = "rectifier"
+    state.mlp_input_corruption_levels = [None, None]
+    state.mlp_hidden_corruption_levels = [0.5]
+    state.mlp_nunits = [1000]
+    state.n_outs = 10
+    state.bias_init = 0.1
+    state.irange = 0.1
+    state.random_filters = False
+
+    experiment(state, None)
+
 def cifar10_conv_experiment():
 
     state = DD()
 
     # train params
     state.dataset = 'cifar10'
-    state.fold = 0
-    state.data_path = os.path.join(DATA_PATH, "cifar10_conv/pylearn2/")
-    state.scale = False
-    state.norm = False
-    state.shuffle = False
+    data_path = os.path.join(DATA_PATH, "cifar10_conv/pylearn2/")
+    state.dataset_params = {'shuffle' : False, 'valid_size' : 5000, 'data_path' : data_path}
     state.train_alg = "sgd"
     state.nepochs = 300
     state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
@@ -288,7 +362,7 @@ def cifar10_conv_experiment():
                 {'name' : 'Convolution',
                     'params' : {'image_shape' : [32, 32],
                             'kernel_shape' : [5, 5],
-                            'num_channels_input' : 3,
+                            'num_channels' : 3,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
@@ -308,7 +382,7 @@ def cifar10_conv_experiment():
                 {'name' : 'Convolution',
                     'params' : {'image_shape' : [14, 14],
                             'kernel_shape' : [5, 5],
-                            'num_channels_input' : 64,
+                            'num_channels' : 64,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
@@ -328,12 +402,12 @@ def cifar10_conv_experiment():
 
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [None, None]
-    state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [1000, 500]
+    state.mlp_hidden_corruption_levels = [0.5]
+    state.mlp_nunits = [1200]
     state.n_outs = 10
-    state.bias_init = 0.1
-    state.irange = 0.1
-    state.random_filters = True
+    state.bias_init = 0.01
+    state.irange = 0.01
+    state.random_filters = False
 
     experiment(state, None)
 
@@ -343,7 +417,7 @@ def tfd_conv_experiment():
 
     # train params
     state.dataset = 'tfd'
-    state.fold = 0
+    state.fold = 4
     state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
     #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
     state.scale = False
@@ -351,7 +425,7 @@ def tfd_conv_experiment():
     state.shuffle = False
     state.train_alg = "sgd"
     state.nepochs = 300
-    state.lr_params = {'shrink_time': 50, 'init_value' : 0.009, 'dc_rate' : 0.001}
+    state.lr_params = {'shrink_time': 50, 'init_value' : 0.001, 'dc_rate' : 0.01}
     state.enable_momentum = True
     state.momentum_params = {'inc_start' : 100, 'inc_end' : 150, 'init_value' : 0.5, 'final_value' : 0.9}
     state.batch_size = 20
@@ -720,7 +794,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--dataset', choices = ['mnist', 'cifar10',
         'cifar100', 'timit', 'tfd', 'tfd_conv', 'siamese', 'siamese_variant',
         'conv_google', 'siamese_google', 'tfd_siamese_mix', 'google_large_conv',
-        'cifar10_conv'], required = True)
+        'cifar10_conv', 'mnist_conv'], required = True)
     args = parser.parse_args()
 
     if args.dataset == 'mnist':
@@ -749,3 +823,5 @@ if __name__ == "__main__":
         google_large_conv_experiment()
     elif args.dataset == 'cifar10_conv':
         cifar10_conv_experiment()
+    elif args.dataset == 'mnist_conv':
+        mnist_conv_experiment()

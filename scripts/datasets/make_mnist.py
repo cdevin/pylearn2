@@ -8,7 +8,7 @@ from pylearn2.datasets.mnist import MNIST
 from pylearn2.utils import serial
 from pylearn2.datasets import preprocessing
 from pylearn2.utils import string_utils
-from utils.config import get_data_path
+from my_utils.config import get_data_path
 
 print 'Loading MNIST train set...'
 train = MNIST('train', center = True)

@@ -43,6 +43,7 @@ class Convolution(Block, Model):
         self.np_rng = np_rng
 
         self.num_channels_output = num_channels_output
+        self.kernel_shape = kernel_shape
 
         self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         self.output_space = Conv2DSpace(shape = [(a-b+1)  for a, b in \
@@ -118,6 +119,14 @@ class Convolution(Block, Model):
 
     def get_weights(self):
         return self.weights
+
+    def get_weights_topo(self):
+        outp, inp, rows, cols = range(4)
+        raw = self.weights.get_value()
+        return numpy.transpose(raw, (outp, rows, cols, inp))
+
+    def get_weights_view_shape(self):
+        raise NotImplementedError
 
 class MaxPool(Block, Model):
     def __init__(self, image_shape, pool_shape, num_channels, np_rng = None, th_rng = None):
@@ -353,6 +362,16 @@ class LeNetLearner(object):
 
     def __call__(self, inputs):
         return self.test_encode(inputs)
+
+    def get_weights_topo(self):
+        for layer in self.conv.layers:
+            if isinstance(layer, Convolution):
+                return layer.get_weights_topo()
+
+    def get_weights_view_shape(self):
+        for layer in self.conv.layers:
+            if isinstance(layer, Convolution):
+                return layer.get_weights_view_shape()
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
 
@@ -690,7 +709,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     bc01.name = 'zero_padded_' + name
 
     # unraveling
-    window = tensor.alloc(0.0, batch, channel, res_r * res_c, pr, pc)
+    window = tensor.alloc(0.0, batch, channel, res_r, res_c, pr, pc)
     window.name = 'unravlled_winodows_' + name
 
     for row_within_pool in xrange(pool_shape[0]):
@@ -698,20 +717,19 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
         for col_within_pool in xrange(pool_shape[1]):
             col_stop = last_pool_c + col_within_pool + 1
             win_cell = bc01[:,:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs]
-            win_cell = win_cell.reshape((batch, channel, res_r * res_c))
-            window  =  tensor.set_subtensor(window[:,:, :, row_within_pool, col_within_pool], win_cell)
+            window  =  tensor.set_subtensor(window[:,:,:,:, row_within_pool, col_within_pool], win_cell)
 
     # find the norm
-    norm = window.sum(axis = [3, 4])
+    norm = window.sum(axis = [4, 5])
     norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
-    norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x')
+    norm = window / norm.dimshuffle(0, 1, 2, 3, 'x', 'x')
     # get prob
     prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
     # select
-    res = (window * prob.reshape((batch, channel, res_r * res_c,  pr, pc))).max(axis=4).max(axis=3)
+    res = (window * prob.reshape((batch, channel, res_r, res_c,  pr, pc))).max(axis=5).max(axis=4)
     res.name = 'pooled_' + name
 
-    return tensor.cast(res.reshape((batch, channel, res_r, res_c)), theano.config.floatX)
+    return tensor.cast(res, theano.config.floatX)
 
 def probability_weighting_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     """
@@ -772,7 +790,7 @@ def probability_weighting_pool(bc01, pool_shape, pool_stride, image_shape, rng =
     bc01.name = 'zero_padded_' + name
 
     # unraveling
-    window = tensor.alloc(0.0, batch, channel, res_r * res_c, pr, pc)
+    window = tensor.alloc(0.0, batch, channel, res_r, res_c, pr, pc)
     window.name = 'unravlled_winodows_' + name
 
     for row_within_pool in xrange(pool_shape[0]):
@@ -780,15 +798,14 @@ def probability_weighting_pool(bc01, pool_shape, pool_stride, image_shape, rng =
         for col_within_pool in xrange(pool_shape[1]):
             col_stop = last_pool_c + col_within_pool + 1
             win_cell = bc01[:,:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs]
-            win_cell = win_cell.reshape((batch, channel, res_r * res_c))
-            window  =  tensor.set_subtensor(window[:,:, :, row_within_pool, col_within_pool], win_cell)
+            window  =  tensor.set_subtensor(window[:,:,:,:, row_within_pool, col_within_pool], win_cell)
 
     # find the norm
-    norm = window.sum(axis = [3, 4])
+    norm = window.sum(axis = [4, 5])
     norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
-    norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x')
+    norm = window / norm.dimshuffle(0, 1, 2, 3, 'x', 'x')
     # average
-    res = (window * norm).sum(axis=[3,4])
+    res = (window * norm).sum(axis=[4,5])
     res.name = 'pooled_' + name
 
     return res.reshape((batch, channel, res_r, res_c))

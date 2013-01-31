@@ -5,7 +5,7 @@ from pylearn2.utils import serial
 from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, MomentumAdjuster
 
 
-def sgd2(model,
+def sgd_full(model,
             datasets,
             training_epochs,
             batch_size,
@@ -18,6 +18,7 @@ def sgd2(model,
 
     """
     Stochastic Gradient Decent
+    on all data on all epochs
     """
 
     train_set_x, train_set_y = datasets[0]
@@ -169,10 +170,6 @@ def sgd(model,
                 break
 
             if (iter + 1) % validation_frequency == 0:
-                #print model.mlp.hiddens.layers[0].weights.get_value().mean()
-                #print model.mlp.log_layer.W.get_value().mean()
-                #print model.mlp_p.layers[0].weights.get_value().mean()
-                #print model.mlp_p.layers[1].weights.get_value().mean()
                 validation_losses = validate_model()
                 this_validation_loss = numpy.mean(validation_losses)
                 print('%i, cost %f, lr %f, validation error %f %%' %
