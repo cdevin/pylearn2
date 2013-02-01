@@ -274,7 +274,7 @@ class LeNet(Model):
     def __call__(self, inputs):
         return self.encode(inputs)
 
-class LeNetLearner(object):
+class LeNetLearner(Model):
     "Temporary class to train LeNet with current non-pylearn sgd"
 
     def __init__(self, conv_layers,
@@ -300,14 +300,14 @@ class LeNetLearner(object):
         # make corruptors:
         mlp_input_corruptors = []
         for item in mlp_input_corruption_levels:
-            if item == None or item == 0.0:
+            if item is None or item == 0.0:
                 mlp_input_corruptors.extend([None])
             else:
-                mlp_input_corruptors.extend([GaussianCorruptor(corruption_level = item)])
+                mlp_input_corruptors.extend([GaussianCorruptor(stdev = item)])
 
         mlp_hidden_corruptors = []
         for item in mlp_hidden_corruption_levels:
-            if item == None or item == 0.0:
+            if item is None or item == 0.0:
                 mlp_hidden_corruptors.extend([None])
             else:
                 mlp_hidden_corruptors.extend([BinomialCorruptorScaled(corruption_level = item)])
@@ -323,6 +323,8 @@ class LeNetLearner(object):
                         act_enc = mlp_act,
                         seed = seed)
 
+        self.input_space = self.conv.input_space
+        self.output_space = self.mlp.output_space
 
         if random_filters:
             self._params = self.mlp._params
@@ -343,10 +345,12 @@ class LeNetLearner(object):
         return self.conv.test_encode(x)
 
     def errors(self, inputs, y):
+        y = tensor.argmax(y, axis = 1)
         return tensor.mean(tensor.neq(self.mlp.predict_y(self.conv_test_encode(inputs)), y))
 
     def negative_log_likelihood(self, inputs, y):
-        return -tensor.mean(tensor.log(self.mlp.p_y_given_x(self.conv_encode(inputs)))[tensor.arange(y.shape[0]), y])
+        y_ = tensor.log(self.mlp.p_y_given_x(self.conv_encode(inputs)))
+        return -tensor.sum(y_ * y)
 
     def encode(self, inputs):
         return self.mlp.encode(self.conv_encode(inputs))
@@ -366,6 +370,17 @@ class LeNetLearner(object):
         for layer in self.conv.layers:
             if isinstance(layer, Convolution):
                 return layer.get_weights_view_shape()
+
+    def get_params(self):
+        return self._params
+
+    def get_monitoring_channels(self, X, Y):
+        rval = OrderedDict()
+        rval['misclass'] = tensor.cast(self.errors(X, Y), theano.config.floatX)
+        return rval
+
+    def cost(self, X, Y):
+        return self.negative_log_likelihood(X, Y)
 
     def build_finetune_functions(self, datasets, batch_size, coeffs, enable_momentum):
 
