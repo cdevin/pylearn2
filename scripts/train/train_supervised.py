@@ -347,9 +347,9 @@ def cifar10_conv_experiment():
     state.dataset_params = {'shuffle' : False, 'valid_size' : 5000, 'data_path' : data_path}
     state.train_alg = "sgd"
     state.nepochs = 300
-    state.lr_params = {'shrink_time': 10, 'init_value' : 0.005, 'dc_rate' : 0.001}
+    state.lr_params = {'shrink_time': 10, 'init_value' : 0.001, 'dc_rate' : 0.01}
     state.enable_momentum = True
-    state.momentum_params = {'inc_start' : 30, 'inc_end' : 70, 'init_value' : 0.5, 'final_value' : 0.9}
+    state.momentum_params = {'inc_start' : 10, 'inc_end' : 30, 'init_value' : 0.5, 'final_value' : 0.99}
     state.batch_size = 50
     state.w_l1_ratio = 0.000
     state.act_l1_ratio = 0.0
@@ -418,11 +418,9 @@ def tfd_conv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 4
-    state.data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    data_path = os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/".format(state.fold))
+    state.dataset_params = {'data_path' : data_path, 'scale' : False, 'norm' : False}
     #state.data_path = os.path.join(DATA_PATH, "faces/tfd_lisa/pylearn2/")
-    state.scale = False
-    state.norm = False
-    state.shuffle = False
     state.train_alg = "sgd"
     state.nepochs = 300
     state.lr_params = {'shrink_time': 50, 'init_value' : 0.001, 'dc_rate' : 0.01}

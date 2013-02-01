@@ -24,7 +24,7 @@ def load_data(dataset, kwargs):
     if dataset in ['mnist']:
         return get_mnist(**kwargs)
     elif dataset in ['tfd', 'timit']:
-        return get_tfd(data_path)
+        return get_tfd(**kwargs)
     elif dataset in ['cifar10', 'cifar100']:
         return get_cifar(**kwargs)
     elif dataset in ['google']:
@@ -86,7 +86,7 @@ def get_mnist(data_path, shuffle = False, valid_size = -2, scale = False, norm =
     gc.collect()
     return train, valid, test
 
-def get_tfd(data_path):
+def get_tfd(data_path, scale, norm):
     train_set = serial.load(data_path + 'train.pkl')
     valid_set = serial.load(data_path + 'valid.pkl')
     test_set = serial.load(data_path + 'test.pkl')

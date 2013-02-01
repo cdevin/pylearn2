@@ -1,18 +1,20 @@
 import sys
 import numpy
+from collections import OrderedDict
+
 import theano
 from theano import tensor
 from theano.tensor.signal import downsample
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from theano.gof.op import get_debug_values
-#TODO It's used in normalization, change it to use pylearn version
-from theano.tensor.nnet.conv import conv2d
+
 from pylearn2.base import Block
 from pylearn2.models import Model
 from pylearn2.linear.conv2d import Conv2D
 from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
 from pylearn2.corruption import GaussianCorruptor
+
 from noisy_encoder.models.mlp import DropOutMLP
 from noisy_encoder.models.dropouts import DeepDropOutHiddenLayer
 from noisy_encoder.utils.corruptions import BinomialCorruptorScaled
@@ -21,7 +23,7 @@ from noisy_encoder.models.base import rectifier
 
 # TODO repalce rng with seed, and put rng
 
-class Convolution(Block, Model):
+class Convolution(Model):
     """ A convolution - pool block """
 
     def __init__(self,
@@ -128,7 +130,7 @@ class Convolution(Block, Model):
     def get_weights_view_shape(self):
         raise NotImplementedError
 
-class MaxPool(Block, Model):
+class MaxPool(Model):
     def __init__(self, image_shape, pool_shape, num_channels, np_rng = None, th_rng = None):
         self.pool_shape = pool_shape
         self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
@@ -149,7 +151,7 @@ class MaxPool(Block, Model):
             return self._apply(inputs)
         return [self._apply(inp) for inp in inputs]
 
-class StochasticMaxPool(Block, Model):
+class StochasticMaxPool(Model):
     def __init__(self, image_shape, num_channels, pool_shape, pool_stride, np_rng = None, th_rng = None):
         self.rng = th_rng
         self.image_shape = image_shape
@@ -196,7 +198,7 @@ class StochasticMaxPool(Block, Model):
             return self._apply(inputs)
         return [self._apply(inp) for inp in inputs]
 
-class LocalResponseNormalize(Block, Model):
+class LocalResponseNormalize(Model):
     def __init__(self, image_shape, batch_size, num_channels, n, k, alpha, beta, np_rng = None, th_rng = None):
         self.batch_size = batch_size
         self.image_shape = image_shape
@@ -211,39 +213,31 @@ class LocalResponseNormalize(Block, Model):
         self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         self.output_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
 
+        self.transformer = Conv2D(filters = self.filters, batch_size = batch_size,
+                input_space = self.input_space, output_axes = self.output_space.axes,
+                border_mode = 'full')
 
-    def _normalize(self, x):
+    def _apply(self, x):
         """
         out = x / ((1 + (alpha / n **2) * conv(x ** 2, n) )) ** beta
         """
 
-        base = conv2d(x ** 2, self.filters, filter_shape = (self.num_channels, self.num_channels, self.n, self.n),
-                image_shape = (self.batch_size, self.num_channels, self.image_shape[0], self.image_shape[1]),
-                border_mode = 'full')
-
+        base = self.transformer.lmul(x ** 2)
         #TODO don't assume image is square
-        new_size = self.image_shape[0] + self.n -1
         pad_r = int(numpy.ceil((self.n-1) / 2.))
         pad_l = self.n-1 - pad_r
         pad_l = int(self.image_shape[0] + self.n -1 - pad_l)
 
-        base = base[:,:, pad_r:pad_l, pad_r:pad_l]
+        base = base[:, pad_r:pad_l, pad_r:pad_l, :]
         base = self.k + (self.alpha / self.n**2) * base
         return x / (base ** self.beta)
-
-    def _apply(self, x):
-        axes = self.output_space.axes
-        op_axes = ('b', 'c', 0, 1)
-        x = Conv2DSpace.convert(x, axes, op_axes)
-        x = self._normalize(x)
-        return Conv2DSpace.convert(x, op_axes, axes)
 
     def __call__(self, inputs):
         if isinstance(inputs, tensor.Variable):
             return self._apply(inputs)
         return [self._apply(inp) for inp in inputs]
 
-class LeNet(Block, Model):
+class LeNet(Model):
     def __init__(self, layers, batch_size, th_rng= None, np_rng = None, seed = 9001):
 
         self.layers = []
@@ -399,7 +393,7 @@ class LeNetLearner(object):
         gparams = tensor.grad(cost, self._params)
         errors = self.errors(x, y)
         # compute list of fine-tuning updates
-        updates = {}
+        updates = OrderedDict()
         if momentum is None:
             for param, gparam in zip(self._params, gparams):
                 updates[param] = param - gparam * learning_rate
@@ -601,7 +595,7 @@ class LeNetLearnerMultiCategory(object):
         gparams = tensor.grad(cost, self._params)
         errors = self.errors(x, y)
         # compute list of fine-tuning updates
-        updates = {}
+        updates = OrderedDict()
         if momentum is None:
             for param, gparam in zip(self._params, gparams):
                 updates[param] = param - gparam * learning_rate
