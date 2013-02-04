@@ -205,6 +205,8 @@ class DropOut(Model):
 
     def __init__(self, corruption_level = 0.0, np_rng = None, th_rng = None, image_shape = None, num_channels = None):
         self.corruption_level = corruption_level
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
+        self.output_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
         if self.corruption_level != 0.0:
             self.corruptor = BinomialCorruptorScaled(corruption_level = self.corruption_level)
         else:

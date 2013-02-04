@@ -253,7 +253,9 @@ def tfd_conv_experiment():
                             'k' : 1,
                             'alpha' : 0e-04,
                             'beta' : 0.75
-                            }}]
+                            }},
+                {'name' : 'DropOut',
+                    'params' : {'corruption_level' : 0.5}}]
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [0.0, 0.0]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
