@@ -349,8 +349,14 @@ class LeNetLearner(Model):
         return tensor.mean(tensor.neq(self.mlp.predict_y(self.conv_test_encode(inputs)), y))
 
     def negative_log_likelihood(self, inputs, y):
-        y_ = tensor.log(self.mlp.p_y_given_x(self.conv_encode(inputs)))
-        return -tensor.sum(y_ * y)
+        y_ = self.mlp.p_y_given_x(self.conv_encode(inputs))
+        owner = y_.owner
+        op = owner.op
+        z ,=owner.inputs
+        z= z-z.max(axis=1).dimshuffle(0, 'x')
+        log_prob = z - tensor.log(tensor.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+        log_prog_of = (y * log_prob).sum(axis=1)
+        return - log_prog_of.mean()
 
     def encode(self, inputs):
         return self.mlp.encode(self.conv_encode(inputs))

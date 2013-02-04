@@ -12,7 +12,6 @@ from theano import tensor
 import theano
 import numpy
 
-
 def apply_lcn(data):
 
     # TODO Clean it up, it's a mess
@@ -23,7 +22,6 @@ def apply_lcn(data):
     res = numpy.concatenate([f(item.reshape((48, 48))) for item in topo])
     data.X = res.reshape((topo.shape[0], topo.shape[1] * topo.shape[1]))
     return data
-
 
 def make_data(which, fold, one_hot = False):
 

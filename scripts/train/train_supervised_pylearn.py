@@ -95,9 +95,9 @@ def mnist_conv_experiment():
 
     # train params
     state.dataset = 'mnist'
-    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', one_hot: 1, start: 0, stop: 50000}"
-    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', one_hot: 1, start: 50000, stop: 60000}"
-    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', one_hot: 1}"
+    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 0, stop: 50000}"
+    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 50000, stop: 60000}"
+    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 1, one_hot: 1}"
     state.init_learning_rate = 0.005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
