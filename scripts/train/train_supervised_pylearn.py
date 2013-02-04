@@ -231,6 +231,8 @@ def tfd_conv_experiment():
                             'alpha' : 0e-04,
                             'beta' : 0.75
                             }},
+                {'name' : 'DropOut',
+                    'params' : {'corruption_level' : 0.5}},
                 {'name' : 'Convolution',
                     'params' : {'image_shape' : None,
                             'kernel_shape' : [5, 5],

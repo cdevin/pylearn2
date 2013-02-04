@@ -196,7 +196,34 @@ class StochasticMaxPool(Model):
     def __call__(self, inputs):
         if isinstance(inputs, tensor.Variable):
             return self._apply(inputs)
-        return [self._apply(inp) for inp in inputs]
+        return [self. _apply(inp) for inp in inputs]
+
+class DropOut(Model):
+    """
+    Just apply drop-outs on output of it's lower layer
+    """
+
+    def __init__(self, corruption_level = 0.0, np_rng = None, th_rng = None, image_shape = None, num_channels = None):
+        self.corruption_level = corruption_level
+        if self.corruption_level != 0.0:
+            self.corruptor = BinomialCorruptorScaled(corruption_level = self.corruption_level)
+        else:
+            self.corruptor = None
+
+    def _corrupt(self, x):
+        if self.corruptor is None:
+            return x
+        else:
+            return self.corruptor(x)
+
+    def test_encode(self, inputs):
+        return inputs
+
+    def encode(self, inputs):
+        return self._corrupt(inputs)
+
+    def __call__(self, inputs):
+        return self.encode(inputs)
 
 class LocalResponseNormalize(Model):
     def __init__(self, image_shape, batch_size, num_channels, n, k, alpha, beta, np_rng = None, th_rng = None):
@@ -254,7 +281,7 @@ class LeNet(Model):
 
         self.input_space = self.layers[0].input_space
         self.output_space = self.layers[-1].output_space
-        self.image_topo = (batch_size, self.input_space.shape[0], self.input_space.shape[1], self.input_space.num_channels)
+        self.image_topo  = (batch_size, self.input_space.shape[0], self.input_space.shape[1], self.input_space.num_channels)
 
     def encode(self, x):
         x = x.reshape(self.image_topo)
@@ -847,5 +874,7 @@ def update_convnet_param(layer_u, layer_d):
     elif layer_d['name'] == 'MaxPool':
         layer_u['params']['image_shape'] = [im / p for im, p in zip(layer_d['params']['image_shape'], layer_d['params']['pool_shape'])]
         layer_u['params']['num_channels'] = layer_d['params']['num_channels']
-
+    elif layer_d['name'] == 'DropOut':
+        layer_u['params']['image_shape'] = layer_d['params']['image_shape']
+        layer_u['params']['num_channels'] = layer_d['params']['num_channels']
     return layer_u
