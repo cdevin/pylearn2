@@ -95,16 +95,16 @@ def mnist_conv_experiment():
 
     # train params
     state.dataset = 'mnist'
-    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 0, stop: 50000}"
-    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 50000, stop: 60000}"
-    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 1, one_hot: 1}"
+    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 0, stop: 50000}"
+    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 50000, stop: 60000}"
+    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 0, one_hot: 1}"
     state.init_learning_rate = 0.005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
     state.momentum_saturate = 80
     state.max_epochs = 300
-    state.batch_size = 100
+    state.batch_size = 200
     # model params
     state.model = 'conv'
     state.conv_layers = [
@@ -183,12 +183,14 @@ def tfd_conv_experiment():
     state.train_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/train.pkl".format(state.fold))
     state.valid_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/test.pkl".format(state.fold))
     state.test_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/valid.pkl".format(state.fold))
-    state.init_learning_rate = 0.0001
+    state.init_learning_rate = 0.05
     state.init_momentum = 0.5
-    state.max_epochs = 0
+    state.final_momentum = 0.99
+    state.momentum_start = 30
+    state.momentum_saturate = 80
+    state.max_epochs = 300
     state.batch_size = 1
-    state.save_name = os.path.join(RESULT_PATH, "naenc/tfd/tfd_gpu.pkl")
-    state.coeffs = {'w_l1' : 0.0, 'w_l2' : 0e-5}
+
     # model params
     state.model = 'conv'
     state.conv_layers = [

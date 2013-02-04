@@ -2,28 +2,28 @@ import os
 import argparse, fnmatch
 import numpy
 from jobman import DD, flatten, api0, sql
-from noisy_encoder.scripts.train_supervised_pylearn import convolution_yaml_string
-from noisy_encoder.scripts.train_supervised_pylearn import experiment
+from noisy_encoder.scripts.train.train_supervised_pylearn import convolution_yaml_string
+from noisy_encoder.scripts.train.train_supervised_pylearn import experiment
 from my_utils.config import get_experiment_path
 
 
 
-def mnist_conv_experiment():
+def mnist_conv():
 
     state = DD()
 
     # train params
     state.dataset = 'mnist'
-    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', one_hot: 1, start: 0, stop: 50000}"
-    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', one_hot: 1, start: 50000, stop: 60000}"
-    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', one_hot: 1}"
+    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 0, stop: 50000}"
+    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 1, one_hot: 1, start: 50000, stop: 60000}"
+    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 1, one_hot: 1}"
     state.init_learning_rate = 0.005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
     state.momentum_saturate = 80
-    state.max_epochs = 0
-    state.batch_size = 100
+    state.max_epochs = 300
+    state.batch_size = 200
     # model params
     state.model = 'conv'
     state.conv_layers = [
@@ -88,9 +88,9 @@ def mnist_conv_experiment():
     state.yaml_string = convolution_yaml_string
 
     ind = 0
-    TABLE_NAME = "tfd_random_conv_arch"
+    TABLE_NAME = "mnist_conv_sp"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.005, 0.0005]:
+    for lr in [0.05, 0.005, 0.0005]:
         state.init_learning_rate = lr
         sql.insert_job(experiment, flatten(state), db)
         ind += 1
@@ -98,7 +98,7 @@ def mnist_conv_experiment():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-def tfd_conv_experiment():
+def tfd_conv():
 
     state = DD()
 
