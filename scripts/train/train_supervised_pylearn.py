@@ -123,11 +123,15 @@ def mnist_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
+                {'name' : 'MaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : [3, 3],
-                        'pool_stride' : [2, 2]}},
+                        'pool_shape' : [3, 3]}},
+                        #{'name' : 'StochasticMaxPool',
+                        #'params' : {'image_shape' : None,
+                        #'num_channels' : None,
+                        #'pool_shape' : [3, 3],
+                        #'pool_stride' : [2, 2]}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -143,11 +147,15 @@ def mnist_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
+                 {'name' : 'MaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : [3, 3],
-                        'pool_stride' : [2, 2]}},
+                        'pool_shape' : [3, 3]}},
+                        #{'name' : 'StochasticMaxPool',
+                        #'params' : {'image_shape' : None,
+                        #'num_channels' : None,
+                        #'pool_shape' : [3, 3],
+                        #'pool_stride' : [2, 2]}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -183,7 +191,7 @@ def tfd_conv_experiment():
     state.train_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/train.pkl".format(state.fold))
     state.valid_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/test.pkl".format(state.fold))
     state.test_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/valid.pkl".format(state.fold))
-    state.init_learning_rate = 0.05
+    state.init_learning_rate = 0.0005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30

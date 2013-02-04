@@ -4,8 +4,7 @@ import numpy
 from jobman import DD, flatten, api0, sql
 from noisy_encoder.scripts.train.train_supervised_pylearn import convolution_yaml_string
 from noisy_encoder.scripts.train.train_supervised_pylearn import experiment
-from my_utils.config import get_experiment_path
-
+from my_utils.config import get_data_path, get_result_path
 
 
 def mnist_conv():
