@@ -16,7 +16,7 @@ def reterive_data(experiment, num, fold, which):
     # get classification results
 
     if which == "conv":
-        valid_query = "select {}_view.id, lr, mlphiddencorruptionlevels,\
+        valid_query = "select {}_view.id, 'kk', mlphiddencorruptionlevels,\
             {}keyval.fval from {}_view, {}keyval where {}_view.id = dict_id and\
             name = 'valid_score' and fold = {};".format(experiment,
                     experiment, experiment, experiment, experiment, fold)
