@@ -31,7 +31,6 @@ from pylearn2.utils import function
 from pylearn2.utils import safe_izip
 from pylearn2.utils import sharedX
 
-
 def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     """
     Stochastic max pooling for training as defined in:
@@ -56,90 +55,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
         #rng = RandomStreams(2022)
 
     if rng is None:
-        rng = MRG_RandomStreams(2022)
-
-    # Compute index in pooled space of last needed pool
-    # (needed = each input pixel must appear in at least one pool)
-    def last_pool(im_shp, p_shp, p_strd):
-        rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
-        assert p_strd * rval + p_shp >= im_shp
-        assert p_strd * (rval - 1) + p_shp < im_shp
-        return rval
-    # Compute starting row of the last pool
-    last_pool_r = last_pool(image_shape[0] ,pool_shape[0], pool_stride[0]) * pool_stride[0]
-    # Compute number of rows needed in image for all indexes to work out
-    required_r = last_pool_r + pr
-
-    last_pool_c = last_pool(image_shape[1] ,pool_shape[1], pool_stride[1]) * pool_stride[1]
-    required_c = last_pool_c + pc
-
-    # final result shape
-    res_r = int(numpy.floor(last_pool_r/rs)) + 1
-    res_c = int(numpy.floor(last_pool_c/cs)) + 1
-
-    for bc01v in get_debug_values(bc01):
-        assert not numpy.any(numpy.isinf(bc01v))
-        assert bc01v.shape[2] == image_shape[0]
-        assert bc01v.shape[3] == image_shape[1]
-
-    # padding
-    padded = tensor.alloc(0.0, batch, channel, required_r, required_c)
-    name = bc01.name
-    if name is None:
-        name = 'anon_bc01'
-    bc01 = tensor.set_subtensor(padded[:,:, 0:r, 0:c], bc01)
-    bc01.name = 'zero_padded_' + name
-
-    # unraveling
-    window = tensor.alloc(0.0, batch, channel, res_r * res_c, pr, pc)
-    window.name = 'unravlled_winodows_' + name
-
-    for row_within_pool in xrange(pool_shape[0]):
-        row_stop = last_pool_r + row_within_pool + 1
-        for col_within_pool in xrange(pool_shape[1]):
-            col_stop = last_pool_c + col_within_pool + 1
-            win_cell = bc01[:,:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs]
-            win_cell = win_cell.reshape((batch, channel, res_r * res_c))
-            window  =  tensor.set_subtensor(window[:,:, :, row_within_pool, col_within_pool], win_cell)
-
-    # find the norm
-    norm = window.sum(axis = [3, 4])
-    norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
-    norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x')
-    # get prob
-    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
-    # select
-    res = (window * prob.reshape((batch, channel, res_r * res_c,  pr, pc))).max(axis=4).max(axis=3)
-    res.name = 'pooled_' + name
-
-    return tensor.cast(res.reshape((batch, channel, res_r, res_c)), theano.config.floatX)
-
-
-def stochastic_max_pool2(bc01, pool_shape, pool_stride, image_shape, rng = None):
-    """
-    Stochastic max pooling for training as defined in:
-
-    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
-    Matthew D. Zeiler, Rob Fergus
-
-    bc01: minibatch in format (batch size, channels, rows, cols),
-        IMPORTANT: All values should be poitivie
-    pool_shape: shape of the pool region (rows, cols)
-    pool_stride: strides between pooling regions (row stride, col stride)
-    image_shape: avoid doing some of the arithmetic in theano
-    """
-    r, c = image_shape
-    pr, pc = pool_shape
-    rs, cs = pool_stride
-
-    batch = bc01.shape[0]
-    channel = bc01.shape[1]
-
-    #if rng is None:
-        #rng = RandomStreams(2022)
-
-    if rng is None:
-        rng = MRG_RandomStreams(2022)
+        rng = tensor.shared_randomstreams.RandomStreams(2022)
 
     # Compute index in pooled space of last needed pool
     # (needed = each input pixel must appear in at least one pool)
@@ -182,7 +98,7 @@ def stochastic_max_pool2(bc01, pool_shape, pool_stride, image_shape, rng = None)
         for col_within_pool in xrange(pool_shape[1]):
             col_stop = last_pool_c + col_within_pool + 1
             win_cell = bc01[:,:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs]
-            window  =  tensor.set_subtensor(window[:,:, :, :, row_within_pool, col_within_pool], win_cell)
+            window  =  tensor.set_subtensor(window[:,:,:,:, row_within_pool, col_within_pool], win_cell)
 
     # find the norm
     norm = window.sum(axis = [4, 5])
@@ -196,7 +112,86 @@ def stochastic_max_pool2(bc01, pool_shape, pool_stride, image_shape, rng = None)
 
     return tensor.cast(res, theano.config.floatX)
 
+def stochastic_max_pool2(bc01, pool_shape, pool_stride, image_shape, rng = None):
+    """
+    Stochastic max pooling for training as defined in:
 
+    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
+    Matthew D. Zeiler, Rob Fergus
+
+    bc01: minibatch in format (batch size, channels, rows, cols),
+        IMPORTANT: All values should be poitivie
+    pool_shape: shape of the pool region (rows, cols)
+    pool_stride: strides between pooling regions (row stride, col stride)
+    image_shape: avoid doing some of the arithmetic in theano
+    """
+    r, c = image_shape
+    pr, pc = pool_shape
+    rs, cs = pool_stride
+
+    batch = bc01.shape[0]
+    channel = bc01.shape[1]
+
+    #if rng is None:
+        #rng = RandomStreams(2022)
+
+    if rng is None:
+        rng = tensor.shared_randomstreams.RandomStreams(2022)
+
+    # Compute index in pooled space of last needed pool
+    # (needed = each input pixel must appear in at least one pool)
+    def last_pool(im_shp, p_shp, p_strd):
+        rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
+        assert p_strd * rval + p_shp >= im_shp
+        assert p_strd * (rval - 1) + p_shp < im_shp
+        return rval
+    # Compute starting row of the last pool
+    last_pool_r = last_pool(image_shape[0] ,pool_shape[0], pool_stride[0]) * pool_stride[0]
+    # Compute number of rows needed in image for all indexes to work out
+    required_r = last_pool_r + pr
+
+    last_pool_c = last_pool(image_shape[1] ,pool_shape[1], pool_stride[1]) * pool_stride[1]
+    required_c = last_pool_c + pc
+
+    # final result shape
+    res_r = int(numpy.floor(last_pool_r/rs)) + 1
+    res_c = int(numpy.floor(last_pool_c/cs)) + 1
+
+    for bc01v in get_debug_values(bc01):
+        assert not numpy.any(numpy.isinf(bc01v))
+        assert bc01v.shape[2] == image_shape[0]
+        assert bc01v.shape[3] == image_shape[1]
+
+    # padding
+    padded = tensor.alloc(0.0, batch, channel, required_r, required_c)
+    name = bc01.name
+    if name is None:
+        name = 'anon_bc01'
+    bc01 = tensor.set_subtensor(padded[:,:, 0:r, 0:c], bc01)
+    bc01.name = 'zero_padded_' + name
+
+    # unraveling
+    window = tensor.alloc(0.0, batch, channel, res_r, res_c, pr, pc)
+    window.name = 'unravlled_winodows_' + name
+
+    for row_within_pool in xrange(pool_shape[0]):
+        row_stop = last_pool_r + row_within_pool + 1
+        for col_within_pool in xrange(pool_shape[1]):
+            col_stop = last_pool_c + col_within_pool + 1
+            win_cell = bc01[:,:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs]
+            window  =  tensor.set_subtensor(window[:,:,:,:, row_within_pool, col_within_pool], win_cell)
+
+    # find the norm
+    norm = window.sum(axis = [4, 5])
+    norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
+    norm = window / norm.dimshuffle(0, 1, 2, 3, 'x', 'x')
+    # get prob
+    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
+    # select
+    res = (window * prob.reshape((batch, channel, res_r, res_c,  pr, pc))).max(axis=5).max(axis=4)
+    res.name = 'pooled_' + name
+
+    return tensor.cast(res, theano.config.floatX)
 
 def numpy_stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape):
     mx = None
@@ -350,11 +345,11 @@ def max_pool(bc01, pool_shape, pool_stride, image_shape):
 
 if __name__ == "__main__":
     theano.config.compute_test_value = 'warn'
-    im_shape = (100, 100)
+    im_shape = (40, 40)
     pool_shape = (3, 3)
     pool_stride = (2, 2)
     x = tensor.tensor4()
-    inp = numpy.random.random((100, 20, im_shape[0], im_shape[1])).astype('float32') + 1
+    inp = numpy.random.random((100, 30, im_shape[0], im_shape[1])).astype('float32') + 1
     #inp = numpy.asarray([[1.6, 0, 0, 3.0], [0,1.2,0, 0.1],[0, 0.2,0,2.4]]).astype('float32')
     #inp = inp.reshape((1,1,3,4))
     #inp = numpy.asarray([[1.6, 0, 0], [0,0,0],[0,0,2.4]]).astype('float32')
@@ -362,15 +357,15 @@ if __name__ == "__main__":
     x.tag.test_value = inp
 
 
-    # new 1
-    start = time.time()
-    y = stochastic_max_pool(x, pool_shape, pool_stride, im_shape)
-    f = theano.function([x], y)
-    print '\nold method compile time: {}'.format((time.time() -start) / 60.)
+    ## new 1
+    #start = time.time()
+    #y = stochastic_max_pool(x, pool_shape, pool_stride, im_shape)
+    #f = theano.function([x], y)
+    #print '\nold method compile time: {}'.format((time.time() -start) / 60.)
 
-    start = time.time()
-    old = f(inp)
-    print 'old method run time: {}'.format((time.time() -start) / 60.)
+    #start = time.time()
+    #old = f(inp)
+    #print 'old method run time: {}'.format((time.time() -start) / 60.)
 
 
 
@@ -384,9 +379,9 @@ if __name__ == "__main__":
     print 'new method run time: {}'.format((time.time() -start) / 60.)
 
 
-    assert new.shape == old.shape
-    assert numpy.array_equal(new, old)
-    #for i in xrange(20):
+    #assert new.shape == old.shape
+    #assert numpy.array_equal(new, old)
+    ##for i in xrange(20):
     #print f(inp)
 
     #x = T.tensor4()

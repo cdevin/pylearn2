@@ -1,0 +1,1000 @@
+   62  cd /data/lisa/exp/mirzamom/noisy_encoder/
+   63  ls
+   64  git stauts
+   65  git staus
+   66  git status
+   67  git log
+   68  git commit -a -m 'now support hyperbot'
+   69  git checkot -b stochastic_pool
+   70  git checkout -b stochastic_pool
+   71  ls
+   72  cd sandbox/
+   73  ls
+   74  cp ../../pylearn/pylearn2/models/mlp.py pool.py
+   75  vi pool.py 
+   76  python pool.py 
+   77  vi pool.py 
+   78  python pool.py 
+   79  ipython
+   80  python pool.py 
+   81  pwd
+   82  vi /data/lisa/exp/mirzamom/Theano/theano/tensor/nnet/nnet.py
+   83  vi /data/lisa/exp/mirzamom/Theano/theano/tensor/signal/downsample.py
+   84  python pool.py 
+   85  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/corruption.py
+   86  python pool.py 
+   87  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/corruption.py
+   88  python pool.py 
+   89  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/corruption.py
+   90  python pool.py 
+   91  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/corruption.py
+   92  python pool.py 
+   93  git add pool.py 
+   94  git commit -a -m 'stochastic max pooling works in the sandbox'
+   95  vi pool.py 
+   96  cd ..
+   97  vi models/conv.py
+   98  vi scripts/train/train_supervised
+   99  vi scripts/train/train_supervised.py 
+  100  vi models/base.py
+  101  vi scripts/train/train_supervised.py 
+  102  vi /data/lisa/exp/mirzamom/Theano/theano/gof/op.py
+  103  vi scripts/train/train_supervised.py 
+  104  vi models/dropouts.py
+  105  vi models/mlp.py
+  106  vi models/dropouts.py
+  107  vi models/mlp.py
+  108  vi models/dropouts.py
+  109  vi scripts/train/train_supervised.py 
+  110  vi utils/io.py
+  111  vi scripts/train/train_supervised.py 
+  112  python sandbox/pool.py 
+  113  THANE_FLAGS=device=gpu python sandbox/pool.py 
+  114  THEANO_FLAGS=device=gpu python sandbox/pool.py 
+  115  vi scripts/train/train_supervised
+  116  vi scripts/train/train_supervised.py 
+  117  ssh bart6
+  118  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/cifar10.py
+  119  python scripts/datasets/make_cifar10_conv.py 
+  120  vi scripts/train/train_supervised.py 
+  121  vi scripts/datasets/make_tfd_lisa.py 
+  122  vi scripts/train/train_supervised.py 
+  123  python scripts/datasets/make_cifar10_conv.py 
+  124  vi scripts/train/train_supervised.py 
+  125  vi scripts/train/train_supervised.py -d tfd_conv
+  126  python scripts/train/train_supervised.py -d tfd_conv
+  127  python scripts/datasets/make_cifar10_conv.py 
+  128  vi scripts/train/train_supervised.py 
+  129  cd scripts/datasets/
+  130  python make_cifar10_conv.py 
+  131  ls
+  132  cd ..
+  133  ls
+  134  cd ..
+  135  ls
+  136  cd ..
+  137  ls
+  138  ls util
+  139  ls utils/
+  140  mv utils/ global_utils
+  141  cd global_utils/
+  142  ls
+  143  vi .git/config 
+  144  cd ..
+  145  mv global_utils/ my_utils
+  146  cd noisy_encoder/scripts/datasets/
+  147  python make_cifar10_conv.py 
+  148  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/cifar10.py
+  149  vi ../../utils/io.py
+  150  python make_cifar10_conv.py 
+  151  ssh bart6
+  152  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  153  python train_supervised.py -d cifar10conv
+  154  python train_supervised.py -d cifar10c_conv
+  155  python train_supervised.py -d cifar10_conv
+  156  ls
+  157  vi mlp.py 
+  158  cd ../../../Theano/theano/tensor/nnet/
+  159  ls
+  160  vi nnet.py
+  161  cd /data/exp/
+  162  ls 
+  163  cd /data/lisa/exp/mirzamom/noisy_encoder/sandbox/
+  164  vi pool.py 
+  165  cd ..
+  166  cd models/
+  167  vi conv.py
+  168  cd ../sandbox/
+  169  vi pool.py 
+  170  cd ../models/
+  171  vi conv
+  172  vi conv.py
+  173  cd ../scripts/train/
+  174  ls
+  175  vi train_supervised.py 
+  176  vi ../../models/conv.py
+  177  cd ..
+  178  cd training_algorithms/
+  179  git commit -a -m 'stochastic max pooling added to conv'
+  180  vi sgd.py
+  181  cd ..
+  182  vi models/conv.py
+  183  vi /data/lisa/exp/mirzamom/Theano/theano/sandbox/cuda/opt.py
+  184  vi /data/lisa/exp/mirzamom/Theano/theano/sandbox/cuda/basic_ops.py
+  185  vi /data/lisa/exp/mirzamom/Theano/theano/gof/opt.py
+  186  vi models/conv.py
+  187  vi training_algorithms/sgd.py
+  188  vi models/conv.py
+  189  git log
+  190  git commit -a -m 'sgd cleaned, the stochastic max pooling bug with gpu fixed;
+  191  git commit -a -m 'sgd cleaned, the stochastic max pooling bug with gpu fixed'
+  192  vi models/conv.py
+  193  vi sandbox/pool.py 
+  194  vi models/conv
+  195  vi models/conv.py
+  196  git commit -a -m 'stochastic max pool omtimized'
+  197  git branch
+  198  vi models/conv.py
+  199  git branch --contains hyperbot
+  200  git branch --contains hyperopt
+  201  git branch --contains group
+  202  git branch --contains stochastic_pool
+  203  vi training_algorithms/sgd.py
+  204  git status
+  205  vi .gitignore
+  206  git status
+  207  rm core.27424 
+  208  rm scripts/train/.nfs0000000004605d6f00000351 
+  209  ls
+  210  git status
+  211  vi .gitignore
+  212  git status
+  213  cd scripts/
+  214  git status
+  215  vi train/train_supervised.py 
+  216  cd datasets/
+  217  ls
+  218  cp make_cifar10.py make_cifar10_conv.py
+  219  vi make_cifar10_conv.py 
+  220  ls
+  221  vi make_cifar10_conv.py 
+  222  cd ../train/
+  223  vi train_supervised
+  224  vi train_supervised.py 
+  225  firefox
+  226  vi cda_feat_gen.py 
+  227  ls /data/lisatmp2/mirzamom/data/TFD/cda/
+  228  ls /data/lisatmp2/mirzamom/data/TFD/cda/fold0/
+  229  chmod 755 -r /data/lisatmp2/mirzamom/data/TFD/
+  230  chmod -r 755  /data/lisatmp2/mirzamom/data/TFD/
+  231  chmod -r755  /data/lisatmp2/mirzamom/data/TFD/
+  232  chmod R 755  /data/lisatmp2/mirzamom/data/TFD/
+  233  chmod -R 755  /data/lisatmp2/mirzamom/data/TFD/
+  234  ls -l /data/lisatmp2/mirzamom/data/TFD/cda/fold0/
+  235  chmod -R 755  /data/lisatmp2/mirzamom/data/TFD/
+  236  ls -l /data/lisatmp2/mirzamom/data/TFD/cda/fold0/
+  237  ls -l /data/lisatmp2/mirzamom/data/TFD/cda/
+  238  ls -l /data/lisatmp2/mirzamom/data/TFD/
+  239  ls -l /data/lisatmp2/mirzamom/data/
+  240  chmod  755  /data/lisatmp2/mirzamom/data/
+  241  chmod  755  /data/lisatmp2/mirzamom/
+  242  mkdir /data/lisatmp2/mirzamom/data/tfd_cda
+  243  rm /data/lisatmp2/mirzamom/data/tfd_cda
+  244  rm -r /data/lisatmp2/mirzamom/data/tfd_cda
+  245  rm -r /data/lisatmp2/mirzamom/data/TFD
+  246  mkdir /data/lisatmp2/mirzamom/data/TFD
+  247  mkdir /data/lisatmp2/mirzamom/data/TFD/cda
+  248  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold0
+  249  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold1
+  250  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold2
+  251  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold3
+  252  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold4
+  253  mkdir /data/lisatmp2/mirzamom/data/TFD/cda/fold5
+  254  pwd
+  255  THEANO_FLAGS=device=gpu python cda_feat_gen.py 
+  256  vi models/conv.py
+  257  cd scripts/train/
+  258  vi train_supervised
+  259  vi train_supervised.py 
+  260  pythonn train_supervised.py -d tfd_conv
+  261  python train_supervised.py -d tfd_conv
+  262  vi train_supervised.py 
+  263  python train_supervised.py -d tfd_conv
+  264  vi training_algorithms/sgd.py
+  265  vi models/conv.py
+  266  cd /data/lisa/exp/mirzamom/ubi_faces/mirzamom/
+  267  vi cda_svm_salah.py 
+  268  nautilus .
+  269  vi cda_svm_salah.py 
+  270  cd /data/lisa/exp/mirzamom/ubi_faces/mirzamom/
+  271  ls
+  272  vi cda_svm_salah.py 
+  273  cp cda.py cda_feat_gen.py
+  274  vi cda_feat_gen.py 
+  275  tmux
+  276  cd /data/lisa/exp/mirzamom/noisy_encoder/
+  277  tmux
+  278  cd ../Theano/
+  279  ls
+  280  cd theano/
+  281  ls
+  282  cd sandbox/
+  283  ;s
+  284  ls
+  285  vi rng_mrg.py
+  286  vi multinomial.py
+  287  vi samples_MRG31k3p_12_7_5.txt 
+  288  ls cuda/
+  289  vi cuda/rng_curand.py
+  290  vi rng_mrg.py
+  291  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  292  ls
+  293  vi l2_svm.py 
+  294  nautilus .
+  295  vi l2_svm.
+  296  vi l2_svm.py 
+  297  vi l2_svm.m 
+  298  vi l2_svm.py 
+  299  cd /data/lisa/exp/mirzamom/ubi_faces/mirzamom/
+  300  vi cda_feat_gen.py 
+  301  cd ..
+  302  ssh -X briee
+  303  ssh briee
+  304  ipython
+  305  ssh -X eos4
+  306  tmux ls
+  307  tmux attach -t 1
+  308  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  309  THEANO_FLAGS=device=gpu python train_supervised.py -d tfd_conv
+  310  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  311  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f0.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/unlabeled/unlabeled.npy
+  312  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  313  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f0.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/unlabeled/unlabeled.npy
+  314  rm /data/lisatmp2/mirzamom/data/TFD/conv/unlabeled/
+  315  rm -r /data/lisatmp2/mirzamom/data/TFD/conv/unlabeled/
+  316  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f0.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/0/unlabeled.npy
+  317  ls /data/lisatmp2/mirzamom/data/TFD/conv/0/unlabeled.npy 
+  318  ls /data/lisatmp2/mirzamom/data/TFD/conv/0/
+  319  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f1.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/1/unlabeled.npy
+  320  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f2.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/2/unlabeled.npy
+  321  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f3.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/3/unlabeled.npy
+  322  python make_features.py -p /data/lisatmp2/mirzamom/models/tfd_f4.pkl -d /data/lisatmp/mirzamom/data/faces/TFD/pylearn2/unlabeled/unlabeled.pkl -s /data/lisatmp2/mirzamom/data/TFD/conv/4/unlabeled.npy
+  323  chmod +R 755 data/lisatmp2/mirzamom/data/TFD/conv/
+  324  chmod -R 755 data/lisatmp2/mirzamom/data/TFD/conv/
+  325  chmod -R 755 /data/lisatmp2/mirzamom/data/TFD/conv/
+  326  ls
+  327  rm 50fee1f22ee7d54314000002/
+  328  rm -r 50fee1f22ee7d54314000002/
+  329  ls
+  330  vi ../../make_tfd_feat.py 
+  331  vi ../datasets/make_tfd.py 
+  332  python ../datasets/make_tfd.py 
+  333  ssh briee
+  334  tmux ls
+  335  tmux attach -t 1
+  336  chrome
+  337  import ipdb
+  338  ipython
+  339  friefox
+  340  firefox
+  341  ssh -X eos4
+  342  tmux ls
+  343  tmux attach -t 0
+  344  tmux attach -t 1
+  345  cd scripts/train/
+  346  python train_supervised.py -d cifar10_conv
+  347  THEANO_FLAGS=device=gpu python train_supervised.py -d cifar10_conv
+  348  THEANO_FLAGS=device=gpu python train_supervised.py -d mnist_conv
+  349  ls /data/lisatmp2/mirzamom/results/naenc/mnist
+  350  mkdir /data/lisatmp2/mirzamom/results/naenc/mnist
+  351  THEANO_FLAGS=device=gpu python train_supervised.py -d mnist_conv
+  352  python ../datasets/make_mnist.py 
+  353  THEANO_FLAGS=device=gpu python train_supervised.py -d mnist_conv
+  354  THEANO_FLAGS=device=gpu python train_supervised.py -d cifar10_conv
+  355  cd ../../sandbox/
+  356  python pool.py 
+  357  cd ../../sandbox/
+  358  python pool.py 
+  359  ls
+  360  pwd
+  361  cd ../noisy_encoder/sandbox/
+  362  python pool.py 
+  363  cd ../Theano/theano/sandbox/
+  364  ls
+  365  vi rng_mrg.py
+  366  htop
+  367  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/scripts/
+  368  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  369  vi ../models/model.py
+  370  vi ../models/mlp.py 
+  371  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  372  vi ../models/mlp.py 
+  373  vi ../models/dbm.py
+  374  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  375  tmux ls
+  376  cd /data/lisa/exp/mirzamom/noisy_encoder/
+  377  git status
+  378  git diff
+  379  vi training_algorithms/sgd.py
+  380  tmux
+  381  firefox
+  382  cd /data/lisa/exp/mirzamom/pylearn/tutorials/
+  383  nautilus .
+  384  ipython notebook --pylab
+  385  ipython
+  386  ab
+  387  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/scripts/
+  388  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  389  vi /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/fold0_conv.txt 
+  390  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  391  ls
+  392  vi show_weights.py 
+  393  vi ../gui/get_weights_report.py
+  394  vi show_weights.py 
+  395  python show_weights.py /data/lisatmp2/mirzamom/models/tfd_f0.pkl 
+  396  cd ..
+  397  vi models/mlp.py 
+  398  git commit -a -m 'stochastic max pooling optimized a bit'
+  399  cd /data/lisa/exp/mirzamom/noisy_encoder/
+  400  git commit -a -m 'optimized stochastic max pooling a bit'
+  401  vi training_algorithms/sgd.py
+  402  git log
+  403  git status
+  404  git push origin stochastic_pool
+  405  vi training_algorithms/sgd.py
+  406  vi models/conv.py
+  407  vi ../pylearn/pylearn2/linear/conv2d.py
+  408  vi models/conv.py
+  409  vi ../pylearn/pylearn2/linear/conv2d.py
+  410  vi models/conv.py
+  411  cd scripts/train/
+  412  ls
+  413  ls /data/lisatmp2/mirzamom/
+  414  ls /data/lisatmp2/mirzamom/results/
+  415  mkdir /data/lisatmp2/mirzamom/results/tfd_conv
+  416  mkdir /data/lisatmp2/mirzamom/results/tfd_conv/1
+  417  ls *.txt
+  418  vi logfile.txt 
+  419  rm logfile.txt 
+  420  mv *.txt /data/lisatmp2/mirzamom/results/tfd_conv/1/
+  421  ls
+  422  rm tmp.pkl 
+  423  ls
+  424  cp train.py train_supervised_pylearn.py
+  425  vi train_supervised_pylearn.py 
+  426  vi ../../models/conv.py
+  427  vi ../../models/conv.py
+  428  vi train_supervised_pylearn.py 
+  429  vi ../../models/conv.py
+  430  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/monitor.py
+  431  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/models/mlp.py 
+  432  vi ../../models/conv.py
+  433  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/monitor.py
+  434  vi train_supervised_pylearn.py 
+  435  vi ../../models/conv.py
+  436  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/monitor.py
+  437  vi /data/lisa//exp/mirzamom/pylearn/pylearn2/datasets/tfd.py
+  438  vi train_supervised.py 
+  439  vi train_supervised_pylearn.py 
+  440  vi ../../models/conv.py
+  441  vi train_supervised_pylearn.py 
+  442  vi ../../models/conv.py
+  443  vi train_supervised_pylearn.py 
+  444  vi ../datasets/make_tfd.py 
+  445  vi train_supervised_pylearn.py 
+  446  vi ../datasets/make_tfd.py 
+  447  vi train_supervised_pylearn.py 
+  448  git commit -a -m 'now conv works with pylearn train'
+  449  ls
+  450  cd ..
+  451  ls
+  452  cd ..
+  453  ls
+  454  vi scripts/train/deepmlp_new.py 
+  455  ls models/
+  456  cd scripts/train/
+  457  ls
+  458  mkdir DEPRECTED
+  459  mv deepmlp_* DEPRECTED/
+  460  ls
+  461  git add train_supervised_pylearn.py 
+  462  git status
+  463  git add ../../.gitignore 
+  464  git add hp_submit.py 
+  465  git add train_supervised_hp.py 
+  466  ls
+  467  vi mlp.py 
+  468  mv mlp.py DEPRECTED/
+  469  ls
+  470  vi evaluate.py 
+  471  ls
+  472  ls -
+  473  ls -a
+  474  ls -l
+  475  mv siamese_feat_demo.py DEPRECTED/
+  476  ls
+  477  ls -l
+  478  cd /data/lisatmp2/mirzamom/
+  479  ls
+  480  cd models/
+  481  ls
+  482  cd ..
+  483  cd results/
+  484  ls
+  485  cd tfd_conv/
+  486  ls
+  487  cd 1
+  488  ls
+  489  vi README
+  490  ls
+  491  pwd
+  492  ls
+  493  mv 13/ foold1
+  494  scp -r briee:/RQexec/mirzameh/jobs/mirzamom_db/tfd_stochastic_pool2/9/ .
+  495  mv 9/ fold2
+  496  ls
+  497  scp -r briee:/RQexec/mirzameh/jobs/mirzamom_db/tfd_stochastic_pool2/5/ .
+  498  mv 5/ fold3
+  499  scp -r briee:/RQexec/mirzameh/jobs/mirzamom_db/tfd_stochastic_pool2/1/ .
+  500  mv 1/ fold4
+  501  ls
+  502  git commit -a -m 'clean up'
+  503  cd ..
+  504  cd tutorials/
+  505  nautilus .
+  506  tmux ls
+  507  tmux attach -t 1
+  508  tmux attach -t 0
+  509  tmux attach -t 1
+  510  tmux attach -t 0
+  511  ssh briee
+  512  ssh monk
+  513  firefox
+  514  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/
+  515  vi tfd.py
+  516  git branch
+  517  git tfd.py
+  518  vi tfd.py
+  519  vi cifar10.py
+  520  vi tfd.py
+  521  ipython
+  522  vi tfd.py
+  523  ipython
+  524  vi tfd.py
+  525  ipython
+  526  vi tfd.py
+  527  ipython
+  528  vi tfd.py
+  529  ipython
+  530  vi tfd.py
+  531  ipython
+  532  git checkout -b tfd
+  533  git commit -a -m 'one_hot option, and identity labels added to TFD'
+  534  git push origin tfd
+  535  ipython notebook --pylab
+  536  mux attach -t 1
+  537  tmux attach -t 0
+  538  tmux attach -t 1
+  539  tmux attach -t 0
+  540  ssh briee
+  541  ssh monk
+  542  firefox
+  543  ssh eos4
+  544  cd /data/lisatmp2/mirzamom/data/kaggle/
+  545  ls
+  546  vi csv.py 
+  547  cd /data/lisa/exp/mirzamom/ubi_faces/mirzamom/
+  548  ls
+  549  cd data/
+  550  ls
+  551  cd ..
+  552  ls
+  553  cd google/
+  554  ls
+  555  vi preprocess_lisa.py 
+  556  ipython
+  557  ls
+  558  vi /data/lisatmp2/mirzamom/data/kaggle/tfd_lisa.csv
+  559  ipython
+  560  cd /data/lisatmp2/mirzamom/data/kaggle/
+  561  ls
+  562  vi csv.py 
+  563  python csv.py 
+  564  cd models/
+  565  ls
+  566  rm *.pyc
+  567  ls
+  568  cp conv.py conv_pylearn.py
+  569  vi conv_pylearn.py 
+  570  vi conv.py 
+  571  ls
+  572  cd ../scripts/train/
+  573  vi train_supervised_pylearn.py 
+  574  cd ..
+  575  cd pylearn/
+  576  git branch
+  577  git fetch central
+  578  git merge central/master
+  579  git log
+  580  vi pylearn2/models/mlp.py 
+  581  vi pylearn2/training_algorithms/sgd.py
+  582  vi pylearn2/models/mlp.py 
+  583  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/train/
+  584  python train_supervised_pylearn.py -t tfd_conv
+  585  THEANO_FLAGS=device=gpu python train_supervised_pylearn.py -t tfd_conv
+  586  mv Download/pdftk-1.45-src.zip tools/
+  587  cd tools/
+  588  unzip pdf
+  589  unzip pdftk-1.45-src.zip 
+  590  cd pdftk-1.45-dist/
+  591  ls
+  592  cd pdftk
+  593  ls
+  594  make
+  595  cd ..
+  596  ls
+  597  cd ..
+  598  ls
+  599  cd pdftk-1.45-dist/
+  600  ls
+  601  cd pdftk
+  602  ls
+  603  make -f Makefile.Redhat 
+  604  pdfunite
+  605  cd ~/Desktop/
+  606  mkdir azi
+  607  mv ~/Download/bechasboonplease.zip 
+  608  mv ~/Download/bechasboonplease.zip azi/
+  609  cd azi/
+  610  unzip bechasboonplease.zip 
+  611  pdfunite CAF_P1.pdf CAF_P2.pdf CAF.pdf
+  612  ls
+  613  nautilus
+  614  nautilus .
+  615  cd ..
+  616  rm -r azi/
+  617  cd /data/lisa/exp/mirzamom/Theano/
+  618  git branch
+  619  git push origin mrg
+  620  cd /data/lisa/exp/mirzamom/Theano/
+  621  ls
+  622  vi .git/config 
+  623  bc
+  624  cd Desktop/
+  625  pwd
+  626  ssh monk
+  627  condor_q
+  628  ssh zappa8
+  629  ssh westgrid
+  630  vi ~/.ssh/known_hosts 
+  631  vi ~/.ssh/config 
+  632  ssh checkers
+  633  ssh monk
+  634  tmux ls
+  635  tmux attach -t 0
+  636  tmux attach -t 2
+  637  tmux attach -t 1
+  638  tmux attach -t 0
+  639  ssh -X briee
+  640  pdftk
+  641  ipython
+  642  firefox
+  643  vi ~/.bashrc
+  644  ls /opt/lisa
+  645  ls /opt
+  646  ssh eos4
+  647  cd /opt/lisa/
+  648  cd os/
+  649  cd cuda_3.2/
+  650  cd sdk/
+  651  pwd
+  652  cd ..
+  653  vi ~/.bashrc
+  654  ssh eos4
+  655  tmux ls
+  656  tmux attach -t 0
+  657  cd /data/lisatmp2/mirzamom/
+  658  ls
+  659  cd results/stochastich_pooling/
+  660  ls
+  661  vi mnist/README 
+  662  ssh monk
+  663  cd eos4
+  664  ssh eos4
+  665  vi /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/cifar10.py
+  666  scp /data/lisa/data/cifar10/cifar-10-batches-py/ monk:/scratch/mmirza/data/cifar10/
+  667  scp -r /data/lisa/data/cifar10/cifar-10-batches-py/ monk:/scratch/mmirza/data/cifar10/
+  668  ssh monk
+  669  tmux ls
+  670  tmux attach -t 0
+  671  ssh -x briee
+  672  pwd
+  673  cd /data/lisa/exp/mirzamom/noisy_encoder/
+  674  ls
+  675  cd sandbox/
+  676  ls
+  677  vi pool.py 
+  678  tmux
+  679  vi ~/.bashrc
+  680  cd /data/lisa/data/SVHN/
+  681  ls
+  682  vi README.txt 
+  683  cd format
+  684  cd format2/
+  685  ls
+  686  ipython
+  687  ipython
+  688  vi tfd.py
+  689  vi dataset.py
+  690  grep 'iterator' *.py
+  691  vi dataset.py
+  692  grep 'next' *.py
+  693  vi dense_design_matrix.py
+  694  vi ../utils/iteration.py
+  695  cd ..
+  696  grep -R 'FiniteDatasetIterator' *.py
+  697  grep -R 'FiniteDatasetIterator' 
+  698  grep -R 'FiniteDatasetIterator' .
+  699  vi datasets/dense_design_matrix.py
+  700  vi ../utils/iteration.py
+  701  vi utils/iteration.py
+  702  vi training_algorithms/
+  703  vi training_algorithms/sgd.py
+  704  vi training_algorithms/
+  705  vi utils/iteration.py
+  706  vi datasets/dense_design_matrix.py
+  707  cd /data/lisa/exp/mirzamom/noisy_encoder/datasets/
+  708  ls
+  709  vi iterator.py
+  710  pytho svhn.py 
+  711  python svhn.py 
+  712  ls /data/lisa/data/SVHN/format2/
+  713  ls -l /data/lisa/data/SVHN/format2/
+  714  ls -l /data/lisa/data/SVHN/
+  715  python svhn.py 
+  716  vi ../utils/serial.py
+  717  python svhn.py 
+  718  vi ../utils/serial.py
+  719  python svhn.py 
+  720  rm /data/lisa/data/SVHN/format2/train_32x32.h5 
+  721  python svhn.py 
+  722  rm /data/lisa/data/SVHN/format2/train_32x32.h5 
+  723  python svhn.py 
+  724  python svhn.py 
+  725  python -m memory_profiler svhn.py
+  726  vi tfd.py
+  727  vi ../utils/iteration.py
+  728  python  svhn.py
+  729  vi ../utils/iteration.py
+  730  vi dataset.py
+  731  vi dense_design_matrix.py
+  732  vi ../utils/iteration.py
+  733  vi dense_design_matrix.py
+  734  vi svhn.py 
+  735  vi ../training_algorithms/sgd.py
+  736  vi svhn.py 
+  737  cd /data/lisa/exp/mirzamom/pylearn/
+  738  git branch
+  739  git checkout master
+  740  git fetch central
+  741  git merge central/master
+  742  cd pylearn2/datasets/
+  743  ls
+  744  vi cifar100.py
+  745  grep 'iterator' *.py
+  746  vi dataset.py
+  747  ls
+  748  vi cifar10.py
+  749  vi svhn.py
+  750  tmux
+  751  ls
+  752  htop
+  753  ssh bart6
+  754  vi
+  755  cd /data/lisa/exp/mirzamom/pylearn/
+  756  ls
+  757  ssh bart6
+  758  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/
+  759  tmux
+  760  cd /data/lisa/exp/mirzamom/noisy_encoder/scripts/datasets/
+  761  vi make_tfd.py 
+  762  vi make_cifar.py 
+  763  pwd
+  764  cd /data/lisa/exp/mirzamom/noisy_encoder/
+  765  cd datasets/
+  766  ls
+  767  cd ..
+  768  cd pylearn/pylearn2/datasets/
+  769  python svhn.py 
+  770  python -m memory_profiler svhn.py 
+  771  python svhn.py 
+  772  ipython
+  773  htop
+  774  firefox
+  775  vi datasets/dense_design_matrix.py
+  776  vi utils/iteration.py
+  777  vi datasets/dataset.py
+  778  vi datasets/dense_design_matrix.py
+  779  vi datasets/tfd.py
+  780  vi datasets/dense_design_matrix.py
+  781  vi datasets/tfd.py
+  782  vi datasets/dense_design_matrix.py
+  783  vi datasets/svhn.py 
+  784  vi utils/iteration.py
+  785  vi datasets/svhn.py 
+  786  vi utils/iteration.py
+  787  vi datasets/svhn.py 
+  788  vi utils/iteration.py
+  789  vi datasets/dense_design_matrix.py
+  790  vi datasets/tfd.py
+  791  vi datasets/transformer_dataset.py 
+  792  vi datasets/dense_design_matrix.py
+  793  vi datasets/tfd.py
+  794  vi datasets/cifar10.py
+  795  vi datasets/dense_design_matrix.py
+  796  vi datasets/cifar10.py
+  797  htop
+  798  vi datasets/cifar10.py
+  799  cd datasets/
+  800  vi test_svhn.py
+  801  nano test_svhn.py
+  802  vi test_svhn.py 
+  803  vi ~/.theanorc 
+  804  vi tests/test_mnist.py
+  805  htop
+  806  vi utils/iteration.py
+  807  vi datasets/dataset.py
+  808  vi datasets/dense_design_matrix.py
+  809  vi utils/iteration.py
+  810  vi datasets/svhn.py 
+  811  cd dataset
+  812  cd datasets/
+  813  ls
+  814  vi dense_design_matrix.py
+  815  vi ../utils/iteration.py
+  816  vi dense_design_matrix.py
+  817  vi svhn.py 
+  818  git commit -a -m 'first draft'
+  819  git cehckout -b -svhn_2
+  820  git checkout -b -svhn_2
+  821  git checkout -b -svhn2
+  822  git checkout -b svhn2
+  823  vi svhn.py 
+  824  cd datasets/
+  825  python svhn.py 
+  826  git diff
+  827  git checkout -b svhn
+  828  vi ../training_algorithms/
+  829  vi ../training_algorithms/sgd.py
+  830  rm svhn.h5 
+  831  :q
+  832  ipython
+  833  pythonb svhn.py 
+  834  python svhn.py 
+  835  vi ../training_algorithms/sgd.py
+  836  python svhn.py 
+  837  vi ../training_algorithms/sgd.py
+  838  python svhn.py 
+  839  rm /data/lisa/data/SVHN/format2/train_32x32.h5 
+  840  python svhn.py 
+  841  ls -lh /data/lisa/data/SVHN/format2
+  842  rm /data/lisa/data/SVHN/format2/extra_32x32.h5 
+  843  ls -lh /data/lisa/data/SVHN/format2
+  844  python svhn.py 
+  845  ipython
+  846  rm /data/lisa/data/SVHN/format2/train_32x32.h5 
+  847  ipython
+  848  git status
+  849  git commit -a -m 'dsds'
+  850  git checkout master
+  851  git branch
+  852  git branch -m svhn svhn1
+  853  git fetch central
+  854  git merge central/master
+  855  git checkout -b svhn
+  856  git add svhn.py
+  857  python svhn.py
+  858  vi preprocessing.py
+  859  python -m memory_profiler svhn.py
+  860  cp /data/lisa/data/SVHN/format2/train_32x32.h5 .
+  861  python -m memory_profiler svhn.py
+  862  ls
+  863  ls -l  train_32x32.h5 
+  864  ls -lh  train_32x32.h5 
+  865  ls
+  866  ls *.h
+  867  ls *.h5
+  868  cp /data/lisa/data/SVHN/format2/train_32x32.h5 .
+  869  ls *.h5
+  870  ls -l *.h5
+  871  ls -lh *.h5
+  872  python -m memory_profiler svhn.py
+  873  python  svhn.py
+  874  rm /data/lisa/data/SVHN/format2/test_32x32.h5 
+  875  python  svhn.py
+  876  rm /data/lisa/data/SVHN/format2/test_32x32.h5 
+  877  python  svhn.py
+  878  python -m memory_profiler svhn.py
+  879  rm /data/lisa/data/SVHN/format2/*.h5 
+  880  python -m memory_profiler svhn.py
+  881  rm /data/lisa/data/SVHN/format2/*.h5 
+  882  python -m memory_profiler svhn.py
+  883  rm /data/lisa/data/SVHN/format2/*.h5 
+  884  python -m memory_profiler svhn.py
+  885  ls -l /data/lisa/data/SVHN/format2/train_32x32.h5 
+  886  ls -lh /data/lisa/data/SVHN/format2/train_32x32.h5 
+  887  python -m memory_profiler svhn.py
+  888  ls
+  889  ls *.h
+  890  python -m memory_profiler svhn.py
+  891  cp /data/lisa/data/SVHN/format2/train_32x32.h5 .
+  892  python -m memory_profiler svhn.py
+  893  python test_svhn.py 
+  894  THEANO_FLAGS=device=gpu python test_svhn.py 
+  895  tmux ls
+  896  tmux attach -t 0
+  897  matlab -h
+  898  matlab -nodisplay
+  899  which matlab
+  900  which matlab?
+  901  which matlab
+  902  matlab -nodisplay
+  903  firefox
+  904  ssh eos4
+  905   PROMPT_COMMAND='pwd>&9;kill -STOP $$'
+  906   cd "`printf "%b" '\0057data\0057lisa\0057data\0057SVHN\0057format2'`"
+  907  :q
+  908  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/dataset
+  909  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/
+  910  vi svhn.py
+  911  tmux
+  912  ipython
+  913  ls Download/*.py
+  914  pwd
+  915  mv ~/Download/preproc.py .
+  916  vi preproc.py 
+  917  firefox
+  918  ssh -X eos4
+  919  tmux ls
+  920  tmux attach -t 0
+  921  THEANO_FLAGS=device=gpu python -m memory_profiler test_svhn.py 
+  922  ls -l /data/lisa/data/SVHN/format2/h5/
+  923  ls -lh /data/lisa/data/SVHN/format2/h5/
+  924  chmod 440 /data/lisa/data/SVHN/format2/h5/*
+  925  ls -lh /data/lisa/data/SVHN/format2/h5/
+  926  chmod 440 /data/lisa/data/SVHN/format2/npy/*
+  927  mkidir /data/lisatmp2/mirzamom/data/SVHN
+  928  mkdir /data/lisatmp2/mirzamom/data/SVHN
+  929   cp /data/lisa/data/SVHN/format2/h5/extra_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/
+  930  chmod 640 /data/lisatmp2/mirzamom/data/SVHN/extra_32x32.h5 
+  931  THEANO_FLAGS=device=gpu python -m memory_profiler test_svhn.py 
+  932  mkdir /data/lisatmp2/mirzamom/data/SVHN/h5
+  933  mv /data/lisatmp2/mirzamom/data/SVHN/extra_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/
+  934  THEANO_FLAGS=device=gpu python -m memory_profiler test_svhn.py 
+  935  vi /data/lisa/exp/mirzamom/noisy_encoder/scripts/datasets/make_cifar.py 
+  936  vi svhn.py
+  937  vi preproc.py
+  938  ipython
+  939  vi /data/lisa/exp/mirzamom/noisy_encoder/models/conv.py
+  940  ipython
+  941  python lcn_vhsn.py 
+  942  vi /data/lisa/exp/mirzamom/noisy_encoder/models/conv.py
+  943  python lcn_vhsn.py 
+  944  ipython
+  945  python lcn_vhsn.py 
+  946  cd ../dataset/
+  947  cd ../scripts/
+  948  htop
+  949  ls -lh /u/goodfeli/galatea_central
+  950  python show_examples.py ~/Desktop/show_svhn.yaml 
+  951  python show_examples.py -
+  952  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  953  python show_examples.py -h
+  954  python show_examples.py ~/Desktop/show_svhn.yaml 
+  955  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  956  python show_examples.py ~/Desktop/show_svhn.yaml 
+  957  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  958  python show_examples.py ~/Desktop/show_svhn.yaml 
+  959  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  960  python show_examples.py ~/Desktop/show_svhn.yaml 
+  961  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  962  python show_examples.py ~/Desktop/show_svhn.yaml 
+  963  cd ../scripts/
+  964  python show_examples.py ~/Desktop/show_svhn.yaml 
+  965  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  966  python show_examples.py ~/Desktop/show_svhn.yaml 
+  967  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  968  python show_examples.py ~/Desktop/show_svhn.yaml 
+  969  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  970  python show_examples.py ~/Desktop/show_svhn.yaml 
+  971  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  972  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  973  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  974  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  975  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  976  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  977  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  978  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  979  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  980  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  981  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  982  vi ../scripts/show_examples.py 
+  983  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  984  vi ../scripts/show_examples.py 
+  985  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  986  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  987  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  988  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  989  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  990  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  991  rm /data/lisa/data/SVHN/format2/h5/train_32x32.h5 
+  992  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+  993  htop 
+  994  cd /data/lisa/exp/mirzamom/pylearn/pylearn2/datasets/
+  995  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+  996  vi svhn.py
+  997  vi dense_design_matrix.py
+  998  vi svhn.py
+  999  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1000  vi svhn.py
+ 1001  vi preprocessing.py
+ 1002  python svln_split.py 
+ 1003  THEANO_FLAGS=device=gpu python svln_split.py 
+ 1004  mkdir /data/lisa/data/SVHN/format2/npy/split_lcn
+ 1005  THEANO_FLAGS=device=gpu python svln_split.py 
+ 1006  vi svhn.py
+ 1007  THEANO_FLAGS=device=gpu python svln_split.py 
+ 1008  THEANO_FLAGS=device=cpu python svln_split.py 
+ 1009  THEANO_FLAGS=device=gpu python svln_split.py 
+ 1010  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1011  python svhn.py
+ 1012  vi ~/Desktop/show_svhn.yaml 
+ 1013  vi svln_split.py 
+ 1014  python svln_split.py 
+ 1015  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1016  rm /data/lisatmp2/mirzamom/data/SVHN/h5/*
+ 1017* 
+ 1018  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1019  cp /data/lisa/data/SVHN/format2/h5/valid_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/
+ 1020  vi lcn_vhsn.py 
+ 1021  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1022  vi ~/Desktop/show_svhn.yaml 
+ 1023  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1024  vi ~/Desktop/show_svhn.yaml 
+ 1025  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1026  rm /data/lisa/data/SVHN/format2/h5/splited_train_32x32.h5 
+ 1027  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1028  rm /data/lisa/data/SVHN/format2/h5/valid_32x32.h5 
+ 1029  vi ~/Desktop/show_svhn.yaml 
+ 1030  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1031  rm /data/lisatmp2/mirzamom/data/SVHN/h5/*
+ 1032  cp /data/lisa/data/SVHN/format2/h5/valid_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/
+ 1033  cp /data/lisa/data/SVHN/format2/h5/splited_train_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/
+ 1034  vi ~/Desktop/show_svhn.yaml 
+ 1035  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1036  vi ~/Desktop/show_svhn.yaml 
+ 1037  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1038  vi ~/Desktop/show_svhn.yaml 
+ 1039  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1040  vi lcn_vhsn.py 
+ 1041  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1042  vi ~/Desktop/show_svhn.yaml 
+ 1043  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1044  vi lcn_vhsn.py 
+ 1045  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1046  vi ~/Desktop/show_svhn.yaml 
+ 1047  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1048  vi ~/Desktop/show_svhn.yaml 
+ 1049  rm /data/lisa/data/SVHN/format2/h5/test_32x32.h5 
+ 1050  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1051  vi ~/Desktop/show_svhn.yaml 
+ 1052  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1053  cp /data/lisa/data/SVHN/format2/h5/test_32x32.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/
+ 1054  vi lcn_vhsn.py 
+ 1055  THEANO_FLAGS=device=gpu python lcn_vhsn.py 
+ 1056  vi ~/Desktop/show_svhn.yaml 
+ 1057  python ../scripts/show_examples.py ~/Desktop/show_svhn.yaml 
+ 1058  mkdir /data/lisatmp2/mirzamom/data/SVHN/h5/bkp_lcn
+ 1059  ls /data/lisatmp2/mirzamom/data/SVHN/h5/
+ 1060  cp /data/lisatmp2/mirzamom/data/SVHN/h5/*.h5 /data/lisatmp2/mirzamom/data/SVHN/h5/bkp_lcn/
+ 1061  history > history.txt
