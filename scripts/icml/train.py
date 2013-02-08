@@ -19,7 +19,7 @@ train_yaml = """!obj:pylearn2.train.Train {
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h0',
                      pad: 0,
-                     detector_channels: 96,
+                     detector_channels: 128,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -30,7 +30,7 @@ train_yaml = """!obj:pylearn2.train.Train {
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h1',
                      pad: 3,
-                     detector_channels: 96,
+                     detector_channels: 128,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -41,7 +41,7 @@ train_yaml = """!obj:pylearn2.train.Train {
                  !obj:galatea.mlp.ConvLinearC01B {
                      pad: 3,
                      layer_name: 'h2',
-                     detector_channels: 96,
+                     detector_channels: 256,
                      channel_pool_size: 4,
                      kernel_shape: [5, 5],
                      pool_shape: [2, 2],
@@ -77,11 +77,10 @@ train_yaml = """!obj:pylearn2.train.Train {
                               which_set: 'valid',
                               path: '/data/lisatmp2/mirzamom/data/SVHN/'
                           },
-                #'test'  : !obj:pylearn2.datasets.cifar10.CIFAR10 {
-                #              which_set: 'test',
-                #              gcn: 55.,
-                #              one_hot: 1,
-                #          }
+                'test' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'test',
+                              path: '/data/lisatmp2/mirzamom/data/SVHN/'
+                          }
             },
         cost: !obj:pylearn2.costs.cost.MethodCost {
                 method: 'cost_from_X',
@@ -128,8 +127,8 @@ def experiment(state, channel):
 
     ext = get_best_params_ext(train_obj.extensions)
     if ext != None:
-        state.valid_score = float(ext.best_params['valid_misclass'])
-        state.test_score = float(ext.best_params['test_misclass'])
+        state.valid_score = float(ext.best_params['valid_y_misclass'])
+        state.test_score = float(ext.best_params['test_y_misclass'])
 
     return channel.COMPLETE
 
