@@ -92,7 +92,7 @@ train_yaml = """!obj:pylearn2.train.Train {
             N: 100
         },
         update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: 1.00004,
+            decay_factor: 1.000004,
             min_lr: .000001
         }
     },
@@ -103,8 +103,8 @@ train_yaml = """!obj:pylearn2.train.Train {
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
-            saturate: 250,
-            final_momentum: .7
+            saturate: 50,
+            final_momentum: .9
         }
     ],
     save_path: "each.pkl",
