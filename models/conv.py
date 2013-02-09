@@ -11,6 +11,7 @@ from theano.gof.op import get_debug_values
 from pylearn2.base import Block
 from pylearn2.models import Model
 from pylearn2.linear.conv2d import Conv2D
+from pylearn2.linear.conv2d_c01b import Conv2D as Conv2DAlex
 from pylearn2.utils import sharedX
 from pylearn2.space import Conv2DSpace, VectorSpace
 from pylearn2.corruption import GaussianCorruptor
@@ -89,6 +90,112 @@ class Convolution(Model):
                 subsample = (1, 1),
                 border_mode = border_mode,
                 filters_shape = self.weights.get_value().shape, message = "")
+
+    def _initialize_hidbias(self, bias_init):
+        self.hidbias = sharedX(
+            numpy.ones(self.num_channels_output) * bias_init,
+             name='hb',
+            borrow=True
+        )
+
+    def _convolve(self, x):
+        return self.transformer.lmul(x)
+
+    def _hidden_input(self, x):
+        return self._convolve(x) + self.hidbias
+
+    def _hidden_activation(self, x):
+        if self.act_enc is None:
+            act_enc = lambda x: x
+        else:
+            act_enc = self.act_enc
+        return act_enc(self._hidden_input(x))
+
+    def encode(self, inputs):
+        if isinstance(inputs, tensor.Variable):
+            return self._hidden_activation(inputs)
+        else:
+            return [self.encode(v) for v in inputs]
+
+    def __call__(self, inputs):
+        return self.encode(inputs)
+
+    def get_weights(self):
+        return self.weights
+
+    def get_weights_topo(self):
+        outp, inp, rows, cols = range(4)
+        raw = self.weights.get_value()
+        return numpy.transpose(raw, (outp, rows, cols, inp))
+
+    def get_weights_view_shape(self):
+        raise NotImplementedError
+
+class ConvolutionAlex(Model):
+    """ A convolution - pool block """
+
+    def __init__(self,
+                    image_shape,
+                    kernel_shape,
+                    num_channels,
+                    num_channels_output,
+                    batch_size,
+                    act_enc,
+                    border_mode = 'valid',
+                    irange = 0.05,
+                    bias_init = 0.0,
+                    np_rng = None,
+                    th_rng = None,
+                    seed = 9001):
+
+        if np_rng is None:
+            np_rng = numpy.random.RandomState(seed)
+        self.np_rng = np_rng
+
+        self.num_channels_output = num_channels_output
+        self.kernel_shape = kernel_shape
+
+        self.input_space = Conv2DSpace(shape = image_shape, num_channels = num_channels)
+        self.output_space = Conv2DSpace(shape = [(a-b+1)  for a, b in \
+                zip(image_shape, kernel_shape)], num_channels = num_channels_output)
+
+        self.weights = sharedX(self.np_rng.uniform(-irange,irange,(self.output_space.num_channels, self.input_space.num_channels, \
+                      kernel_shape[0], kernel_shape[1])))
+        self._initialize_hidbias(bias_init)
+
+
+        def _resolve_callable(conf, conf_attr):
+            if conf[conf_attr] is None or conf[conf_attr] == "linear":
+                return None
+            if act_enc == "rectifier":
+                return rectifier
+            # If it's a callable, use it directly.
+            if hasattr(conf[conf_attr], '__call__'):
+                return conf[conf_attr]
+            elif (conf[conf_attr] in globals()
+                    and hasattr(globals()[conf[conf_attr]], '__call__')):
+                return globals()[conf[conf_attr]]
+            elif hasattr(tensor.nnet, conf[conf_attr]):
+                return getattr(tensor.nnet, conf[conf_attr])
+            elif hasattr(tensor, conf[conf_attr]):
+                return getattr(tensor, conf[conf_attr])
+            else:
+                raise ValueError("Couldn't interpret %s value: '%s'" %
+                        (conf_attr, conf[conf_attr]))
+
+
+        self.act_enc = _resolve_callable(locals(), 'act_enc')
+
+
+        # store parameters of this layer
+        self._params = [self.weights, self.hidbias]
+
+        self.transformer = Conv2DAlex(filters = self.weights,
+                batch_size = batch_size,
+                input_axes = self.input_space.axes,
+                output_axes = self.output_space.axes,
+                subsample = (1, 1),
+                border_mode = border_mode)
 
     def _initialize_hidbias(self, bias_init):
         self.hidbias = sharedX(

@@ -1,4 +1,4 @@
-import os
+import os, shutil
 import argparse
 
 from pylearn2.config import yaml_parse
@@ -11,7 +11,7 @@ RESULT_PATH = get_result_path()
 train_yaml = """!obj:pylearn2.train.Train {
     dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
         which_set: 'splited_train',
-        path: '/data/lisatmp2/mirzamom/data/SVHN/'
+        path: %(data_path)s
     },
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
@@ -19,35 +19,35 @@ train_yaml = """!obj:pylearn2.train.Train {
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h0',
                      pad: 0,
-                     detector_channels: 128,
+                     detector_channels: %(num_channels_1)i,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
                      pool_stride: [2, 2],
                      irange: .005,
-                     max_kernel_norm: .9,
+                     max_kernel_norm: %(max_kernel_norm_1)f,
                  },
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h1',
                      pad: 3,
-                     detector_channels: 128,
+                     detector_channels: %(num_channels_2)i,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
                      pool_stride: [2, 2],
                      irange: .005,
-                     max_kernel_norm: 1.9365,
+                     max_kernel_norm: %(max_kernel_norm_2)f,
                  },
                  !obj:galatea.mlp.ConvLinearC01B {
                      pad: 3,
                      layer_name: 'h2',
-                     detector_channels: 256,
+                     detector_channels: %(num_channels_3)i,
                      channel_pool_size: 4,
                      kernel_shape: [5, 5],
                      pool_shape: [2, 2],
                      pool_stride: [2, 2],
                      irange: .005,
-                     max_kernel_norm: 1.9365,
+                     max_kernel_norm: %(max_kernel_norm_3)f,
                      #use_bias: 0
                  },
                  !obj:pylearn2.models.mlp.Softmax {
@@ -68,46 +68,53 @@ train_yaml = """!obj:pylearn2.train.Train {
         dropout_input_scale: 1.,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        learning_rate: .05,
+        learning_rate: %(learning_rate)f,
         init_momentum: .5,
         monitoring_dataset:
             {
                 #'train' : *train,
                 'valid' : !obj:pylearn2.datasets.svhn.SVHN {
                               which_set: 'valid',
-                              path: '/data/lisatmp2/mirzamom/data/SVHN/'
+                              path: %(data_path)s
                           },
                 'test' : !obj:pylearn2.datasets.svhn.SVHN {
                               which_set: 'test',
-                              path: '/data/lisatmp2/mirzamom/data/SVHN/'
+                              path: %(data_path)s
                           }
             },
         cost: !obj:pylearn2.costs.cost.MethodCost {
                 method: 'cost_from_X',
                 supervised: 1
         },
-        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
-            channel_name: "valid_y_misclass",
-            prop_decrease: 0.,
-            N: 100
+        termination_criterion: !obj:pylearn2.termination_criteria.And {
+            criteria : [!obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs : %(max_epochs)i
+            },
+            !obj:pylearn2.termination_criteria.MonitorBased {
+                channel_name: "valid_y_misclass",
+                prop_decrease: 0.,
+                N: 20}
+            ]
         },
         update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: 1.000004,
+            decay_factor: %(decay_factor)f,
             min_lr: .000001
         }
     },
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             save_path: "best.pkl"
-        },
+             save_path: "%(best_save_path)s"
+        }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
+            channel_name: 'valid_misclass',
+            save_channel_names: ['valid_misclass', 'test_misclass']
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
-            saturate: 50,
-            final_momentum: .9
+            saturate: %(momentum_saturate)i,
+            final_momentum: %(final_momentum)f
         }
     ],
-    save_path: "each.pkl",
+    save_path: "%(save_path)s",
     save_freq: 1
 }"""
 
@@ -120,6 +127,33 @@ def experiment(state, channel):
     if channel != None:
         with open('model.yaml', 'w') as fp:
             fp.write(yaml_string)
+
+    # transfer data to tmp
+    path = '/RQexec/mirzameh/data/SVHN/h5/'
+    tmp_path = '/tmp/data/SVHN/h5/'
+    train_f = 'splited_train_32x32.h5'
+    valid_f = 'valid_32x32.h5'
+    test_f = 'test_32x32.h5'
+    if any([not os.path.isfile(path + train_f), os.path.isfile(path + valid_f), os.path.isfile(path + test_f)]):
+        try:
+            os.mkdir('/tmp/')
+        except OSError:
+            pass
+        try:
+            os.mkdir('/tmp/data/')
+        except OSError:
+            pass
+        try:
+            os.mkdir('/tmp/data/SVHN/')
+        except OSError:
+            pass
+        try:
+            os.mkdir(tmp_path)
+        except OSError:
+            pass
+        shutil.copy(path + train_f, tmp_path + train_f)
+        shutil.copy(path + valid_f, tmp_path + valid_f)
+        shutil.copy(path + test_f, tmp_path + test_f)
 
     # now run yaml file with default train.py script
     train_obj = yaml_parse.load(yaml_string)
@@ -139,114 +173,35 @@ def get_best_params_ext(extensions):
             return ext
 
 
-def test_experiment():
+def svhn_experiment():
     state = DD()
     state.yaml_string = train_yaml
-    experiment(state, None)
 
-def mnist_conv_experiment():
-
-    state = DD()
-
-    # train params
-    state.dataset = 'mnist'
-    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 0, stop: 50000}"
-    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 50000, stop: 60000}"
-    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 0, one_hot: 1}"
-    state.init_learning_rate = 0.005
-    state.init_momentum = 0.5
-    state.final_momentum = 0.99
-    state.momentum_start = 30
-    state.momentum_saturate = 80
-    state.max_epochs = 300
-    state.batch_size = 200
-    # model params
-    state.model = 'conv'
-    state.conv_layers = [
-                {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : [28, 28],
-                            'batch_size' : state.batch_size,
-                            'num_channels' : 1,
-                            'n' : 4,
-                            'k' : 1,
-                            'alpha' : 0e-04,
-                            'beta' : 0.75}},
-                {'name' : 'Convolution',
-                    'params' : {'image_shape' : None,
-                            'kernel_shape' : [5, 5],
-                            'num_channels' : None,
-                            'num_channels_output' : 64,
-                            'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                {'name' : 'MaxPool',
-                    'params' : {'image_shape' : None,
-                        'num_channels' : None,
-                        'pool_shape' : [3, 3]}},
-                        #{'name' : 'StochasticMaxPool',
-                        #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : [3, 3],
-                        #'pool_stride' : [2, 2]}},
-                {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : None,
-                            'batch_size' : state.batch_size,
-                            'num_channels' : None,
-                            'n' : 4,
-                            'k' : 1,
-                            'alpha' : 0e-04,
-                            'beta' : 0.75}},
-                {'name' : 'Convolution',
-                    'params' : {'image_shape' : None,
-                            'kernel_shape' : [5, 5],
-                            'num_channels' : None,
-                            'num_channels_output' : 64,
-                            'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                 {'name' : 'MaxPool',
-                    'params' : {'image_shape' : None,
-                        'num_channels' : None,
-                        'pool_shape' : [3, 3]}},
-                        #{'name' : 'StochasticMaxPool',
-                        #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : [3, 3],
-                        #'pool_stride' : [2, 2]}},
-                {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : None,
-                            'batch_size' : state.batch_size,
-                            'num_channels' : None,
-                            'n' : 4,
-                            'k' : 1,
-                            'alpha' : 0e-04,
-                            'beta' : 0.75}}]
-
-    state.mlp_act = "rectifier"
-    state.mlp_input_corruption_levels = [0.0]
-    state.mlp_hidden_corruption_levels = [0.5]
-    state.mlp_nunits = [1000]
-    state.n_outs = 10
-    state.bias_init = 0.1
-    state.irange = 0.1
-    state.random_filters = False
-
-    state.yaml_string = convolution_yaml_string
+    state.data_path = '/tmp/data/SVHN/'
+    state.num_channels_1 = 32
+    state.num_channels_2 = 32
+    state.num_channels_3 = 64
+    state.max_kernel_norm_1 = 1.5
+    state.max_kernel_norm_2 = 2.9
+    state.max_kernel_norm_3 = 2.9
+    state.learning_rate = 0.05
+    state.decay_factor = 1.000004
+    state.momentum_saturate = 50
+    state.final_momentum = 0.9
+    state.max_epochs = 1
+    state.best_save_path = "/tmp/mirzameh/best.pkl"
+    state.save_path = "/tmp/mirzameh/mmodel.pkl"
 
     experiment(state, None)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'conv trainer')
-    parser.add_argument('-t', '--task', choices = ['tfd_conv', 'mnist_conv', 'cifar10_conv'], required = True)
+    parser.add_argument('-t', '--task', choices = ['svhn'], required = True)
     args = parser.parse_args()
 
-    test_experiment()
-
-    if args.task == 'tfd_conv':
-        tfd_conv_experiment()
-    elif args.task == 'mnist_conv':
-        mnist_conv_experiment()
-    elif args.task == 'cifar10_conv':
-        cifar10_conv_experiment()
+    if args.task == 'svhn':
+        svhn_experiment()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
 
