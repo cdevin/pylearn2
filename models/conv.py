@@ -821,11 +821,8 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     batch = bc01.shape[0]
     channel = bc01.shape[1]
 
-    #if rng is None:
-        #rng = RandomStreams(2022)
-
     if rng is None:
-        rng = tensor.shared_randomstreams.RandomStreams(2022)
+        rng = RandomStreams(2022)
 
     # Compute index in pooled space of last needed pool
     # (needed = each input pixel must appear in at least one pool)
@@ -902,11 +899,8 @@ def probability_weighting_pool(bc01, pool_shape, pool_stride, image_shape, rng =
     batch = bc01.shape[0]
     channel = bc01.shape[1]
 
-    #if rng is None:
-        #rng = RandomStreams(2022)
-
     if rng is None:
-        rng = tensor.shared_randomstreams.RandomStreams(2022)
+        rng = RandomStreams(2022)
 
     # Compute index in pooled space of last needed pool
     # (needed = each input pixel must appear in at least one pool)
