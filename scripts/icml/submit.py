@@ -17,31 +17,37 @@ def svhn_ian():
     state.num_channels_2 = 32
     state.num_channels_3 = 64
     state.max_kernel_norm_1 = 1.5
-    state.max_kernel_norm_2 = 2.9
-    state.max_kernel_norm_3 = 2.9
+    state.max_kernel_norm_2 = 2.5
+    state.max_kernel_norm_3 = 2.5
     state.learning_rate = 0.05
-    state.decay_factor = 1.000004
-    state.momentum_saturate = 20
-    state.final_momentum = 0.9
-    state.max_epochs = 300
+    state.W_lr_scale_1 = 0.01
+    state.W_lr_scale_2 = 0.01
+    state.W_lr_scale_3 = 0.01
+    state.b_lr_scale_1 = 0.01
+    state.b_lr_scale_2 = 0.01
+    state.b_lr_scale_3 = 0.01
+    state.lr_decay_start = 10
+    state.lr_deccay_saturate = 110
+    state.lr_decay_factor = 0.001
+    state.momentum_start = 5
+    state.momentum_saturate = 50
+    state.final_momentum = 0.7
+    state.max_epochs = 500
+    state.termination_paitence = 100
     state.best_save_path = "best.pkl"
     state.save_path = "current.pkl"
 
     ind = 0
     TABLE_NAME = "ian_svhn"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.05, 0.005]:
-        for ch1, ch2, ch3 in zip([64, 128, 128], [64, 128, 256], [128, 256, 512]):
-            for decay in [1.000004, 1.00004]:
-                if lr == 0.005:
-                    decay = 1.000004
-                state.learning_rate = lr
-                state.num_channels_1 = ch1
-                state.num_channels_2 = ch2
-                state.num_channels_3 = ch3
-                state.decay_factor = decay
-                sql.insert_job(experiment, flatten(state), db)
-                ind += 1
+    for lr in [1., 0.5, 0.1, 0.05, 0.005]:
+        for ch1, ch2, ch3 in zip([128, 128], [128, 256], [256, 512]):
+            state.learning_rate = lr
+            state.num_channels_1 = ch1
+            state.num_channels_2 = ch2
+            state.num_channels_3 = ch3
+            sql.insert_job(experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
