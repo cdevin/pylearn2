@@ -26,6 +26,9 @@ train_yaml = """!obj:pylearn2.train.Train {
                      pool_stride: [2, 2],
                      irange: .005,
                      max_kernel_norm: %(max_kernel_norm_1)f,
+                     W_lr_scale: %(W_lr_scale_1)f,
+                     b_lr_scale: %(b_lr_scale_1)f,
+                     tied_b: 1
                  },
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h1',
@@ -37,6 +40,9 @@ train_yaml = """!obj:pylearn2.train.Train {
                      pool_stride: [2, 2],
                      irange: .005,
                      max_kernel_norm: %(max_kernel_norm_2)f,
+                     W_lr_scale: %(W_lr_scale_2)f,
+                     b_lr_scale: %(b_lr_scale_2)f,
+                     tied_b: 1
                  },
                  !obj:galatea.mlp.ConvLinearC01B {
                      pad: 3,
@@ -48,6 +54,9 @@ train_yaml = """!obj:pylearn2.train.Train {
                      pool_stride: [2, 2],
                      irange: .005,
                      max_kernel_norm: %(max_kernel_norm_3)f,
+                     W_lr_scale: %(W_lr_scale_3)f,
+                     b_lr_scale: %(b_lr_scale_3)f,
+                     tied_b: 1
                      #use_bias: 0
                  },
                  !obj:pylearn2.models.mlp.Softmax {
@@ -93,25 +102,25 @@ train_yaml = """!obj:pylearn2.train.Train {
             !obj:pylearn2.termination_criteria.MonitorBased {
                 channel_name: "valid_y_misclass",
                 prop_decrease: 0.,
-                N: 20}
+                N: %(termination_paitence)i}
             ]
         },
-        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: %(decay_factor)f,
-            min_lr: .000001
-        }
     },
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
              save_path: "%(best_save_path)s"
         }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
-            channel_name: 'valid_misclass',
-            save_channel_names: ['valid_misclass', 'test_misclass']
-        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
-            start: 1,
+            channel_name: 'valid_y_misclass',
+            save_channel_names: ['valid_y_misclass', 'test_y_misclass']
+        }, !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: %(momentum_start)i,
             saturate: %(momentum_saturate)i,
             final_momentum: %(final_momentum)f
+        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: %(lr_decay_start)i,
+            saturate: %(lr_deccay_saturate)i,
+            decay_factor: %(lr_decay_factor)f
         }
     ],
     save_path: "%(save_path)s",
@@ -185,10 +194,20 @@ def svhn_experiment():
     state.max_kernel_norm_2 = 2.9
     state.max_kernel_norm_3 = 2.9
     state.learning_rate = 0.05
-    state.decay_factor = 1.000004
+    state.W_lr_scale_1 = 0.01
+    state.W_lr_scale_2 = 0.01
+    state.W_lr_scale_3 = 0.01
+    state.b_lr_scale_1 = 0.01
+    state.b_lr_scale_2 = 0.01
+    state.b_lr_scale_3 = 0.01
+    state.lr_decay_start = 10
+    state.lr_deccay_saturate = 150
+    state.lr_decay_factor = 0.001
+    state.momentum_start = 10
     state.momentum_saturate = 50
     state.final_momentum = 0.9
-    state.max_epochs = 1
+    state.max_epochs = 0
+    state.termination_paitence = 100
     state.best_save_path = "/tmp/mirzameh/best.pkl"
     state.save_path = "/tmp/mirzameh/mmodel.pkl"
 
