@@ -191,11 +191,8 @@ class ConvolutionAlex(Model):
         self._params = [self.weights, self.hidbias]
 
         self.transformer = Conv2DAlex(filters = self.weights,
-                batch_size = batch_size,
                 input_axes = self.input_space.axes,
-                output_axes = self.output_space.axes,
-                subsample = (1, 1),
-                border_mode = border_mode)
+                output_axes = self.output_space.axes)
 
     def _initialize_hidbias(self, bias_init):
         self.hidbias = sharedX(
@@ -963,7 +960,7 @@ def update_convnet_param(layer_u, layer_d):
     Infer next layer params
     """
 
-    if layer_d['name'] == 'Convolution':
+    if layer_d['name'] in ['Convolution', 'ConvolutionAlex']:
         layer_u['params']['image_shape'] = [im - k + 1 for im,
                 k in zip(layer_d['params']['image_shape'], layer_d['params']['kernel_shape'])]
         layer_u['params']['num_channels'] = layer_d['params']['num_channels_output']

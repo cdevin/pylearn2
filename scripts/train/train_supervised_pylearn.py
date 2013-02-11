@@ -94,24 +94,24 @@ def svhn_conv_experiment():
     state = DD()
 
     # train params
-    state.dataset = 'mnist'
-    state.train_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 0, stop: 50000}"
-    state.valid_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'train', center: 0, one_hot: 1, start: 50000, stop: 60000}"
-    state.test_set = "!obj:pylearn2.datasets.mnist.MNIST {which_set: 'test', center: 0, one_hot: 1}"
+    state.dataset = 'svhn_light'
+    state.train_set = "!obj:pylearn2.datasets.svhn.SVHN_Light {which_set: 'train', one_hot: 1}"
+    state.valid_set = "!obj:pylearn2.datasets.svhn.SVHN_Light {which_set: 'valid', one_hot: 1}"
+    state.test_set = "!obj:pylearn2.datasets.svhn.SVHN_Light {which_set: 'test', one_hot: 1}"
     state.init_learning_rate = 0.005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
     state.momentum_saturate = 80
     state.max_epochs = 300
-    state.batch_size = 200
+    state.batch_size = 1
     # model params
     state.model = 'conv'
     state.conv_layers = [
                 {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : [28, 28],
+                    'params' : {'image_shape' : [32, 32],
                             'batch_size' : state.batch_size,
-                            'num_channels' : 1,
+                            'num_channels' : 3,
                             'n' : 4,
                             'k' : 1,
                             'alpha' : 0e-04,
@@ -123,15 +123,11 @@ def svhn_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                {'name' : 'MaxPool',
+                {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : [3, 3]}},
-                        #{'name' : 'StochasticMaxPool',
-                        #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : [3, 3],
-                        #'pool_stride' : [2, 2]}},
+                        'pool_shape' : [3, 3],
+                        'pool_stride' : [2, 2]}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -147,15 +143,11 @@ def svhn_conv_experiment():
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
                             'act_enc' : 'rectifier',}},
-                 {'name' : 'MaxPool',
+                {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
-                        'pool_shape' : [3, 3]}},
-                        #{'name' : 'StochasticMaxPool',
-                        #'params' : {'image_shape' : None,
-                        #'num_channels' : None,
-                        #'pool_shape' : [3, 3],
-                        #'pool_stride' : [2, 2]}},
+                        'pool_shape' : [3, 3],
+                        'pool_stride' : [2, 2]}},
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
@@ -274,18 +266,18 @@ def cifar10_conv_experiment():
     # train params
     state.dataset = 'cifar10'
     state.train_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
-            'train', center: 1, rescale: 1, gcn: 55., one_hot: 1, start: 0, stop: 45000}"
+            'train', toronto_prepro: 1, one_hot: 1, start: 0, stop: 45000, axes: ['b', 0, 1, 'c']}"
     state.valid_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
-            'train', center: 1, rescale: 1, gcn: 55., one_hot: 1, start: 45000, stop: 50000}"
+            'train', toronto_prepro: 1, one_hot: 1, start: 45000, stop: 50000, axes: ['b', 0, 1, 'c']}"
     state.test_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
-            'test', center: 1, rescale: 1, gcn: 55., one_hot: 1}"
+            'train', toronto_prepro: 1, one_hot: 1, start: 0, stop: 100, axes: ['b', 0, 1, 'c']}"
     state.init_learning_rate = 0.005
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
     state.momentum_saturate = 80
     state.max_epochs = 300
-    state.batch_size = 200
+    state.batch_size = 100
     # model params
     state.model = 'conv'
     state.conv_layers = [
@@ -454,7 +446,7 @@ if __name__ == "__main__":
         mnist_conv_experiment()
     elif args.task == 'cifar10_conv':
         cifar10_conv_experiment()
-    elif args.task == 'svhn':
+    elif args.task == 'svhn_conv':
         svhn_conv_experiment()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
