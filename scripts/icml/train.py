@@ -128,6 +128,133 @@ train_yaml = """!obj:pylearn2.train.Train {
 }"""
 
 
+sp_train_yaml = """!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.cifar10.CIFAR10 {
+        toronto_prepro: 1,
+        which_set: 'train',
+        one_hot: 1,
+        axes: ['c', 0, 1, 'b'],
+        start: 0,
+        stop: 40000
+    },
+    model: !obj:noisy_encoder.models.convlinear.MLP {
+        batch_size: 128,
+        layers: [
+                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
+                     layer_name: 'h0',
+                     pad: 4,
+                     tied_b: %(tied_b_1)i,
+                     W_lr_scale: %(W_lr_scale_1)f,
+                     b_lr_scale: %(b_lr_scale_1)f,
+                     detector_channels: %(num_channels_1)i,
+                     channel_pool_size: %(channel_pool_size_1)i,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: .9,
+                 },
+                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
+                     layer_name: 'h1',
+                     pad: 3,
+                     tied_b: %(tied_b_2)i,
+                     W_lr_scale: %(W_lr_scale_2)f,
+                     b_lr_scale: %(b_lr_scale_2)f,
+                     detector_channels: %(num_channels_2)i,
+                     channel_pool_size: %(channel_pool_size_2)i,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: 1.9365,
+                 },
+                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
+                     pad: 3,
+                     layer_name: 'h2',
+                     tied_b: %(tied_b_3)i,
+                     W_lr_scale: %(W_lr_scale_3)f,
+                     b_lr_scale: %(b_lr_scale_3)f,
+                     detector_channels: %(num_channels_3)i,
+                     channel_pool_size: %(channel_pool_size_3)i,
+                     kernel_shape: [5, 5],
+                     pool_shape: [2, 2],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: 1.9365,
+                 },
+                 !obj:pylearn2.models.mlp.Softmax {
+                     max_col_norm: 1.9365,
+                     layer_name: 'y',
+                     n_classes: 10,
+                     irange: .005
+                 }
+                ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [32, 32],
+            num_channels: 3,
+            axes: ['c', 0, 1, 'b'],
+        },
+        dropout_include_probs: [ .5, .5, .5, 1 ],
+        dropout_input_include_prob: .8,
+        dropout_input_scale: 1.,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: %(learning_rate)f,
+        init_momentum: %(init_momentum)f,
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.datasets.cifar10.CIFAR10 {
+                              toronto_prepro: 1,
+                              axes: ['c', 0, 1, 'b'],
+                              which_set: 'train',
+                              one_hot: 1,
+                              start: 40000,
+                              stop:  50000
+                          },
+                #'test'  : !obj:pylearn2.datasets.cifar10.CIFAR10 {
+                #              which_set: 'test',
+                #              gcn: 55.,
+                #              one_hot: 1,
+                #          }
+            },
+        cost: !obj:pylearn2.costs.cost.MethodCost {
+                method: 'cost_from_X',
+                supervised: 1
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.And {
+            criteria : [!obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs : %(max_epochs)i
+            },
+            !obj:pylearn2.termination_criteria.MonitorBased {
+                channel_name: "valid_y_misclass",
+                prop_decrease: 0.,
+                N: %(termination_paitence)i}
+            ]
+        },
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_misclass',
+             save_path: "%(best_save_path)s"
+        }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
+            channel_name: 'valid_y_misclass',
+            save_channel_names: ['valid_y_misclass']
+        }, !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: %(momentum_start)i,
+            saturate: %(momentum_saturate)i,
+            final_momentum: %(final_momentum)f
+        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: %(lr_decay_start)i,
+            saturate: %(lr_deccay_saturate)i,
+            decay_factor: %(lr_decay_factor)f
+        }
+    ],
+    save_path: "%(save_path)s",
+    save_freq: 1
+}"""
+
+
 def experiment(state, channel):
     # update base yaml config with jobman commands
     yaml_string = state.yaml_string % (state)
@@ -171,7 +298,10 @@ def experiment(state, channel):
     ext = get_best_params_ext(train_obj.extensions)
     if ext != None:
         state.valid_score = float(ext.best_params['valid_y_misclass'])
-        state.test_score = float(ext.best_params['test_y_misclass'])
+        try:
+            state.test_score = float(ext.best_params['test_y_misclass'])
+        except KeyError:
+            state.test_score = -1.
 
     return channel.COMPLETE
 
@@ -180,7 +310,6 @@ def get_best_params_ext(extensions):
     for ext in extensions:
         if isinstance(ext, MonitorBasedBest):
             return ext
-
 
 def svhn_experiment():
     state = DD()
@@ -213,14 +342,53 @@ def svhn_experiment():
 
     experiment(state, None)
 
+def cifar10_experiment():
+    state = DD()
+    state.yaml_string = sp_train_yaml
+
+    state.num_channels_1 = 96
+    state.num_channels_2 = 256
+    state.num_channels_3 = 256
+    state.channel_pool_size_1 = 2
+    state.channel_pool_size_2 = 2
+    state.channel_pool_size_3 = 4
+    state.max_kernel_norm_1 = 0.9
+    state.max_kernel_norm_2 = 1.9365
+    state.max_kernel_norm_3 = 1.9365
+    state.W_lr_scale_1 = 1.
+    state.W_lr_scale_2 = 1.
+    state.W_lr_scale_3 = 1.
+    state.b_lr_scale_1 = 1.
+    state.b_lr_scale_2 = 1.
+    state.b_lr_scale_3 = 1.
+    state.tied_b_1 = 0
+    state.tied_b_2 = 0
+    state.tied_b_3 = 0
+    state.learning_rate = 0.05
+    state.lr_decay_start = 10
+    state.lr_deccay_saturate = 150
+    state.lr_decay_factor = 0.0001
+    state.init_momentum = 0.5
+    state.momentum_start = 10
+    state.momentum_saturate = 50
+    state.final_momentum = 0.7
+    state.max_epochs = 500
+    state.termination_paitence = 100
+    state.best_save_path = "/tmp/mirzameh/cifar10_temp_best.pkl"
+    state.save_path = "/tmp/mirzameh/cifar_10_temp.pkl"
+
+    experiment(state, None)
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'conv trainer')
-    parser.add_argument('-t', '--task', choices = ['svhn'], required = True)
+    parser.add_argument('-t', '--task', choices = ['svhn', 'cifar10'], required = True)
     args = parser.parse_args()
 
     if args.task == 'svhn':
         svhn_experiment()
+    elif args.task == 'cifar10':
+        cifar10_experiment()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
 
