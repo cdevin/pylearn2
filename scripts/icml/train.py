@@ -260,36 +260,38 @@ def experiment(state, channel):
     yaml_string = state.yaml_string % (state)
 
     # save .yaml file if it is jobman job
-    if channel != None:
-        with open('model.yaml', 'w') as fp:
+    #if channel != None:
+    if 1:
+        with open('/data/lisatmp2/mirzamom/results/ian/3/model.yaml', 'w') as fp:
             fp.write(yaml_string)
 
-    # transfer data to tmp
-    path = '/RQexec/mirzameh/data/SVHN/h5/'
-    tmp_path = '/tmp/data/SVHN/h5/'
-    train_f = 'splited_train_32x32.h5'
-    valid_f = 'valid_32x32.h5'
-    test_f = 'test_32x32.h5'
-    if any([not os.path.isfile(path + train_f), os.path.isfile(path + valid_f), os.path.isfile(path + test_f)]):
-        try:
-            os.mkdir('/tmp/')
-        except OSError:
-            pass
-        try:
-            os.mkdir('/tmp/data/')
-        except OSError:
-            pass
-        try:
-            os.mkdir('/tmp/data/SVHN/')
-        except OSError:
-            pass
-        try:
-            os.mkdir(tmp_path)
-        except OSError:
-            pass
-        shutil.copy(path + train_f, tmp_path + train_f)
-        shutil.copy(path + valid_f, tmp_path + valid_f)
-        shutil.copy(path + test_f, tmp_path + test_f)
+    if 0:
+        # transfer data to tmp
+        path = '/RQexec/mirzameh/data/SVHN/h5/'
+        tmp_path = '/tmp/data/SVHN/h5/'
+        train_f = 'splited_train_32x32.h5'
+        valid_f = 'valid_32x32.h5'
+        test_f = 'test_32x32.h5'
+        if any([not os.path.isfile(path + train_f), os.path.isfile(path + valid_f), os.path.isfile(path + test_f)]):
+            try:
+                os.mkdir('/tmp/')
+            except OSError:
+                pass
+            try:
+                os.mkdir('/tmp/data/')
+            except OSError:
+                pass
+            try:
+                os.mkdir('/tmp/data/SVHN/')
+            except OSError:
+                pass
+            try:
+                os.mkdir(tmp_path)
+            except OSError:
+                pass
+            shutil.copy(path + train_f, tmp_path + train_f)
+            shutil.copy(path + valid_f, tmp_path + valid_f)
+            shutil.copy(path + test_f, tmp_path + test_f)
 
     # now run yaml file with default train.py script
     train_obj = yaml_parse.load(yaml_string)
@@ -315,30 +317,30 @@ def svhn_experiment():
     state = DD()
     state.yaml_string = train_yaml
 
-    state.data_path = '/tmp/data/SVHN/'
-    state.num_channels_1 = 32
-    state.num_channels_2 = 32
-    state.num_channels_3 = 64
-    state.max_kernel_norm_1 = 1.5
-    state.max_kernel_norm_2 = 2.9
-    state.max_kernel_norm_3 = 2.9
-    state.learning_rate = 0.05
+    state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/'
+    state.num_channels_1 = 128
+    state.num_channels_2 = 256
+    state.num_channels_3 = 256
+    state.max_kernel_norm_1 = 1.2
+    state.max_kernel_norm_2 = 2.2
+    state.max_kernel_norm_3 = 2.2
+    state.learning_rate = 0.5
     state.W_lr_scale_1 = 0.01
     state.W_lr_scale_2 = 0.01
     state.W_lr_scale_3 = 0.01
     state.b_lr_scale_1 = 0.01
     state.b_lr_scale_2 = 0.01
     state.b_lr_scale_3 = 0.01
-    state.lr_decay_start = 10
+    state.lr_decay_start = 1
     state.lr_deccay_saturate = 150
     state.lr_decay_factor = 0.001
-    state.momentum_start = 10
-    state.momentum_saturate = 50
-    state.final_momentum = 0.9
-    state.max_epochs = 0
+    state.momentum_start = 1
+    state.momentum_saturate = 100
+    state.final_momentum = 0.7
+    state.max_epochs = 1000
     state.termination_paitence = 100
-    state.best_save_path = "/tmp/mirzameh/best.pkl"
-    state.save_path = "/tmp/mirzameh/mmodel.pkl"
+    state.best_save_path = "/data/lisatmp2/mirzamom/results/ian/3/best.pkl"
+    state.save_path = "/data/lisatmp2/mirzamom/results/ian/3/last.pkl"
 
     experiment(state, None)
 
@@ -355,19 +357,19 @@ def cifar10_experiment():
     state.max_kernel_norm_1 = 0.9
     state.max_kernel_norm_2 = 1.9365
     state.max_kernel_norm_3 = 1.9365
-    state.W_lr_scale_1 = 1.
-    state.W_lr_scale_2 = 1.
-    state.W_lr_scale_3 = 1.
-    state.b_lr_scale_1 = 1.
-    state.b_lr_scale_2 = 1.
-    state.b_lr_scale_3 = 1.
-    state.tied_b_1 = 0
-    state.tied_b_2 = 0
-    state.tied_b_3 = 0
+    state.W_lr_scale_1 = 0.05
+    state.W_lr_scale_2 = 0.05
+    state.W_lr_scale_3 = 0.05
+    state.b_lr_scale_1 = 0.05
+    state.b_lr_scale_2 = 0.05
+    state.b_lr_scale_3 = 0.05
+    state.tied_b_1 = 1
+    state.tied_b_2 = 1
+    state.tied_b_3 = 1
     state.learning_rate = 0.05
-    state.lr_decay_start = 10
-    state.lr_deccay_saturate = 150
-    state.lr_decay_factor = 0.0001
+    state.lr_decay_start = 1
+    state.lr_deccay_saturate = 250
+    state.lr_decay_factor = 0.01
     state.init_momentum = 0.5
     state.momentum_start = 10
     state.momentum_saturate = 50
