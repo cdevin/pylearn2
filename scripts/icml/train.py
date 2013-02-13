@@ -377,18 +377,20 @@ sp_soft_yaml = """
 """
 
 def experiment(state, channel):
-    # update base yaml config with jobman commands
+
+    # udate path
+    if channel is None:
+        alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789')
+        numpy.random.shuffle(alphabet)
+        state.save_path += ''.join(alphabet[:5])
+
+    # load and save yaml
     yaml_string = state.yaml_string % (state)
 
-    # save .yaml file if it is jobman job
-    if channel is None:
-        alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789'
-        numpy.random.shuffle(alphabet)
-        state.path += alphabet[:5]
-    with open(state.save_path + 'model.yaml', 'w') as fp:
+    with open(state.save_path + '_model.yaml', 'w') as fp:
         fp.write(yaml_string)
 
-    if 0:
+    if state.db == 'SVHN':
         # transfer data to tmp
         path = '/RQexec/mirzameh/data/SVHN/h5/'
         tmp_path = '/tmp/data/SVHN/h5/'
@@ -504,7 +506,7 @@ def cifar10_experiment():
 
     experiment(state, None)
 
-def tfd_experiment():
+def tfd_sp_experiment():
     state = DD()
     state.yaml_string = sp_soft_yaml
 
@@ -534,9 +536,34 @@ def tfd_experiment():
 
     experiment(state, None)
 
+def tfd_experiment():
+    state  = DD()
+    with open('tfd_lcn.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
 
+    state.db = 'tfd'
+    state.fold = 4
+    state.num_channels_1 = 96
+    state.num_channels_2 = 96
+    state.max_kernel_norm_1 = 0.9
+    state.max_kernel_norm_2 = 1.9365
+    state.W_lr_scale_1 = 0.5
+    state.W_lr_scale_2 = 0.5
+    state.b_lr_scale_1 = 0.5
+    state.b_lr_scale_2 = 0.5
+    state.dropout_inp = .8
+    state.learning_rate = 0.05
+    state.exp_decay = 1.00004
+    state.exp_dc_min = 0.000001
+    state.init_momentum = 0.5
+    state.momentum_start = 10
+    state.momentum_saturate = 250
+    state.final_momentum = .6
+    state.max_epochs = 500
+    state.termination_paitence = 100
+    state.save_path = "/data/lisatmp2/mirzamom/results/tfd/4/"
 
-
+    experiment(state, None)
 
 if __name__ == "__main__":
 
