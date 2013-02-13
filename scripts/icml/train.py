@@ -430,6 +430,7 @@ def experiment(state, channel):
         except KeyError:
             state.test_score = -1.
 
+    print "Best valid: {}, best test: {}".format(state.valid_score, state.test_score)
     return channel.COMPLETE
 
 def get_best_params_ext(extensions):
@@ -552,7 +553,7 @@ def tfd_experiment():
     state.b_lr_scale_1 = 0.5
     state.b_lr_scale_2 = 0.5
     state.dropout_inp = .8
-    state.learning_rate = 0.05
+    state.learning_rate = 0.005
     state.exp_decay = 1.00004
     state.exp_dc_min = 0.000001
     state.init_momentum = 0.5
