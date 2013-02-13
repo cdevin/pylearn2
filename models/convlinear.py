@@ -27,6 +27,7 @@ except ImportError:
 from pylearn2.models.mlp import MLP
 from pylearn2.utils import safe_izip
 from galatea.mlp import ConvLinearC01B
+from noisy_encoder.models.conv import stochastic_softmax_pool, softmax_pool
 
 
 class MLP(MLP):
@@ -74,7 +75,7 @@ class MLP(MLP):
         Y_hat = self.fprop(X, apply_dropout = self.use_dropout, train_prop = True)
         return self.cost(Y, Y_hat)
 
-class ConvLinearC01BStochastic(ConvLinearC01B):
+class ConvLinearStochasticSoftmaxPoolC01B(ConvLinearC01B):
     """
     """
     def fprop(self, state_below, train_prop = False):
@@ -85,9 +86,9 @@ class ConvLinearC01BStochastic(ConvLinearC01B):
 
         # check if it's train pass or test pass
         if train_prop:
-            pool_f = getattr(sys.modules[__name__], 'stochastic_max_pool_c01b')
+            pool_f = getattr(sys.modules[__name__], 'stochastic_softmax_pool_c01b')
         else:
-            pool_f = getattr(sys.modules[__name__], 'weighted_sum_pool_c01b')
+            pool_f = getattr(sys.modules[__name__], 'softmax_pool_c01b')
 
         if not hasattr(self, 'input_normalization'):
             self.input_normalization = None
@@ -164,158 +165,14 @@ class ConvLinearC01BStochastic(ConvLinearC01B):
 
         return p
 
-### functions
-def stochastic_max_pool_c01b(c01b, pool_shape, pool_stride, image_shape, rng = None):
-    """
-    Stochastic max pooling for training as defined in:
 
-    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
-    Matthew D. Zeiler, Rob Fergus
+def stochastic_softmax_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
+    bc01 = c01b.dimshuffle(3,0,1,2)
+    rval = stochastic_sofmax_pool(bc01, pool_shape, pool_stride, image_shape)
+    return rval.dimshuffle(1, 2, 3, 0)
 
-    c01b: minibatch in format (batch size, channels, rows, cols),
-        IMPORTANT: All values should be poitivie
-    pool_shape: shape of the pool region (rows, cols)
-    pool_stride: strides between pooling regions (row stride, col stride)
-    image_shape: avoid doing some of the arithmetic in theano
-    """
-    r, c = image_shape
-    pr, pc = pool_shape
-    rs, cs = pool_stride
-
-    batch = c01b.shape[3]
-    channel = c01b.shape[0]
-
-    if rng is None:
-        rng = MRG_RandomStreams(2022)
-
-    # Compute index in pooled space of last needed pool
-    # (needed = each input pixel must appear in at least one pool)
-    def last_pool(im_shp, p_shp, p_strd):
-        rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
-        assert p_strd * rval + p_shp >= im_shp
-        assert p_strd * (rval - 1) + p_shp < im_shp
-        return rval
-    # Compute starting row of the last pool
-    last_pool_r = last_pool(image_shape[0] ,pool_shape[0], pool_stride[0]) * pool_stride[0]
-    # Compute number of rows needed in image for all indexes to work out
-    required_r = last_pool_r + pr
-
-    last_pool_c = last_pool(image_shape[1] ,pool_shape[1], pool_stride[1]) * pool_stride[1]
-    required_c = last_pool_c + pc
-
-    # final result shape
-    res_r = int(numpy.floor(last_pool_r/rs)) + 1
-    res_c = int(numpy.floor(last_pool_c/cs)) + 1
-
-    for c01bv in get_debug_values(c01b):
-        assert not numpy.any(numpy.isinf(c01bv))
-        assert c01bv.shape[1] == image_shape[0]
-        assert c01bv.shape[2] == image_shape[1]
-
-    # padding
-    padded = T.alloc(0.0, channel, required_r, required_c, batch)
-    name = c01b.name
-    if name is None:
-        name = 'anon_c01b'
-    c01b = T.set_subtensor(padded[:,0:r, 0:c,:], c01b)
-    c01b.name = 'zero_padded_' + name
-
-    # unraveling
-    window = T.alloc(0.0, channel, res_r, res_c, pr, pc, batch)
-    window.name = 'unravlled_winodows_' + name
-
-    for row_within_pool in xrange(pool_shape[0]):
-        row_stop = last_pool_r + row_within_pool + 1
-        for col_within_pool in xrange(pool_shape[1]):
-            col_stop = last_pool_c + col_within_pool + 1
-            win_cell = c01b[:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs,:]
-            window  =  T.set_subtensor(window[:,:,:,row_within_pool, col_within_pool,:], win_cell)
-
-    # find the norm
-    norm = window.sum(axis = [3, 4])
-    norm = T.switch(T.eq(norm, 0.0), 1.0, norm)
-    norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x', 3)
-    # get prob
-    norm = norm.reshape((batch * channel * res_r * res_c, pr * pc))
-    prob = rng.multinomial(pvals = norm, dtype='float32')
-    # select
-    res = window * prob.reshape((channel, res_r, res_c, pr, pc, batch))
-    res = res.reshape((channel, res_r, res_c, pr, pc, batch)).max(axis=4).max(axis=3)
-    res.name = 'pooled_' + name
-    return T.cast(res, config.floatX)
-
-def weighted_sum_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
-    """
-    This implements test time probability weighting pooling defined in:
-
-    Stochastic Pooling for Regularization of Deep Convolutional Neural Networks
-    Matthew D. Zeiler, Rob Fergus
-
-    c01b: minibatch in format (batch size, channels, rows, cols),
-        IMPORTANT: All values should be poitivie
-    pool_shape: shape of the pool region (rows, cols)
-    pool_stride: strides between pooling regions (row stride, col stride)
-    image_shape: avoid doing some of the arithmetic in theano
-    """
-    r, c = image_shape
-    pr, pc = pool_shape
-    rs, cs = pool_stride
-
-    batch = c01b.shape[3]
-    channel = c01b.shape[0]
-
-    # Compute index in pooled space of last needed pool
-    # (needed = each input pixel must appear in at least one pool)
-    def last_pool(im_shp, p_shp, p_strd):
-        rval = int(numpy.ceil(float(im_shp - p_shp) / p_strd))
-        assert p_strd * rval + p_shp >= im_shp
-        assert p_strd * (rval - 1) + p_shp < im_shp
-        return rval
-    # Compute starting row of the last pool
-    last_pool_r = last_pool(image_shape[0] ,pool_shape[0], pool_stride[0]) * pool_stride[0]
-    # Compute number of rows needed in image for all indexes to work out
-    required_r = last_pool_r + pr
-
-    last_pool_c = last_pool(image_shape[1] ,pool_shape[1], pool_stride[1]) * pool_stride[1]
-    required_c = last_pool_c + pc
-
-    # final result shape
-    res_r = int(numpy.floor(last_pool_r/rs)) + 1
-    res_c = int(numpy.floor(last_pool_c/cs)) + 1
-
-    for c01bv in get_debug_values(c01b):
-        assert not numpy.any(numpy.isinf(c01bv))
-        assert c01bv.shape[1] == image_shape[0]
-        assert c01bv.shape[2] == image_shape[1]
-
-    # padding
-    padded = T.alloc(0.0, channel, required_r, required_c, batch)
-    name = c01b.name
-    if name is None:
-        name = 'anon_c01b'
-
-    c01b = T.set_subtensor(padded[:, 0:r, 0:c,:], c01b)
-    c01b.name = 'zero_padded_' + name
-
-    # unraveling
-    window = T.alloc(0.0, channel, res_r, res_c, pr, pc, batch)
-    window.name = 'unravlled_winodows_' + name
-
-    for row_within_pool in xrange(pool_shape[0]):
-        row_stop = last_pool_r + row_within_pool + 1
-        for col_within_pool in xrange(pool_shape[1]):
-            col_stop = last_pool_c + col_within_pool + 1
-            win_cell = c01b[:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs,:]
-            window  =  T.set_subtensor(window[:,:,:, row_within_pool, col_within_pool,:], win_cell)
-
-    # find the norm
-    norm = window.sum(axis = [3, 4])
-    norm = T.switch(T.eq(norm, 0.0), 1.0, norm)
-    norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x', 3)
-    # average
-    res = (window * norm).sum(axis=[3,4])
-    res.name = 'pooled_' + name
-
-    return res
-
+def softmax_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
+    bc01 = c01b.dimshuffle(3,0,1,2)
+    rval = softmax_pool(bc01, pool_shape, pool_stride, image_shape)
+    return rval.dimshuffle(1, 2, 3, 0)
 

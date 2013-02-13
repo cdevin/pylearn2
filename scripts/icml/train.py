@@ -1,6 +1,6 @@
 import os, shutil
 import argparse
-
+import numpy
 from pylearn2.config import yaml_parse
 from my_utils.config import get_data_path, get_result_path
 from jobman.tools import DD
@@ -261,16 +261,132 @@ sp_train_yaml = """!obj:pylearn2.train.Train {
     save_freq: 1
 }"""
 
+sp_soft_yaml = """
+!obj:pylearn2.train.Train {
+    dataset: &train  !obj:pylearn2.datasets.tfd.TFD {
+        which_set: 'train',
+        one_hot: 1,
+        fold: %(fold)i,
+        axes: ['c', 0, 1, 'b'],
+        preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        batch_size: 50,
+        layers: [
+                 !obj:noisy_encoder.models.convlinear.ConvLinearStochasticSoftmaxPoolC01B {
+                     layer_name: 'h0',
+                     W_lr_scale: %(W_lr_scale_1)f,
+                     b_lr_scale: %(b_lr_scale_1)f,
+                     pad: 0,
+                     detector_channels: %(num_channels_1)i,
+                     channel_pool_size: 2,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: .9,
+                 },
+                !obj:noisy_encoder.models.convlinear.ConvLinearStochasticSoftmaxPoolC01B {
+                     layer_name: 'h1',
+                     W_lr_scale: %(W_lr_scale_2)f,
+                     b_lr_scale: %(b_lr_scale_2)f,
+                     pad: 3,
+                     detector_channels: %(num_channels_2)i,
+                     channel_pool_size: 2,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: 1.9365,
+                 },
+                 !obj:pylearn2.models.mlp.RectifiedLinear {
+                    layer_name: 'h2',
+                    irange: .005,
+                    dim: 1200,
+                    max_col_norm: 1.9
+                 },
+                 !obj:pylearn2.models.mlp.Softmax {
+                     #max_col_norm: 3.873,
+                     max_col_norm: 1.9365,
+                     layer_name: 'y',
+                     n_classes: 7,
+                     irange: .005
+                 }
+                ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [48, 48],
+            num_channels: 1,
+            axes: ['c', 0, 1, 'b'],
+        },
+        dropout_include_probs: [ 1, 1, .5, 1 ],
+        dropout_input_include_prob: %(dropout_inp)f,
+        dropout_input_scale: 1.,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: %(learning_rate)f,
+        init_momentum: %(init_momentum)f,
+        monitoring_dataset:
+            {
+                'valid': !obj:pylearn2.datasets.tfd.TFD {
+                    which_set: 'valid',
+                    one_hot: 1,
+                    fold: %(fold)i,
+                    axes: ['c', 0, 1, 'b'],
+                    preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
+                },
+                'test': !obj:pylearn2.datasets.tfd.TFD {
+                    which_set: 'test',
+                    one_hot: 1,
+                    fold: %(fold)i,
+                    axes: ['c', 0, 1, 'b'],
+                    preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
+                },
+            },
+        cost: !obj:pylearn2.costs.cost.MethodCost {
+                method: 'cost_from_X',
+                supervised: 1
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_misclass",
+            prop_decrease: 0.,
+            N: 100
+        },
+        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            decay_factor: %(exp_decay)f,
+            min_lr: %(exp_dc_min)f
+        }
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_misclass',
+             save_path: "%(save_path)sbest.pkl"
+        },
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: %(momentum_start)i,
+            saturate: %(momentum_saturate)i,
+            final_momentum: %(final_momentum)f
+        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: %(lr_decay_start)i,
+            saturate: %(lr_deccay_saturate)i,
+            decay_factor: %(lr_decay_factor)f
+        }
+    ],
+    save_path: "%(save_path)slast.pkl",
+    save_freq: 1
+}
+"""
 
 def experiment(state, channel):
     # update base yaml config with jobman commands
     yaml_string = state.yaml_string % (state)
 
     # save .yaml file if it is jobman job
-    #if channel != None:
-    if 1:
-        with open('/data/lisatmp2/mirzamom/results/ian/3/model.yaml', 'w') as fp:
-            fp.write(yaml_string)
+    if channel is None:
+        alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789'
+        numpy.random.shuffle(alphabet)
+        state.path += alphabet[:5]
+    with open(state.save_path + 'model.yaml', 'w') as fp:
+        fp.write(yaml_string)
 
     if 0:
         # transfer data to tmp
@@ -364,9 +480,9 @@ def cifar10_experiment():
     state.max_kernel_norm_1 = 0.9
     state.max_kernel_norm_2 = 1.9365
     state.max_kernel_norm_3 = 1.9365
-    state.W_lr_scale_1 = 0.05
-    state.W_lr_scale_2 = 0.05
-    state.W_lr_scale_3 = 0.05
+    state.w_lr_scale_1 = 0.05
+    state.w_lr_scale_2 = 0.05
+    state.w_lr_scale_3 = 0.05
     state.b_lr_scale_1 = 0.05
     state.b_lr_scale_2 = 0.05
     state.b_lr_scale_3 = 0.05
@@ -388,16 +504,52 @@ def cifar10_experiment():
 
     experiment(state, None)
 
+def tfd_experiment():
+    state = DD()
+    state.yaml_string = sp_soft_yaml
+
+    state.fold = 4
+    state.num_channels_1 = 96
+    state.num_channels_2 = 96
+    state.max_kernel_norm_1 = 0.9
+    state.max_kernel_norm_2 = 1.9365
+    state.W_lr_scale_1 = 0.5
+    state.W_lr_scale_2 = 0.5
+    state.b_lr_scale_1 = 0.5
+    state.b_lr_scale_2 = 0.5
+    state.dropout_inp = 1.
+    state.learning_rate = 0.5
+    state.lr_decay_start = 1
+    state.lr_deccay_saturate = 250
+    state.lr_decay_factor = 0.01
+    state.exp_decay = 1.
+    state.exp_dc_min = 0.00001
+    state.init_momentum = 0.5
+    state.momentum_start = 10
+    state.momentum_saturate = 50
+    state.final_momentum = 0.7
+    state.max_epochs = 500
+    state.termination_paitence = 100
+    state.save_path = "/data/lisatmp2/mirzamom/results/tfd/4/"
+
+    experiment(state, None)
+
+
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'conv trainer')
-    parser.add_argument('-t', '--task', choices = ['svhn', 'cifar10'], required = True)
+    parser.add_argument('-t', '--task', choices = ['svhn', 'cifar10', 'tfd'], required = True)
     args = parser.parse_args()
 
     if args.task == 'svhn':
         svhn_experiment()
     elif args.task == 'cifar10':
         cifar10_experiment()
+    elif args.task == 'tfd':
+        tfd_experiment()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
 

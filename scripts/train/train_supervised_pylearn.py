@@ -277,7 +277,7 @@ def cifar10_conv_experiment():
             'train', toronto_prepro: 1, one_hot: 1, start: 45000, stop: 50000, axes: ['b', 0, 1, 'c']}"
     state.test_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
             'train', toronto_prepro: 1, one_hot: 1, start: 0, stop: 100, axes: ['b', 0, 1, 'c']}"
-    state.init_learning_rate = 0.5
+    state.init_learning_rate = 0.05
     state.lr_decay_start = 2
     state.lr_deccay_saturate = 150
     state.lr_decay_factor = 0.01
@@ -359,24 +359,21 @@ def tfd_conv_experiment():
     # train params
     state.dataset = 'tfd'
     state.fold = 0
-    #state.train_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'train', one_hot: 1}"
-    #state.valid_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'valid', one_hot: 1}"
-    #state.test_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'test', one_hot: 1}"
-    state.train_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/train.pkl".format(state.fold))
-    state.valid_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/test.pkl".format(state.fold))
-    state.test_set = "!pkl: " + os.path.join(DATA_PATH, "faces/TFD/pylearn2/{}/valid.pkl".format(state.fold))
-    state.init_learning_rate = 0.0005
+    state.train_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'train', one_hot: 1, fold: 4, preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {} }"
+    state.valid_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'valid', one_hot: 1, fold: 4, preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {} }"
+    state.test_set = "!obj:pylearn2.datasets.tfd.TFD {which_set: 'test', one_hot: 1, fold: 4, preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {} }"
+    state.init_learning_rate = 0.005
+    state.lr_decay_start = 2
+    state.lr_deccay_saturate = 150
+    state.lr_decay_factor = 0.01
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
     state.momentum_saturate = 80
     state.max_epochs = 300
     state.batch_size = 1
-
-    # model params
-    state.model = 'conv'
     state.conv_layers = [
-             {'name' : 'LocalResponseNormalize',
+                {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : [48, 48],
                             'batch_size' : state.batch_size,
                             'num_channels' : 1,
@@ -385,36 +382,13 @@ def tfd_conv_experiment():
                             'alpha' : 0e-04,
                             'beta' : 0.75}},
                 {'name' : 'Convolution',
-                    'params' : {'image_shape' : [48, 48],
-                            'kernel_shape' : [7, 7],
-                            'num_channels' : 1,
-                            'num_channels_output' : 64,
-                            'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
-                    'params' : {'image_shape' : None,
-                        'num_channels' : None,
-                        'pool_shape' : [3, 3],
-                        'pool_stride' : [2, 2]}},
-                {'name' : 'LocalResponseNormalize',
-                    'params' : {'image_shape' : None,
-                            'batch_size' : state.batch_size,
-                            'num_channels' : None,
-                            'n' : 4,
-                            'k' : 1,
-                            'alpha' : 0e-04,
-                            'beta' : 0.75
-                            }},
-                {'name' : 'DropOut',
-                    'params' : {'corruption_level' : 0.5}},
-                {'name' : 'Convolution',
                     'params' : {'image_shape' : None,
                             'kernel_shape' : [5, 5],
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
+                            'act_enc' : 'linear',}},
+                {'name' : 'StochasticSoftMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
                         'pool_shape' : [3, 3],
@@ -422,14 +396,34 @@ def tfd_conv_experiment():
                 {'name' : 'LocalResponseNormalize',
                     'params' : {'image_shape' : None,
                             'batch_size' : state.batch_size,
-                            'num_channels' :None ,
+                            'num_channels' : None,
                             'n' : 4,
                             'k' : 1,
                             'alpha' : 0e-04,
-                            'beta' : 0.75
-                            }},
-                {'name' : 'DropOut',
-                    'params' : {'corruption_level' : 0.5}}]
+                            'beta' : 0.75}},
+                {'name' : 'Convolution',
+                    'params' : {'image_shape' : None,
+                            'kernel_shape' : [5, 5],
+                            'num_channels' : None,
+                            'num_channels_output' : 128,
+                            'batch_size' : state.batch_size,
+                            'act_enc' : 'linear',}},
+                {'name' : 'StochasticSoftMaxPool',
+                    'params' : {'image_shape' : None,
+                        'num_channels' : None,
+                        'pool_shape' : [3, 3],
+                        'pool_stride' : [2, 2]}},
+                {'name' : 'LocalResponseNormalize',
+                    'params' : {'image_shape' : None,
+                            'batch_size' : state.batch_size,
+                            'num_channels' : None,
+                            'n' : 4,
+                            'k' : 1,
+                            'alpha' : 0e-04,
+                            'beta' : 0.75}}]
+
+    # model params
+    state.model = 'conv'
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [0.0, 0.0]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
