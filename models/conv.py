@@ -869,7 +869,7 @@ def stochastic_max_pool(bc01, pool_shape, pool_stride, image_shape, rng = None):
     norm = tensor.switch(tensor.eq(norm, 0.0), 1.0, norm)
     norm = window / norm.dimshuffle(0, 1, 2, 3, 'x', 'x')
     # get prob
-    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
+    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)), dtype='float32')
     # select
     res = (window * prob.reshape((batch, channel, res_r, res_c,  pr, pc))).max(axis=5).max(axis=4)
     res.name = 'pooled_' + name

@@ -229,18 +229,18 @@ def stochastic_max_pool_c01b(c01b, pool_shape, pool_stride, image_shape, rng = N
         for col_within_pool in xrange(pool_shape[1]):
             col_stop = last_pool_c + col_within_pool + 1
             win_cell = c01b[:,row_within_pool:row_stop:rs, col_within_pool:col_stop:cs,:]
-            window  =  T.set_subtensor(window[:,:,:, row_within_pool, col_within_pool,:], win_cell)
+            window  =  T.set_subtensor(window[:,:,:,row_within_pool, col_within_pool,:], win_cell)
 
     # find the norm
-    norm = window.sum(axis = [3,4])
+    norm = window.sum(axis = [3, 4])
     norm = T.switch(T.eq(norm, 0.0), 1.0, norm)
-    #import ipdb
-    #ipdb.set_trace()
     norm = window / norm.dimshuffle(0, 1, 2, 'x', 'x', 3)
     # get prob
-    prob = rng.multinomial(pvals = norm.reshape((batch * channel * res_r * res_c, pr * pc)))
+    norm = norm.reshape((batch * channel * res_r * res_c, pr * pc))
+    prob = rng.multinomial(pvals = norm, dtype='float32')
     # select
-    res = (window * prob.reshape((channel, res_r, res_c,  pr, pc, batch))).max(axis=4).max(axis=3)
+    res = window * prob.reshape((channel, res_r, res_c, pr, pc, batch))
+    res = res.reshape((channel, res_r, res_c, pr, pc, batch)).max(axis=4).max(axis=3)
     res.name = 'pooled_' + name
     return T.cast(res, config.floatX)
 

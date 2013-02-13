@@ -295,7 +295,7 @@ def cifar10_conv_experiment():
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
+                            'act_enc' : 'linear',}},
                 {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
@@ -315,7 +315,7 @@ def cifar10_conv_experiment():
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
+                            'act_enc' : 'linear',}},
                 {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
@@ -331,9 +331,9 @@ def cifar10_conv_experiment():
                             'beta' : 0.75}}]
 
     state.mlp_act = "rectifier"
-    state.mlp_input_corruption_levels = [0.0]
-    state.mlp_hidden_corruption_levels = [0.5]
-    state.mlp_nunits = [1000]
+    state.mlp_input_corruption_levels = [0.0, 0.0]
+    state.mlp_hidden_corruption_levels = [0.5, 0.5]
+    state.mlp_nunits = [128, 128]
     state.n_outs = 10
     state.bias_init = 0.1
     state.irange = 0.1

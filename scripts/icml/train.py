@@ -138,7 +138,7 @@ sp_train_yaml = """!obj:pylearn2.train.Train {
         stop: 40000
     },
     model: !obj:noisy_encoder.models.convlinear.MLP {
-        batch_size: 128,
+        batch_size: 50,
         layers: [
                  !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
                      layer_name: 'h0',
@@ -182,6 +182,13 @@ sp_train_yaml = """!obj:pylearn2.train.Train {
                      irange: .005,
                      max_kernel_norm: 1.9365,
                  },
+                !obj:galatea.mlp.MaxPoolRectifiedLinear {
+                    layer_name: 'h3',
+                    irange: .005,
+                    detector_layer_dim: 1200,
+                    pool_size: 5,
+                    max_col_norm: 1.9
+                 },
                  !obj:pylearn2.models.mlp.Softmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y',
@@ -194,7 +201,7 @@ sp_train_yaml = """!obj:pylearn2.train.Train {
             num_channels: 3,
             axes: ['c', 0, 1, 'b'],
         },
-        dropout_include_probs: [ .5, .5, .5, 1 ],
+        dropout_include_probs: [ 1, 1, 1, 1, 1],
         dropout_input_include_prob: .8,
         dropout_input_scale: 1.,
     },
@@ -351,9 +358,9 @@ def cifar10_experiment():
     state.num_channels_1 = 96
     state.num_channels_2 = 256
     state.num_channels_3 = 256
-    state.channel_pool_size_1 = 2
-    state.channel_pool_size_2 = 2
-    state.channel_pool_size_3 = 4
+    state.channel_pool_size_1 = 1
+    state.channel_pool_size_2 = 1
+    state.channel_pool_size_3 = 1
     state.max_kernel_norm_1 = 0.9
     state.max_kernel_norm_2 = 1.9365
     state.max_kernel_norm_3 = 1.9365
@@ -366,7 +373,7 @@ def cifar10_experiment():
     state.tied_b_1 = 1
     state.tied_b_2 = 1
     state.tied_b_3 = 1
-    state.learning_rate = 0.05
+    state.learning_rate = 0.5
     state.lr_decay_start = 1
     state.lr_deccay_saturate = 250
     state.lr_decay_factor = 0.01
