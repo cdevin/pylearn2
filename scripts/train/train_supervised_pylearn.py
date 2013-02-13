@@ -50,7 +50,7 @@ convolution_yaml_string = """
     extensions:
         [ !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
             channel_name: 'valid_misclass',
-            save_path: "convolutional_network_best.pkl"
+            save_path: "best_2.pkl"
         }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
             channel_name: 'valid_misclass',
             save_channel_names: ['valid_misclass', 'test_misclass']
@@ -63,7 +63,9 @@ convolution_yaml_string = """
             saturate: %(lr_deccay_saturate)i,
             decay_factor: %(lr_decay_factor)f
         }
-        ]
+        ],
+    save_path: "last_2.pkl",
+    save_freq: 5
     }
 """
 
@@ -275,7 +277,7 @@ def cifar10_conv_experiment():
             'train', toronto_prepro: 1, one_hot: 1, start: 45000, stop: 50000, axes: ['b', 0, 1, 'c']}"
     state.test_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
             'train', toronto_prepro: 1, one_hot: 1, start: 0, stop: 100, axes: ['b', 0, 1, 'c']}"
-    state.init_learning_rate = 0.05
+    state.init_learning_rate = 0.5
     state.lr_decay_start = 2
     state.lr_deccay_saturate = 150
     state.lr_decay_factor = 0.01
@@ -302,8 +304,8 @@ def cifar10_conv_experiment():
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
+                            'act_enc' : 'linear',}},
+                {'name' : 'StochasticSoftMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
                         'pool_shape' : [3, 3],
@@ -320,10 +322,10 @@ def cifar10_conv_experiment():
                     'params' : {'image_shape' : None,
                             'kernel_shape' : [5, 5],
                             'num_channels' : None,
-                            'num_channels_output' : 64,
+                            'num_channels_output' : 128,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'rectifier',}},
-                {'name' : 'StochasticMaxPool',
+                            'act_enc' : 'linear',}},
+                {'name' : 'StochasticSoftMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
                         'pool_shape' : [3, 3],
@@ -340,7 +342,7 @@ def cifar10_conv_experiment():
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [0.0, 0.0]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [500]
+    state.mlp_nunits = [1000]
     state.n_outs = 10
     state.bias_init = 0.1
     state.irange = 0.1
