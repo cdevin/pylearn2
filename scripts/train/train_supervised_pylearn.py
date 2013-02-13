@@ -58,6 +58,10 @@ convolution_yaml_string = """
                 start: %(momentum_start)i,
                 saturate: %(momentum_saturate)i,
                 final_momentum: %(final_momentum)f
+        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: %(lr_decay_start)i,
+            saturate: %(lr_deccay_saturate)i,
+            decay_factor: %(lr_decay_factor)f
         }
         ]
     }
@@ -271,7 +275,10 @@ def cifar10_conv_experiment():
             'train', toronto_prepro: 1, one_hot: 1, start: 45000, stop: 50000, axes: ['b', 0, 1, 'c']}"
     state.test_set = "!obj:pylearn2.datasets.cifar10.CIFAR10 {which_set: \
             'train', toronto_prepro: 1, one_hot: 1, start: 0, stop: 100, axes: ['b', 0, 1, 'c']}"
-    state.init_learning_rate = 0.005
+    state.init_learning_rate = 0.05
+    state.lr_decay_start = 2
+    state.lr_deccay_saturate = 150
+    state.lr_decay_factor = 0.01
     state.init_momentum = 0.5
     state.final_momentum = 0.99
     state.momentum_start = 30
@@ -295,7 +302,7 @@ def cifar10_conv_experiment():
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'linear',}},
+                            'act_enc' : 'rectifier',}},
                 {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
@@ -315,7 +322,7 @@ def cifar10_conv_experiment():
                             'num_channels' : None,
                             'num_channels_output' : 64,
                             'batch_size' : state.batch_size,
-                            'act_enc' : 'linear',}},
+                            'act_enc' : 'rectifier',}},
                 {'name' : 'StochasticMaxPool',
                     'params' : {'image_shape' : None,
                         'num_channels' : None,
@@ -333,7 +340,7 @@ def cifar10_conv_experiment():
     state.mlp_act = "rectifier"
     state.mlp_input_corruption_levels = [0.0, 0.0]
     state.mlp_hidden_corruption_levels = [0.5, 0.5]
-    state.mlp_nunits = [128, 128]
+    state.mlp_nunits = [500]
     state.n_outs = 10
     state.bias_init = 0.1
     state.irange = 0.1
