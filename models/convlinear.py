@@ -26,7 +26,7 @@ except ImportError:
             "Some stuff might be broken.")
 from pylearn2.models.mlp import MLP
 from pylearn2.utils import safe_izip
-from galatea.mlp import ConvLinearC01B
+from galatea.mlp import ConvLinearC01B, max_pool_c01b
 from noisy_encoder.models.conv import stochastic_softmax_pool, softmax_pool
 
 
@@ -165,6 +165,121 @@ class ConvLinearStochasticSoftmaxPoolC01B(ConvLinearC01B):
 
         return p
 
+class ConvLinearRecC01B(ConvLinearC01B):
+
+    def __init__(self,
+                 detector_channels,
+                 kernel_shape,
+                 pool_shape,
+                 pool_stride,
+                 layer_name,
+                 channel_pool_size = 1,
+                 irange = None,
+                 sparse_init = None,
+                 include_prob = 1.0,
+                 init_bias = 0.,
+                 W_lr_scale = None,
+                 b_lr_scale = None,
+                 pad = 0,
+                 fix_pool_shape = False,
+                 fix_pool_stride = False,
+                 fix_kernel_shape = False,
+                 partial_sum = 1,
+                 tied_b = False,
+                 max_kernel_norm = None,
+                 input_normalization = None,
+                 output_normalization = None,
+                 min_zero = False):
+
+        args = locals()
+        args.pop('min_zero')
+        args.pop('self')
+        super(ConvLinearRecC01B, self).__init__(**args)
+        self.min_zero = min_zero
+
+    def fprop(self, state_below):
+
+        self.input_space.validate(state_below)
+
+        state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        if not hasattr(self, 'input_normalization'):
+            self.input_normalization = None
+
+        if self.input_normalization:
+            state_below = self.input_normalization(state_below)
+
+        # Alex's code requires # input channels to be <= 3 or a multiple of 4
+        # so we add dummy channels if necessary
+        if not hasattr(self, 'dummy_channels'):
+            self.dummy_channels = 0
+        if self.dummy_channels > 0:
+            state_below = T.concatenate((state_below,
+                T.zeros_like(state_below[0:self.dummy_channels, :, :, :])),
+                axis=0)
+
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle(0, 'x', 'x', 'x')
+        else:
+            b = self.b.dimshuffle(0, 1, 2, 'x')
+
+
+        z = z + b
+        if self.layer_name is not None:
+            z.name = self.layer_name + '_z'
+
+        self.detector_space.validate(z)
+
+        assert self.detector_space.num_channels % 16 == 0
+
+        if self.output_space.num_channels % 16 == 0:
+            # alex's max pool op only works when the number of channels
+            # is divisible by 16. we can only do the cross-channel pooling
+            # first if the cross-channel pooling preserves that property
+            if self.channel_pool_size != 1:
+                s = None
+                for i in xrange(self.channel_pool_size):
+                    t = z[i::self.channel_pool_size,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+
+            p = max_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+                    pool_stride=self.pool_stride,
+                    image_shape=self.detector_space.shape)
+        else:
+            z = max_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+                    pool_stride=self.pool_stride,
+                    image_shape=self.detector_space.shape)
+            if self.channel_pool_size != 1:
+                s = None
+                for i in xrange(self.channel_pool_size):
+                    t = z[i::self.channel_pool_size,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+            p = z
+
+
+        self.output_space.validate(p)
+
+        if not hasattr(self, 'output_normalization'):
+            self.output_normalization = None
+
+        if self.output_normalization:
+            p = self.output_normalization(p)
+
+        if self.min_zero:
+            p = T.maximum(p, 0.)
+
+        return p
 
 def stochastic_softmax_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
     bc01 = c01b.dimshuffle(3,0,1,2)

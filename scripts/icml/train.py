@@ -568,7 +568,8 @@ def tfd_experiment():
 
 def svhn_train_size_experiment():
     state = DD()
-    with open('lp_svhn.yaml') as ymtmp:
+    #with open('lp_svhn.yaml') as ymtmp:
+    with open('rec_svhn.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'svhn'
@@ -580,7 +581,8 @@ def svhn_train_size_experiment():
     state.momentum_saturate = 50
     state.final_momentum = 0.7
     state.max_epochs = 300
-    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/600k/"
+    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/rec/600k/"
+    #state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/600k/"
 
     experiment(state , None)
 
