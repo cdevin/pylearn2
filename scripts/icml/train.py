@@ -390,7 +390,7 @@ def experiment(state, channel):
     with open(state.save_path + '_model.yaml', 'w') as fp:
         fp.write(yaml_string)
 
-    if state.db == 'SVHN':
+    if state.db == 'SVHN_briee':
         # transfer data to tmp
         path = '/RQexec/mirzameh/data/SVHN/h5/'
         tmp_path = '/tmp/data/SVHN/h5/'
@@ -566,10 +566,28 @@ def tfd_experiment():
 
     experiment(state, None)
 
+def svhn_train_size_experiment():
+    state = DD()
+    with open('lp_svhn.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'svhn'
+    state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/600k/'
+    state.learning_rate = 0.05
+    state.lr_decay_factor = 1.000004
+    state.lr_min_lr = .000001
+    state.momentum_start = 1
+    state.momentum_saturate = 50
+    state.final_momentum = 0.7
+    state.max_epochs = 300
+    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/600k/"
+
+    experiment(state , None)
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'conv trainer')
-    parser.add_argument('-t', '--task', choices = ['svhn', 'cifar10', 'tfd'], required = True)
+    parser.add_argument('-t', '--task', choices = ['svhn', 'cifar10', 'tfd', 'svhn_size'], required = True)
     args = parser.parse_args()
 
     if args.task == 'svhn':
@@ -578,6 +596,8 @@ if __name__ == "__main__":
         cifar10_experiment()
     elif args.task == 'tfd':
         tfd_experiment()
+    elif args.task == 'svhn_size':
+        svhn_train_size_experiment()
     else:
         raise ValueError("Wrong task optipns {}".format(args.task))
 
