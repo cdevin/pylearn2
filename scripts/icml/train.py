@@ -569,11 +569,12 @@ def tfd_experiment():
 def svhn_train_size_experiment():
     state = DD()
     #with open('lp_svhn.yaml') as ymtmp:
-    with open('rec_svhn.yaml') as ymtmp:
+    #with open('rec_svhn.yaml') as ymtmp:
+    with open('lp_nodroput_svhn.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'svhn'
-    state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/600k/'
+    state.data_path = '/data/lisatmp/mirzamom/data/SVHN/600k/'
     state.learning_rate = 0.05
     state.lr_decay_factor = 1.000004
     state.lr_min_lr = .000001
