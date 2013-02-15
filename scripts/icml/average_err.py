@@ -62,6 +62,12 @@ def softmax(data):
     data = data - data.max()
     return numpy.exp(data) / numpy.exp(data).sum(1)[:, numpy.newaxis]
 
+
+def save(data, num):
+    name = "/data/lisatmp/mirzamom/results/icml2013/boost/{}_{}.npy".format(num, which)
+    numpy.save(name, data)
+
+
 def boost(num):
     result =[]
     for i in xrange(num):
@@ -69,6 +75,7 @@ def boost(num):
 
     result = numpy.concatenate(result)
     result = result.mean(0)
+    save(result, num)
     if which == 'g':
         result = softmax(result)
 
