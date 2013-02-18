@@ -4,57 +4,52 @@ import theano
 from theano import tensor
 from time import time
 from sklearn.svm import SVC
-from io import load_tfd
+from util.funcs import load_tfd, load_mnist, features
+from util.config import DATA_PATH
 
-
-def load_data(dataset, ds_type, fold):
+def load_data(dataset, data_path, ds_type, fold, scale, scaler = None):
 
     if dataset == 'tfd':
-        return load_tfd(fold, ds_type)
+        return load_tfd(data_path = data_path,
+                        fold = fold,
+                        ds_type = ds_type,
+                        scale = scale,
+                        scaler = scaler)
+    if dataset == 'mnist':
+        return load_mnist(data_path, ds_type = ds_type)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
-def features_fn(model, data, batch_size = 50):
-    index = tensor.lscalar('index')
-    x = tensor.matrix('x')
-    return theano.function(inputs = [index],
-                    outputs = model.test_encode(x),
-                    givens = {x: data[index * batch_size : (index + 1) * batch_size]})
-
-def features(model, data, batch_size, n_samples):
-    func = features_fn(model, data, batch_size)
-    feats = [func(i) for i in xrange(n_samples / batch_size)]
-    if numpy.mod(n_samples, batch_size) != 0:
-        func = features_fn(model, data[(n_samples / batch_size) * batch_size : ],
-                    numpy.mod(n_samples, batch_size))
-        feats.append(func(0))
-
-    return numpy.concatenate(feats)
 
 def classify(model,
             dataset,
+            data_path,
+            scale,
             n_in,
             fold,
             c_vals,
             batch_size=600):
 
 
-    train_set_x, train_set_y = load_data(dataset, 'train', fold)
-    valid_set_x, valid_set_y = load_data(dataset, 'valid', fold)
-    test_set_x, test_set_y = load_data(dataset, 'test', fold)
+    train_set_x, train_set_y, scaler = load_data(dataset, data_path, 'train', fold, scale)
+    valid_set_x, valid_set_y, _ = load_data(dataset, data_path, 'valid', fold, scale, scaler)
+    test_set_x, test_set_y, _ = load_data(dataset, data_path, 'test', fold, scale, scaler)
 
     # compute number of minibatches for training, validation and testing
     n_train = train_set_x.get_value(borrow=True).shape[0]
     n_valid = valid_set_x.get_value(borrow=True).shape[0]
     n_test = test_set_x.get_value(borrow=True).shape[0]
 
-    train_feats = features(model, train_set_x, batch_size, n_train)
-    valid_feats = features(model, valid_set_x, batch_size, n_valid)
-    test_feats = features(model, test_set_x, batch_size, n_test)
+    train_feats, scaler = features(model, train_set_x, batch_size)
+    valid_feats, _ = features(model, valid_set_x, batch_size, scaler)
+    test_feats, _ = features(model, test_set_x, batch_size, scaler)
 
     valid_score = 0
     best_model = None
-    for item in c_vals:
+    best_c_score = None
+    for item in numpy.logspace(c_vals[0],
+                                c_vals[1],
+                                num = c_vals[2]):
         print "checking C: {}".format(item)
         clf = SVC(scale_C = False, C = item)
         clf.fit(train_feats, train_set_y)
@@ -63,15 +58,14 @@ def classify(model,
         if score > valid_score:
             valid_score = score
             best_model = clf
+            best_c_score = item
 
     test_score = clf.score(test_feats, test_set_y)
 
     print "------\n"
     print best_model
     print "Final valid: {}, test: {}".format(valid_score, test_score)
-    return valid_score, test_score
-
-def load_model(dataset):
+    return valid_score, test_score, best_c_score
 
     return pickle.load(open(dataset, 'r'))
 
@@ -85,10 +79,10 @@ def experiment(state, channel):
     except (AttributeError, KeyError) as e:
         save_path = './'
 
-    model = load_model(state.model_path)
-
-    valid_result, test_result = classify(model = model,
+    valid_result, test_result, c_score  = classify(model = state.model_path,
             dataset = state.dataset,
+            data_path = state.data_path,
+            scale = state.scale,
             n_in = state.nhid,
             fold = state.fold,
             c_vals = state.c_vals,
@@ -97,6 +91,7 @@ def experiment(state, channel):
 
     state.valid_result = valid_result
     state.test_result = test_result
+    state.c_score = c_score
 
     return channel.COMPLETE
 
@@ -109,10 +104,13 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
-    state.model_path = "data/tfd_30_model.pkl"
+    #state.dataset = "mnist"
+    state.model_path = "data/tfd_test_0_model.pkl"
+    state.data_path = DATA_PATH + "faces/TFD/raw/"
+    state.scale = True
     state.nhid = 1024
     state.batch_size = 600
-    state.c_vals = numpy.logspace(-1, 6, num = 10)
+    state.c_vals = [1, 7, 5]
     state.fold = 0
     state.exp_name = 'test_run'
 

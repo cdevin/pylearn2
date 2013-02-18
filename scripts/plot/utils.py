@@ -1,50 +1,26 @@
-import PIL.Image
-import argparse
-import glob
-import  pickle
+""" This file contains different utility functions that are not connected
+in anyway to the networks presented in the tutorials, but rather help in
+processing the outputs into a more understandable way.
+
+For example ``tile_raster_images`` helps in generating a easy to grasp
+image from a set of samples or weights.
+"""
+
+
 import numpy
 
 
-def plot_tiles(W, output):
-
-    sh = W.shape
-
-    tile_shape = int(numpy.floor(numpy.sqrt(sh[0])))
-    img_shape = int(numpy.sqrt(sh[1]))
-    img_shape = (img_shape, img_shape)
-    tile = tile_raster_images(W, img_shape = img_shape,  tile_shape = (tile_shape, tile_shape), tile_spacing = (1,1))
+def scale_to_unit_interval(ndar, eps=1e-8):
+    """ Scales all values in the ndarray ndar to be between 0 and 1 """
+    ndar = ndar.copy()
+    ndar -= ndar.min()
+    ndar *= 1.0 / (ndar.max() + eps)
+    return ndar
 
 
-    image = PIL.Image.fromarray(tile)
-    image.save(output)
-
-
-def load_plot(data, output):
-    # load W
-    data = pickle.load(open(data, 'r'))
-    W = data['W']
-    #get tile
-    tile = plot_tiles(W.T, output + '.png')
-
-
-def batch(data, output):
-
-    files = glob.glob(data + '*_params.pkl')
-    for file in files:
-        fname =  file.split('/')[-1].split('.')[-2]
-        if fname == None:
-            print "Failed: %s" %(file)
-            continue
-        fname = output + fname + '.png'
-
-        print "ploting %s:" %(fname)
-        load_plot(file, fname )
-
-
-
-
-def tile_raster_images(X, img_shape, tile_shape,tile_spacing = (0,0),
-              scale_rows_to_unit_interval = True, output_pixel_vals = True):
+def tile_raster_images(X, img_shape, tile_shape, tile_spacing=(0, 0),
+                       scale_rows_to_unit_interval=True,
+                       output_pixel_vals=True):
     """
     Transform an array with one flattened image per row, into an array in
     which images are reshaped and layed out like tiles on a floor.
@@ -95,15 +71,17 @@ def tile_raster_images(X, img_shape, tile_shape,tile_spacing = (0,0),
         assert len(X) == 4
         # Create an output numpy ndarray to store the image
         if output_pixel_vals:
-            out_array = numpy.zeros((out_shape[0], out_shape[1], 4), dtype='uint8')
+            out_array = numpy.zeros((out_shape[0], out_shape[1], 4),
+                                    dtype='uint8')
         else:
-            out_array = numpy.zeros((out_shape[0], out_shape[1], 4), dtype=X.dtype)
+            out_array = numpy.zeros((out_shape[0], out_shape[1], 4),
+                                    dtype=X.dtype)
 
         #colors default to 0, alpha defaults to 1 (opaque)
         if output_pixel_vals:
-            channel_defaults = [0,0,0,255]
+            channel_defaults = [0, 0, 0, 255]
         else:
-            channel_defaults = [0.,0.,0.,1.]
+            channel_defaults = [0., 0., 0., 1.]
 
         for i in xrange(4):
             if X[i] is None:
@@ -112,12 +90,14 @@ def tile_raster_images(X, img_shape, tile_shape,tile_spacing = (0,0),
                 dt = out_array.dtype
                 if output_pixel_vals:
                     dt = 'uint8'
-                out_array[:,:,i] = numpy.zeros(out_shape,
-                        dtype=dt)+channel_defaults[i]
+                out_array[:, :, i] = numpy.zeros(out_shape,
+                        dtype=dt) + channel_defaults[i]
             else:
                 # use a recurrent call to compute the channel and store it
                 # in the output
-                out_array[:,:,i] = tile_raster_images(X[i], img_shape, tile_shape, tile_spacing, scale_rows_to_unit_interval, output_pixel_vals)
+                out_array[:, :, i] = tile_raster_images(
+                    X[i], img_shape, tile_shape, tile_spacing,
+                    scale_rows_to_unit_interval, output_pixel_vals)
         return out_array
 
     else:
@@ -131,61 +111,25 @@ def tile_raster_images(X, img_shape, tile_shape,tile_spacing = (0,0),
             dt = 'uint8'
         out_array = numpy.zeros(out_shape, dtype=dt)
 
-
         for tile_row in xrange(tile_shape[0]):
             for tile_col in xrange(tile_shape[1]):
                 if tile_row * tile_shape[1] + tile_col < X.shape[0]:
+                    this_x = X[tile_row * tile_shape[1] + tile_col]
                     if scale_rows_to_unit_interval:
                         # if we should scale values to be between 0 and 1
                         # do this by calling the `scale_to_unit_interval`
                         # function
-                        this_img = scale_to_unit_interval(X[tile_row * tile_shape[1] + tile_col].reshape(img_shape))
+                        this_img = scale_to_unit_interval(
+                            this_x.reshape(img_shape))
                     else:
-                        this_img = X[tile_row * tile_shape[1] + tile_col].reshape(img_shape)
+                        this_img = this_x.reshape(img_shape)
                     # add the slice to the corresponding position in the
                     # output array
                     c = 1
                     if output_pixel_vals:
                         c = 255
                     out_array[
-                        tile_row * (H+Hs):tile_row*(H+Hs)+H,
-                        tile_col * (W+Ws):tile_col*(W+Ws)+W
-                        ] \
-                        = this_img * c
+                        tile_row * (H + Hs): tile_row * (H + Hs) + H,
+                        tile_col * (W + Ws): tile_col * (W + Ws) + W
+                        ] = this_img * c
         return out_array
-
-
-
-def scale_to_unit_interval(ndar,eps=1e-8):
-    """ Scales all values in the ndarray ndar to be between 0 and 1 """
-    ndar = ndar.copy()
-    ndar -= ndar.min()
-    ndar *= 1.0 / (ndar.max()+eps)
-    return ndar
-
-
-
-
-
-def main():
-
-    parser = argparse.ArgumentParser(description = 'Grid emotion plot')
-
-    parser.add_argument('-d', '--data', dest = 'data',
-            help = 'data file', required = True)
-    parser.add_argument('-o', '--output', dest = 'output',
-            help = 'output image file name')
-    parser.add_argument('-b', '--batch', action = 'store_true',
-            default = False)
-
-    args = parser.parse_args()
-
-    if args.batch == True:
-        batch(args.data, args.output)
-    else:
-        load_plot(args.data, args.output)
-
-
-if __name__ == '__main__':
-
-    main()

@@ -5,15 +5,23 @@ from theano import tensor
 from theano.tensor.shared_randomstreams import RandomStreams
 from time import time
 from nact import NAENC
-from io import load_tfd
+from util.funcs import load_tfd, load_mnist, learning_rate_adjuster
+from util.config import DATA_PATH
 
 def train(dataset,
+                data_path,
+                fold,
+                scale,
                 nhid,
                 act_enc,
                 act_dec,
                 learning_rate,
-                prob,
-                l1_l,
+                lr_change_tr,
+                input_corruption_level,
+                hidden_corruption_level,
+                group_size,
+                l1_reg,
+                l2_reg,
                 batch_size,
                 n_epochs,
                 norm,
@@ -26,26 +34,39 @@ def train(dataset,
     the reuslts
     """
 
-    train_x, _ = load_data(dataset)
+    print "loading data..."
+    train_x, _ = load_data(dataset, data_path, scale, fold)
     data_shape = train_x.get_value(borrow=True).shape
     n_train_batches = data_shape[0] / batch_size
 
-    model = NAENC(prob = prob,
+    model = NAENC(input_corruption_level = input_corruption_level,
+                    hidden_corruption_level = hidden_corruption_level,
+                    group_size = group_size,
                     nvis = data_shape[1],
                     nhid = nhid,
                     act_enc = act_enc,
                     act_dec = act_dec)
 
     # train cae
-    print "... training the cae"
+    print "training the model..."
     t0 = time()
-    train_f = model.train_funcs(train_x, batch_size)
+    previous_cost = 0
+    train_f = model.train_funcs(train_x, batch_size, l1_reg, l2_reg)
     for epoch in xrange(n_epochs):
-        cost = [train_f(index = batch_index, lr = learning_rate) for \
-                batch_index in xrange(n_train_batches)]
+        # constatn learning rate will used if lr_decay is -1
+        cost = numpy.mean([train_f(index = batch_index, lr = learning_rate) for \
+                batch_index in xrange(n_train_batches)])
 
-        print "epoch {} cost: {}".format(epoch, numpy.mean(cost))
+        print "epoch {} cost: {}".format(epoch, cost)
+        if numpy.isnan(numpy.mean(cost)):
+            print "Got NAN value"
+            break
 
+        # adjust lr
+        learning_rate = learning_rate_adjuster(cost, previous_cost, learning_rate, lr_change_tr)
+        previous_cost = cost
+
+        # save params
         if numpy.mod(epoch, save_freq) == 0 or epoch == (n_epochs -1):
             # save params and model
             model.save_params(save_path, "%s_%d" %(exp_name, epoch))
@@ -55,13 +76,16 @@ def train(dataset,
 
     return True
 
-def load_data(dataset):
+def load_data(dataset, data_path, scale, fold):
 
     if dataset == 'tfd':
-        return load_tfd(fold = -1)
+        data_x, data_y, _ = load_tfd(data_path, fold = fold, scale = scale, shared = True)
+    elif dataset == 'mnist':
+        data_x, data_y, _ = load_mnist(data_path, ds_type = 'train', shared = True)
     else:
         raise NameError("Invalid dataset: {}".format(dataset))
 
+    return data_x, data_y
 
 def experiment(state, channel):
     """
@@ -75,12 +99,19 @@ def experiment(state, channel):
 
     result = train(
             dataset  = state.dataset,
+            data_path = state.data_path,
+            fold = state.fold,
+            scale = state.scale,
             nhid = state.nhid,
             act_enc = state.act_enc,
             act_dec = state.act_dec,
             learning_rate = state.learning_rate,
-            prob = state.prob,
-            l1_l = state.l1_l,
+            lr_change_tr = state.lr_change_tr,
+            input_corruption_level = state.input_corruption_level,
+            hidden_corruption_level = state.hidden_corruption_level,
+            group_size = state.group_size,
+            l1_reg = state.l1_reg,
+            l2_reg = state.l2_reg,
             batch_size = state.batch_size,
             n_epochs = state.n_epochs,
             norm = state.norm,
@@ -92,7 +123,6 @@ def experiment(state, channel):
 
     return channel.COMPLETE
 
-
 def test_experiment():
     """
     dummy function to test the module without jobman
@@ -102,17 +132,26 @@ def test_experiment():
 
     state = DD
     state.dataset = "tfd"
+    state.data_path = DATA_PATH + "faces/TFD/raw/"
+    #state.data_path = '/RQexec/mirzameh/data/mnist/'
+    #state.fold = "tfd_unlabled_14x14_patches"
+    state.fold = -1
+    state.scale = True
     state.nhid = 1024
     state.act_enc = "sigmoid"
     state.act_dec = "sigmoid"
     state.learning_rate = 0.01
-    state.prob = 0.3
-    state.l1_l = 0.6
+    state.lr_change_tr = 0.05
+    state.input_corruption_level = 0.4
+    state.hidden_corruption_level = 0.9
+    state.group_size = -1
+    state.l1_reg = 1
+    state.l2_reg = 1
     state.batch_size = 50
-    state.n_epochs = 102
+    state.n_epochs = 100
     state.norm = False
-    state.save_freq = 2
-    state.exp_name = 'tfd'
+    state.save_freq = 0
+    state.exp_name = 'tfd_test'
     state.save_path = 'data/'
 
     experiment(state, None)
