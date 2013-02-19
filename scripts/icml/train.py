@@ -394,7 +394,7 @@ def experiment(state, channel):
         # transfer data to tmp
         path = '/RQexec/mirzameh/data/SVHN/h5/'
         tmp_path = '/tmp/data/SVHN/h5/'
-        train_f = 'splited_train_32x32.h5'
+        train_f = 'splitted_train_32x32.h5'
         valid_f = 'valid_32x32.h5'
         test_f = 'test_32x32.h5'
         if any([not os.path.isfile(path + train_f), os.path.isfile(path + valid_f), os.path.isfile(path + test_f)]):
@@ -441,32 +441,39 @@ def get_best_params_ext(extensions):
 
 def svhn_experiment():
     state = DD()
-    state.yaml_string = train_yaml
+    with open('exp/lp_svhn.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
 
-    state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/'
+    state.db = 'SVHN_briee'
+
+    #state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/'
+    state.data_path = '/tmp/data/SVHN/'
     state.num_channels_1 = 128
     state.num_channels_2 = 256
     state.num_channels_3 = 256
+    state.channel_pool_size_1 = 2
+    state.channel_pool_size_2 = 2
+    state.channel_pool_size_3 = 4
+    state.pool_shape_1 = '[4, 4]'
+    state.pool_shape_2 = '[4, 4]'
+    state.pool_shape_3 = '[2, 2]'
+    state.kernel_shape_1 = '[8, 8]'
+    state.kernel_shape_2 = '[8, 8]'
+    state.kernel_shape_3 = '[5, 5]'
+    state.pool_stride_1 = '[2, 2]'
+    state.pool_stride_2 = '[2, 2]'
+    state.pool_stride_3 = '[2, 2]'
     state.max_kernel_norm_1 = 1.2
     state.max_kernel_norm_2 = 2.2
     state.max_kernel_norm_3 = 2.2
-    state.learning_rate = 0.5
-    state.W_lr_scale_1 = 0.01
-    state.W_lr_scale_2 = 0.01
-    state.W_lr_scale_3 = 0.01
-    state.b_lr_scale_1 = 0.01
-    state.b_lr_scale_2 = 0.01
-    state.b_lr_scale_3 = 0.01
-    state.lr_decay_start = 1
-    state.lr_deccay_saturate = 150
-    state.lr_decay_factor = 0.001
+    state.learning_rate = 0.05
+    state.lr_min_lr = 0.00001
+    state.lr_decay_factor = 1.00004
     state.momentum_start = 1
     state.momentum_saturate = 100
-    state.final_momentum = 0.7
-    state.max_epochs = 1000
+    state.final_momentum = 0.65
     state.termination_paitence = 100
-    state.best_save_path = "/data/lisatmp2/mirzamom/results/ian/3/best.pkl"
-    state.save_path = "/data/lisatmp2/mirzamom/results/ian/3/last.pkl"
+    state.save_path = "/RQexec/mirzameh/results/svhn/sot/"
 
     experiment(state, None)
 
@@ -570,13 +577,26 @@ def svhn_train_size_experiment():
     state = DD()
     #with open('lp_svhn.yaml') as ymtmp:
     #with open('rec_svhn.yaml') as ymtmp:
-    with open('lp_nodroput_svhn.yaml') as ymtmp:
+    #with open('lp_nodroput_svhn.yaml') as ymtmp:
     #with open('rec_nodropout_svhn.yaml') as ymtmp:
+    #with open('lp_svhn_60k.yaml') as ymtmp:
+    #with open('rec_svhn_60k.yaml') as ymtmp:
+    #with open('exp/lp_nodroput_svhn_60k.yaml') as ymtmp:
+    #with open('exp/rec_nodropout_svhn_60k.yaml') as ymtmp:
+    #with open('exp/lp_svhn_6k.yaml') as ymtmp:
+    #with open('exp/rec_svhn.yaml') as ymtmp:
+    #with open('exp/lp_nodroput_svhn.yaml') as ymtmp:
+    #with open('exp/lp_nodroput_svhn_60k.yaml') as ymtmp:
+    #with open('exp/rec_nodropout_svhn.yaml') as ymtmp:
+    #with open('exp/lp_nodroput_svhn_6k.yaml') as ymtmp:
+    #with open('exp/rec_svhn_6k.yaml') as ymtmp:
+    #with open('exp/rec_nodropout_svhn_6k.yaml') as ymtmp:
+    with open('exp/rec_svhn_100k.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'svhn'
+    state.db = 'SVHN_briee'
     #state.data_path = '/data/lisatmp/mirzamom/data/SVHN/600k/'
-    state.data_path = '/Tmp/data/SVHN/600k/'
+    state.data_path = '/tmp/data/SVHN/'
     state.learning_rate = 0.05
     state.lr_decay_factor = 1.000004
     state.lr_min_lr = .000001
@@ -584,7 +604,7 @@ def svhn_train_size_experiment():
     state.momentum_saturate = 50
     state.final_momentum = 0.7
     state.max_epochs = 300
-    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/rec/600k/"
+    state.save_path = "/RQexec/mirzameh/results/svhn/100k/"
     #state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/600k/"
 
     experiment(state , None)
