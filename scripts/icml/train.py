@@ -8,374 +8,6 @@ from jobman.tools import DD
 DATA_PATH = get_data_path()
 RESULT_PATH = get_result_path()
 
-train_yaml = """!obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
-        which_set: 'splited_train',
-        path: %(data_path)s
-    },
-    model: !obj:pylearn2.models.mlp.MLP {
-        batch_size: 128,
-        layers: [
-                 !obj:galatea.mlp.ConvLinearC01B {
-                     layer_name: 'h0',
-                     pad: 0,
-                     detector_channels: %(num_channels_1)i,
-                     channel_pool_size: 2,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: %(max_kernel_norm_1)f,
-                     W_lr_scale: %(W_lr_scale_1)f,
-                     b_lr_scale: %(b_lr_scale_1)f,
-                     tied_b: 1
-                 },
-                 !obj:galatea.mlp.ConvLinearC01B {
-                     layer_name: 'h1',
-                     pad: 3,
-                     detector_channels: %(num_channels_2)i,
-                     channel_pool_size: 2,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: %(max_kernel_norm_2)f,
-                     W_lr_scale: %(W_lr_scale_2)f,
-                     b_lr_scale: %(b_lr_scale_2)f,
-                     tied_b: 1
-                 },
-                 !obj:galatea.mlp.ConvLinearC01B {
-                     pad: 3,
-                     layer_name: 'h2',
-                     detector_channels: %(num_channels_3)i,
-                     channel_pool_size: 4,
-                     kernel_shape: [5, 5],
-                     pool_shape: [2, 2],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: %(max_kernel_norm_3)f,
-                     W_lr_scale: %(W_lr_scale_3)f,
-                     b_lr_scale: %(b_lr_scale_3)f,
-                     tied_b: 1
-                     #use_bias: 0
-                 },
-                 !obj:pylearn2.models.mlp.Softmax {
-                     #max_col_norm: 3.873,
-                     max_col_norm: 1.9365,
-                     layer_name: 'y',
-                     n_classes: 10,
-                     irange: .005
-                 }
-                ],
-        input_space: !obj:pylearn2.space.Conv2DSpace {
-            shape: [32, 32],
-            num_channels: 3,
-            axes: ['b', 0, 1, 'c'],
-        },
-        dropout_include_probs: [ .5, .5, .5, 1 ],
-        dropout_input_include_prob: .8,
-        dropout_input_scale: 1.,
-    },
-    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        learning_rate: %(learning_rate)f,
-        init_momentum: .5,
-        monitoring_dataset:
-            {
-                #'train' : *train,
-                'valid' : !obj:pylearn2.datasets.svhn.SVHN {
-                              which_set: 'valid',
-                              path: %(data_path)s
-                          },
-                'test' : !obj:pylearn2.datasets.svhn.SVHN {
-                              which_set: 'test',
-                              path: %(data_path)s
-                          }
-            },
-        cost: !obj:pylearn2.costs.cost.MethodCost {
-                method: 'cost_from_X',
-                supervised: 1
-        },
-        termination_criterion: !obj:pylearn2.termination_criteria.And {
-            criteria : [!obj:pylearn2.termination_criteria.EpochCounter {
-            max_epochs : %(max_epochs)i
-            },
-            !obj:pylearn2.termination_criteria.MonitorBased {
-                channel_name: "valid_y_misclass",
-                prop_decrease: 0.,
-                N: %(termination_paitence)i}
-            ]
-        },
-    },
-    extensions: [
-        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             channel_name: 'valid_y_misclass',
-             save_path: "%(best_save_path)s"
-        }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
-            channel_name: 'valid_y_misclass',
-            save_channel_names: ['valid_y_misclass', 'test_y_misclass']
-        }, !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
-            start: %(momentum_start)i,
-            saturate: %(momentum_saturate)i,
-            final_momentum: %(final_momentum)f
-        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
-            start: %(lr_decay_start)i,
-            saturate: %(lr_deccay_saturate)i,
-            decay_factor: %(lr_decay_factor)f
-        }
-    ],
-    save_path: "%(save_path)s",
-    save_freq: 1
-}"""
-
-
-sp_train_yaml = """!obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.cifar10.CIFAR10 {
-        toronto_prepro: 1,
-        which_set: 'train',
-        one_hot: 1,
-        axes: ['c', 0, 1, 'b'],
-        start: 0,
-        stop: 40000
-    },
-    model: !obj:noisy_encoder.models.convlinear.MLP {
-        batch_size: 50,
-        layers: [
-                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
-                     layer_name: 'h0',
-                     pad: 4,
-                     tied_b: %(tied_b_1)i,
-                     W_lr_scale: %(W_lr_scale_1)f,
-                     b_lr_scale: %(b_lr_scale_1)f,
-                     detector_channels: %(num_channels_1)i,
-                     channel_pool_size: %(channel_pool_size_1)i,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: .9,
-                 },
-                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
-                     layer_name: 'h1',
-                     pad: 3,
-                     tied_b: %(tied_b_2)i,
-                     W_lr_scale: %(W_lr_scale_2)f,
-                     b_lr_scale: %(b_lr_scale_2)f,
-                     detector_channels: %(num_channels_2)i,
-                     channel_pool_size: %(channel_pool_size_2)i,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: 1.9365,
-                 },
-                 !obj:noisy_encoder.models.convlinear.ConvLinearC01BStochastic {
-                     pad: 3,
-                     layer_name: 'h2',
-                     tied_b: %(tied_b_3)i,
-                     W_lr_scale: %(W_lr_scale_3)f,
-                     b_lr_scale: %(b_lr_scale_3)f,
-                     detector_channels: %(num_channels_3)i,
-                     channel_pool_size: %(channel_pool_size_3)i,
-                     kernel_shape: [5, 5],
-                     pool_shape: [2, 2],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: 1.9365,
-                 },
-                !obj:galatea.mlp.MaxPoolRectifiedLinear {
-                    layer_name: 'h3',
-                    irange: .005,
-                    detector_layer_dim: 1200,
-                    pool_size: 5,
-                    max_col_norm: 1.9
-                 },
-                 !obj:pylearn2.models.mlp.Softmax {
-                     max_col_norm: 1.9365,
-                     layer_name: 'y',
-                     n_classes: 10,
-                     irange: .005
-                 }
-                ],
-        input_space: !obj:pylearn2.space.Conv2DSpace {
-            shape: [32, 32],
-            num_channels: 3,
-            axes: ['c', 0, 1, 'b'],
-        },
-        dropout_include_probs: [ 1, 1, 1, 1, 1],
-        dropout_input_include_prob: .8,
-        dropout_input_scale: 1.,
-    },
-    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        learning_rate: %(learning_rate)f,
-        init_momentum: %(init_momentum)f,
-        monitoring_dataset:
-            {
-                #'train' : *train,
-                'valid' : !obj:pylearn2.datasets.cifar10.CIFAR10 {
-                              toronto_prepro: 1,
-                              axes: ['c', 0, 1, 'b'],
-                              which_set: 'train',
-                              one_hot: 1,
-                              start: 40000,
-                              stop:  50000
-                          },
-                #'test'  : !obj:pylearn2.datasets.cifar10.CIFAR10 {
-                #              which_set: 'test',
-                #              gcn: 55.,
-                #              one_hot: 1,
-                #          }
-            },
-        cost: !obj:pylearn2.costs.cost.MethodCost {
-                method: 'cost_from_X',
-                supervised: 1
-        },
-        termination_criterion: !obj:pylearn2.termination_criteria.And {
-            criteria : [!obj:pylearn2.termination_criteria.EpochCounter {
-            max_epochs : %(max_epochs)i
-            },
-            !obj:pylearn2.termination_criteria.MonitorBased {
-                channel_name: "valid_y_misclass",
-                prop_decrease: 0.,
-                N: %(termination_paitence)i}
-            ]
-        },
-    },
-    extensions: [
-        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             channel_name: 'valid_y_misclass',
-             save_path: "%(best_save_path)s"
-        }, !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
-            channel_name: 'valid_y_misclass',
-            save_channel_names: ['valid_y_misclass']
-        }, !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
-            start: %(momentum_start)i,
-            saturate: %(momentum_saturate)i,
-            final_momentum: %(final_momentum)f
-        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
-            start: %(lr_decay_start)i,
-            saturate: %(lr_deccay_saturate)i,
-            decay_factor: %(lr_decay_factor)f
-        }
-    ],
-    save_path: "%(save_path)s",
-    save_freq: 1
-}"""
-
-sp_soft_yaml = """
-!obj:pylearn2.train.Train {
-    dataset: &train  !obj:pylearn2.datasets.tfd.TFD {
-        which_set: 'train',
-        one_hot: 1,
-        fold: %(fold)i,
-        axes: ['c', 0, 1, 'b'],
-        preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
-    },
-    model: !obj:pylearn2.models.mlp.MLP {
-        batch_size: 50,
-        layers: [
-                 !obj:noisy_encoder.models.convlinear.ConvLinearStochasticSoftmaxPoolC01B {
-                     layer_name: 'h0',
-                     W_lr_scale: %(W_lr_scale_1)f,
-                     b_lr_scale: %(b_lr_scale_1)f,
-                     pad: 0,
-                     detector_channels: %(num_channels_1)i,
-                     channel_pool_size: 2,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: .9,
-                 },
-                !obj:noisy_encoder.models.convlinear.ConvLinearStochasticSoftmaxPoolC01B {
-                     layer_name: 'h1',
-                     W_lr_scale: %(W_lr_scale_2)f,
-                     b_lr_scale: %(b_lr_scale_2)f,
-                     pad: 3,
-                     detector_channels: %(num_channels_2)i,
-                     channel_pool_size: 2,
-                     kernel_shape: [8, 8],
-                     pool_shape: [4, 4],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: 1.9365,
-                 },
-                 !obj:pylearn2.models.mlp.RectifiedLinear {
-                    layer_name: 'h2',
-                    irange: .005,
-                    dim: 1200,
-                    max_col_norm: 1.9
-                 },
-                 !obj:pylearn2.models.mlp.Softmax {
-                     #max_col_norm: 3.873,
-                     max_col_norm: 1.9365,
-                     layer_name: 'y',
-                     n_classes: 7,
-                     irange: .005
-                 }
-                ],
-        input_space: !obj:pylearn2.space.Conv2DSpace {
-            shape: [48, 48],
-            num_channels: 1,
-            axes: ['c', 0, 1, 'b'],
-        },
-        dropout_include_probs: [ 1, 1, .5, 1 ],
-        dropout_input_include_prob: %(dropout_inp)f,
-        dropout_input_scale: 1.,
-    },
-    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        learning_rate: %(learning_rate)f,
-        init_momentum: %(init_momentum)f,
-        monitoring_dataset:
-            {
-                'valid': !obj:pylearn2.datasets.tfd.TFD {
-                    which_set: 'valid',
-                    one_hot: 1,
-                    fold: %(fold)i,
-                    axes: ['c', 0, 1, 'b'],
-                    preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
-                },
-                'test': !obj:pylearn2.datasets.tfd.TFD {
-                    which_set: 'test',
-                    one_hot: 1,
-                    fold: %(fold)i,
-                    axes: ['c', 0, 1, 'b'],
-                    preprocessor: !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {}
-                },
-            },
-        cost: !obj:pylearn2.costs.cost.MethodCost {
-                method: 'cost_from_X',
-                supervised: 1
-        },
-        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
-            channel_name: "valid_y_misclass",
-            prop_decrease: 0.,
-            N: 100
-        },
-        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: %(exp_decay)f,
-            min_lr: %(exp_dc_min)f
-        }
-    },
-    extensions: [
-        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             channel_name: 'valid_y_misclass',
-             save_path: "%(save_path)sbest.pkl"
-        },
-        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
-            start: %(momentum_start)i,
-            saturate: %(momentum_saturate)i,
-            final_momentum: %(final_momentum)f
-        }, !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
-            start: %(lr_decay_start)i,
-            saturate: %(lr_deccay_saturate)i,
-            decay_factor: %(lr_decay_factor)f
-        }
-    ],
-    save_path: "%(save_path)slast.pkl",
-    save_freq: 1
-}
-"""
-
 def experiment(state, channel):
 
     # udate path
@@ -437,43 +69,44 @@ def get_best_params_ext(extensions):
     from noisy_encoder.utils.best_params import MonitorBasedBest
     for ext in extensions:
         if isinstance(ext, MonitorBasedBest):
-            return ext
+             return ext
 
 def svhn_experiment():
     state = DD()
-    with open('exp/lp_svhn.yaml') as ymtmp:
+    with open('exp/svhn.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'SVHN_briee'
+    state.db = 'SVHN'
 
-    #state.data_path = '/data/lisatmp2/mirzamom/data/SVHN/'
-    state.data_path = '/tmp/data/SVHN/'
+    state.data_path = '/Tmp/mirzamom/data/SVHN/'
+    #state.data_path = '/tmp/data/SVHN/'
+    state.num_channels_0 = 96
     state.num_channels_1 = 128
-    state.num_channels_2 = 256
-    state.num_channels_3 = 256
-    state.channel_pool_size_1 = 2
-    state.channel_pool_size_2 = 2
-    state.channel_pool_size_3 = 4
-    state.pool_shape_1 = '[4, 4]'
-    state.pool_shape_2 = '[4, 4]'
-    state.pool_shape_3 = '[2, 2]'
-    state.kernel_shape_1 = '[8, 8]'
-    state.kernel_shape_2 = '[8, 8]'
-    state.kernel_shape_3 = '[5, 5]'
-    state.pool_stride_1 = '[2, 2]'
-    state.pool_stride_2 = '[2, 2]'
-    state.pool_stride_3 = '[2, 2]'
-    state.max_kernel_norm_1 = 1.2
-    state.max_kernel_norm_2 = 2.2
-    state.max_kernel_norm_3 = 2.2
-    state.learning_rate = 0.05
-    state.lr_min_lr = 0.00001
-    state.lr_decay_factor = 1.00004
-    state.momentum_start = 1
-    state.momentum_saturate = 100
-    state.final_momentum = 0.65
-    state.termination_paitence = 100
-    state.save_path = "/RQexec/mirzameh/results/svhn/sot/"
+    state.num_channels_2 = 128
+    state.layer_ndim = 500
+    #state.channel_pool_size_1 = 2
+    #state.channel_pool_size_2 = 2
+    #state.channel_pool_size_3 = 4
+    #state.pool_shape_1 = '[4, 4]'
+    #state.pool_shape_2 = '[4, 4]'
+    #state.pool_shape_3 = '[2, 2]'
+    #state.kernel_shape_1 = '[8, 8]'
+    #state.kernel_shape_2 = '[8, 8]'
+    #state.kernel_shape_3 = '[5, 5]'
+    #state.pool_stride_1 = '[2, 2]'
+    #state.pool_stride_2 = '[2, 2]'
+    #state.pool_stride_3 = '[2, 2]'
+    #state.max_kernel_norm_1 = 1.2
+    #state.max_kernel_norm_2 = 2.2
+    #state.max_kernel_norm_3 = 2.2
+    state.learning_rate = 0.1
+    #state.lr_min_lr = 0.00001
+    #state.lr_decay_factor = 1.00004
+    #state.momentum_start = 1
+    #state.momentum_saturate = 100
+    #state.final_momentum = 0.65
+    #state.termination_paitence = 100
+    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_linearpool/sot/"
 
     experiment(state, None)
 
