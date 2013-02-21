@@ -2,6 +2,7 @@ import os, shutil
 import argparse
 import numpy
 from pylearn2.config import yaml_parse
+from pylearn2.utils.string_utils import preprocess
 from my_utils.config import get_data_path, get_result_path
 from jobman.tools import DD
 
@@ -14,41 +15,41 @@ def experiment(state, channel):
     if channel is None:
         alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789')
         numpy.random.shuffle(alphabet)
-        state.save_path += ''.join(alphabet[:5])
+        state.save_path += ''.join(alphabet[:7])
 
     # load and save yaml
     yaml_string = state.yaml_string % (state)
-
     with open(state.save_path + '_model.yaml', 'w') as fp:
         fp.write(yaml_string)
 
-    if state.db == 'SVHN_briee':
+    if state.db == 'SVHN':
         # transfer data to tmp
-        path = '/RQexec/mirzameh/data/SVHN/h5/'
-        tmp_path = '/tmp/data/SVHN/h5/'
+        orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/h5/')
+        tmp_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/h5/')
         train_f = 'splitted_train_32x32.h5'
         valid_f = 'valid_32x32.h5'
         test_f = 'test_32x32.h5'
-        if any([not os.path.isfile(path + train_f), os.path.isfile(path + valid_f), os.path.isfile(path + test_f)]):
+        if any([not os.path.isfile(tmp_path + train_f), not os.path.isfile(tmp_path + valid_f), not os.path.isfile(tmp_path + test_f)]):
+            print "Moving data to local tmp"
             try:
-                os.mkdir('/tmp/')
+                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/'))
             except OSError:
                 pass
             try:
-                os.mkdir('/tmp/data/')
+                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/data/'))
             except OSError:
                 pass
             try:
-                os.mkdir('/tmp/data/SVHN/')
+                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/data/SVHN/'))
             except OSError:
                 pass
             try:
                 os.mkdir(tmp_path)
             except OSError:
                 pass
-            shutil.copy(path + train_f, tmp_path + train_f)
-            shutil.copy(path + valid_f, tmp_path + valid_f)
-            shutil.copy(path + test_f, tmp_path + test_f)
+            shutil.copy(orig_path + train_f, tmp_path + train_f)
+            shutil.copy(orig_path + valid_f, tmp_path + valid_f)
+            shutil.copy(orig_path + test_f, tmp_path + test_f)
 
     # now run yaml file with default train.py script
     train_obj = yaml_parse.load(yaml_string)
@@ -78,27 +79,11 @@ def svhn_experiment():
 
     state.db = 'SVHN'
 
-    state.data_path = '/Tmp/mirzamom/data/SVHN/'
-    #state.data_path = '/tmp/data/SVHN/'
-    state.num_channels_0 = 96
-    state.num_channels_1 = 128
-    state.num_channels_2 = 128
+    state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/')
+    state.num_channels_0 = 32
+    state.num_channels_1 = 32
+    state.num_channels_2 = 32
     state.layer_ndim = 500
-    #state.channel_pool_size_1 = 2
-    #state.channel_pool_size_2 = 2
-    #state.channel_pool_size_3 = 4
-    #state.pool_shape_1 = '[4, 4]'
-    #state.pool_shape_2 = '[4, 4]'
-    #state.pool_shape_3 = '[2, 2]'
-    #state.kernel_shape_1 = '[8, 8]'
-    #state.kernel_shape_2 = '[8, 8]'
-    #state.kernel_shape_3 = '[5, 5]'
-    #state.pool_stride_1 = '[2, 2]'
-    #state.pool_stride_2 = '[2, 2]'
-    #state.pool_stride_3 = '[2, 2]'
-    #state.max_kernel_norm_1 = 1.2
-    #state.max_kernel_norm_2 = 2.2
-    #state.max_kernel_norm_3 = 2.2
     state.learning_rate = 0.1
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
@@ -106,7 +91,7 @@ def svhn_experiment():
     #state.momentum_saturate = 100
     #state.final_momentum = 0.65
     #state.termination_paitence = 100
-    state.save_path = "/data/lisatmp2/mirzamom/results/svhn_linearpool/sot/"
+    state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/svhn/sot/')
 
     experiment(state, None)
 

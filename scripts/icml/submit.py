@@ -101,6 +101,20 @@ def cifar10():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def svhn():
+
+
+    state.db = 'SVHN_briee'
+    #state.data_path = '/Tmp/mirzamom/data/SVHN/'
+    state.data_path = '/lscratch/data/SVHN/'
+    state.num_channels_0 = 96
+    state.num_channels_1 = 128
+    state.num_channels_2 = 128
+    state.layer_ndim = 500
+    state.learning_rate = 0.1
+    state.save_path = "/RQexec/mirzameh/results/svhn/sot/"
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'job submitter')
