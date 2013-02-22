@@ -26,7 +26,7 @@ def experiment(state, channel):
         # transfer data to tmp
         orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/h5/')
         tmp_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/h5/')
-        train_f = 'splitted_train_32x32.h5'
+        train_f = 'train_32x32.h5'
         valid_f = 'valid_32x32.h5'
         test_f = 'test_32x32.h5'
         if any([not os.path.isfile(tmp_path + train_f), not os.path.isfile(tmp_path + valid_f), not os.path.isfile(tmp_path + test_f)]):
@@ -80,11 +80,11 @@ def svhn_experiment():
     state.db = 'SVHN'
 
     state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/')
-    state.num_channels_0 = 32
-    state.num_channels_1 = 32
-    state.num_channels_2 = 32
-    state.layer_ndim = 500
-    state.learning_rate = 0.1
+    state.num_channels_0 = 96
+    state.num_channels_1 = 128
+    state.num_channels_2 = 256
+    state.layer_ndim = 1200
+    state.learning_rate = 0.5
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
     #state.momentum_start = 1

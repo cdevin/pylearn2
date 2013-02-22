@@ -1,6 +1,6 @@
 !obj:pylearn2.train.Train {
     dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
-        which_set: 'splitted_train',
+        which_set: 'train',
         path: %(data_path)s,
         axes: ['c', 0, 1, 'b']
     },
@@ -9,10 +9,10 @@
         layers: [
                  !obj:galatea.mlp.ConvLinearC01B {
                      layer_name: 'h0',
-                     pad: 4,
+                     pad: 2,
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      detector_channels: %(num_channels_0)i,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
@@ -26,8 +26,8 @@
                      layer_name: 'h1',
                      pad: 3,
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      detector_channels: %(num_channels_1)i,
                      channel_pool_size: 2,
                      kernel_shape: [8, 8],
@@ -42,8 +42,8 @@
                      pad: 3,
                      layer_name: 'h2',
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      # 2AKD: Tried 512 detector channels, hurt slightly
                      detector_channels: %(num_channels_2)i,
                      channel_pool_size: 2,
@@ -76,7 +76,7 @@
         },
         # 2AKE: tried setting first layer include prob to 1, hurt
         # performance significantly
-        dropout_include_probs: [ .5, .5, .5, .5, 1 ],
+        dropout_include_probs: [ .5, .5, .5, .5,  1 ],
         dropout_input_include_prob: .8,
         dropout_input_scale: 1.,
     },
