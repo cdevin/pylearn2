@@ -47,9 +47,9 @@ def experiment(state, channel):
                 os.mkdir(tmp_path)
             except OSError:
                 pass
-            shutil.copy(orig_path + train_f, tmp_path + train_f)
-            shutil.copy(orig_path + valid_f, tmp_path + valid_f)
-            shutil.copy(orig_path + test_f, tmp_path + test_f)
+            shutil.copy(orig_path + train_f, tmp_path)
+            shutil.copy(orig_path + valid_f, tmp_path)
+            shutil.copy(orig_path + test_f, tmp_path)
 
     # now run yaml file with default train.py script
     train_obj = yaml_parse.load(yaml_string)
@@ -80,11 +80,11 @@ def svhn_experiment():
     state.db = 'SVHN'
 
     state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/')
-    state.num_channels_0 = 96
+    state.num_channels_0 = 48
     state.num_channels_1 = 128
-    state.num_channels_2 = 256
-    state.layer_ndim = 1200
-    state.learning_rate = 0.5
+    state.num_channels_2 = 128
+    state.num_units = 240
+    state.learning_rate = 0.1
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
     #state.momentum_start = 1
