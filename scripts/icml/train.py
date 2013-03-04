@@ -95,43 +95,6 @@ def svhn_experiment():
 
     experiment(state, None)
 
-def cifar10_experiment():
-    state = DD()
-    state.yaml_string = sp_train_yaml
-
-    state.num_channels_1 = 96
-    state.num_channels_2 = 256
-    state.num_channels_3 = 256
-    state.channel_pool_size_1 = 1
-    state.channel_pool_size_2 = 1
-    state.channel_pool_size_3 = 1
-    state.max_kernel_norm_1 = 0.9
-    state.max_kernel_norm_2 = 1.9365
-    state.max_kernel_norm_3 = 1.9365
-    state.w_lr_scale_1 = 0.05
-    state.w_lr_scale_2 = 0.05
-    state.w_lr_scale_3 = 0.05
-    state.b_lr_scale_1 = 0.05
-    state.b_lr_scale_2 = 0.05
-    state.b_lr_scale_3 = 0.05
-    state.tied_b_1 = 1
-    state.tied_b_2 = 1
-    state.tied_b_3 = 1
-    state.learning_rate = 0.5
-    state.lr_decay_start = 1
-    state.lr_deccay_saturate = 250
-    state.lr_decay_factor = 0.01
-    state.init_momentum = 0.5
-    state.momentum_start = 10
-    state.momentum_saturate = 50
-    state.final_momentum = 0.7
-    state.max_epochs = 500
-    state.termination_paitence = 100
-    state.best_save_path = "/tmp/mirzameh/cifar10_temp_best.pkl"
-    state.save_path = "/tmp/mirzameh/cifar_10_temp.pkl"
-
-    experiment(state, None)
-
 def tfd_sp_experiment():
     state = DD()
     state.yaml_string = sp_soft_yaml
@@ -191,41 +154,17 @@ def tfd_experiment():
 
     experiment(state, None)
 
-def svhn_train_size_experiment():
+def cifar10_experiment():
     state = DD()
-    #with open('lp_svhn.yaml') as ymtmp:
-    #with open('rec_svhn.yaml') as ymtmp:
-    #with open('lp_nodroput_svhn.yaml') as ymtmp:
-    #with open('rec_nodropout_svhn.yaml') as ymtmp:
-    #with open('lp_svhn_60k.yaml') as ymtmp:
-    #with open('rec_svhn_60k.yaml') as ymtmp:
-    #with open('exp/lp_nodroput_svhn_60k.yaml') as ymtmp:
-    #with open('exp/rec_nodropout_svhn_60k.yaml') as ymtmp:
-    #with open('exp/lp_svhn_6k.yaml') as ymtmp:
-    #with open('exp/rec_svhn.yaml') as ymtmp:
-    #with open('exp/lp_nodroput_svhn.yaml') as ymtmp:
-    #with open('exp/lp_nodroput_svhn_60k.yaml') as ymtmp:
-    #with open('exp/rec_nodropout_svhn.yaml') as ymtmp:
-    #with open('exp/lp_nodroput_svhn_6k.yaml') as ymtmp:
-    #with open('exp/rec_svhn_6k.yaml') as ymtmp:
-    #with open('exp/rec_nodropout_svhn_6k.yaml') as ymtmp:
-    with open('exp/rec_svhn_100k.yaml') as ymtmp:
+    with open('exp/cifar_sp.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'SVHN_briee'
-    #state.data_path = '/data/lisatmp/mirzamom/data/SVHN/600k/'
-    state.data_path = '/tmp/data/SVHN/'
-    state.learning_rate = 0.05
-    state.lr_decay_factor = 1.000004
-    state.lr_min_lr = .000001
-    state.momentum_start = 1
-    state.momentum_saturate = 50
-    state.final_momentum = 0.7
-    state.max_epochs = 300
-    state.save_path = "/RQexec/mirzameh/results/svhn/100k/"
-    #state.save_path = "/data/lisatmp2/mirzamom/results/svhn_train_size_test/600k/"
+    state.db = 'CIFAR10'
 
-    experiment(state , None)
+    state.learning_rate = 0.1
+    state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/cifar10/sp/')
+
+    experiment(state, None)
 
 if __name__ == "__main__":
 
@@ -242,5 +181,5 @@ if __name__ == "__main__":
     elif args.task == 'svhn_size':
         svhn_train_size_experiment()
     else:
-        raise ValueError("Wrong task optipns {}".format(args.task))
+        raise ValueError("W rong task optipns {}".format(args.task))
 
