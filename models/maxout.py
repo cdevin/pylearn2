@@ -35,7 +35,7 @@ from theano import tensor as T
 from pylearn2.linear import conv2d_c01b
 from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.models.mlp import Layer
-from pylearn2.sandbox.cuda_convnet.pool import stochastic_softmax_pool_c01b
+from pylearn2.sandbox.cuda_convnet.pool import stochastic_softmax_pool_c01b, weighted_softmax_pool_c01b
 from pylearn2.space import Conv2DSpace
 from pylearn2.space import VectorSpace
 from pylearn2.utils import sharedX
@@ -345,7 +345,7 @@ class StochasticMaxout(Layer):
 
         return rval
 
-    def fprop(self, state_below):
+    def fprop(self, state_below, test_path = False):
 
         self.input_space.validate(state_below)
 
@@ -683,11 +683,16 @@ class StochasticMaxoutConvC01B(Layer):
                             ('kernel_norms_max'  , row_norms.max()),
                             ])
 
-    def fprop(self, state_below):
+    def fprop(self, state_below, test_path):
 
         self.input_space.validate(state_below)
 
         state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        if test_path:
+            pool_f = globals()["weighted_softmax_pool_c01b"]
+        else:
+            pool_f = globals()["stochastic_softmax_pool_c01b"]
 
         if not hasattr(self, 'input_normalization'):
             self.input_normalization = None
@@ -735,11 +740,11 @@ class StochasticMaxoutConvC01B(Layer):
                         s = T.maximum(s, t)
                 z = s
 
-            p = stochastic_softmax_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+            p = pool_f(c01b=z, pool_shape=self.pool_shape,
                               pool_stride=self.pool_stride,
                               image_shape=self.detector_space.shape)
         else:
-            z = stochastic_softmax_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+            z = pool_f(c01b=z, pool_shape=self.pool_shape,
                               pool_stride=self.pool_stride,
                               image_shape=self.detector_space.shape)
             if self.num_pieces != 1:
