@@ -1,19 +1,21 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
-        which_set: 'train_all',
-        path: %(data_path)s,
+    dataset: &train !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
+        preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+        preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+        start: 0,
+        stop: 40000,
         axes: ['c', 0, 1, 'b']
     },
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
         layers: [
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                 !obj:noisy_encoder.models.maxout.StochasticMaxoutConvC01B {
                      layer_name: 'h0',
                      pad: 4,
                      tied_b: 1,
-                     W_lr_scale: .5,
-                     b_lr_scale: .5,
-                     num_channels: %(num_channels_0)i,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: 16,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -21,13 +23,13 @@
                      irange: .005,
                      max_kernel_norm: .9,
                  },
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                 !obj:noisy_encoder.models.maxout.StochasticMaxoutConvC01B {
                      layer_name: 'h1',
                      pad: 3,
                      tied_b: 1,
-                     W_lr_scale: .5,
-                     b_lr_scale: .5,
-                     num_channels: %(num_channels_1)i,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: 16,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -35,24 +37,24 @@
                      irange: .005,
                      max_kernel_norm: 1.9365,
                  },
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
-                     pad: 3,
-                     layer_name: 'h2',
-                     tied_b: 1,
-                     W_lr_scale: .5,
-                     b_lr_scale: .5,
-                     num_channels: %(num_channels_2)i,
-                     num_pieces: 2,
-                     kernel_shape: [5, 5],
-                     pool_shape: [2, 2],
-                     pool_stride: [2, 2],
-                     irange: .005,
-                     max_kernel_norm: 1.9365,
-                 },
-                 !obj:pylearn2.models.maxout.Maxout {
+                 #!obj:pylearn2.models.maxout.StochasticMaxoutConvC01B {
+                     #pad: 3,
+                     #layer_name: 'h2',
+                     #tied_b: 1,
+                     #W_lr_scale: .05,
+                     #b_lr_scale: .05,
+                     #num_channels: 128,
+                     #num_pieces: 2,
+                     #kernel_shape: [5, 5],
+                     #pool_shape: [2, 2],
+                     #pool_stride: [2, 2],
+                     #irange: .005,
+                     #max_kernel_norm: 1.9365,
+                 #},
+                 !obj:noisy_encoder.models.maxout.StochasticMaxout {
                     layer_name: 'h3',
                     irange: .005,
-                    num_units: %(num_units)i,
+                    num_units: 10,
                     num_pieces: 5,
                     max_col_norm: 1.9
                  },
@@ -68,27 +70,22 @@
             num_channels: 3,
             axes: ['c', 0, 1, 'b'],
         },
-        dropout_include_probs: [ .5, .5, .5, .5,  1 ],
+        dropout_include_probs: [ .5, .5, .5, .5, 1 ],
         dropout_input_include_prob: .8,
         dropout_input_scale: 1.,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        train_iteration_mode: 'batchwise_shuffled_equential',
-        learning_rate: %(learning_rate)f,
+        learning_rate: .1,
         init_momentum: .5,
         monitoring_dataset:
             {
-                #'train' : *train,
-                'valid' : !obj:pylearn2.datasets.svhn.SVHN {
-                              which_set: 'valid',
-                              path: %(data_path)s,
-                              axes: ['c', 0, 1, 'b'],
+                'valid' : !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
+        preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+        preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+        start: 40000,
+        stop: 50000,
+        axes: ['c', 0, 1, 'b']
                           },
-                'test' : !obj:pylearn2.datasets.svhn.SVHN {
-                              which_set: 'test',
-                              path: %(data_path)s,
-                              axes: ['c', 0, 1, 'b'],
-                          }
             },
         cost: !obj:pylearn2.costs.cost.MethodCost {
                 method: 'cost_from_X',
@@ -103,19 +100,19 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             save_path: "%(save_path)s_best.pkl"
+             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
-            saturate: 100,
+            saturate: 250,
             final_momentum: .6
         },
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
-            saturate: 100,
-            decay_factor: .001
+            saturate: 250,
+            decay_factor: .01
         }
     ],
-    save_path: "%(save_path)s_last.pkl",
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
     save_freq: 1
 }

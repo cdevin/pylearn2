@@ -15,11 +15,11 @@ def experiment(state, channel):
     if channel is None:
         alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789')
         numpy.random.shuffle(alphabet)
-        state.save_path += ''.join(alphabet[:7])
+        state.save_path += ''.join(alphabet[:7]) + '_'
 
     # load and save yaml
     yaml_string = state.yaml_string % (state)
-    with open(state.save_path + '_model.yaml', 'w') as fp:
+    with open(state.save_path + 'model.yaml', 'w') as fp:
         fp.write(yaml_string)
 
     if state.db == 'SVHN':
@@ -84,7 +84,7 @@ def svhn_experiment():
     state.num_channels_1 = 128
     state.num_channels_2 = 128
     state.num_units = 240
-    state.learning_rate = 0.1
+    state.learning_rate = 0.01
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
     #state.momentum_start = 1
