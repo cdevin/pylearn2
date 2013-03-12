@@ -161,7 +161,7 @@ def cifar10_experiment():
 
     state.db = 'CIFAR10'
 
-    state.learning_rate = 0.1
+    state.learning_rate = 0.05
     state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/cifar10/sp/')
 
     experiment(state, None)

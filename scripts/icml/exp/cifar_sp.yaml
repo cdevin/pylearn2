@@ -13,8 +13,8 @@
                      layer_name: 'h0',
                      pad: 4,
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      num_channels: 48,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
@@ -27,8 +27,8 @@
                      layer_name: 'h1',
                      pad: 3,
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      num_channels: 128,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
@@ -41,8 +41,8 @@
                      pad: 3,
                      layer_name: 'h2',
                      tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
+                     W_lr_scale: .5,
+                     b_lr_scale: .5,
                      num_channels: 128,
                      num_pieces: 2,
                      kernel_shape: [5, 5],
@@ -110,7 +110,7 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: 250,
-            decay_factor: .01
+            decay_factor: .0001
         }
     ],
     save_path: "%(save_path)slast.pkl",

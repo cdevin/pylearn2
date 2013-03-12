@@ -2,9 +2,9 @@ import os
 import argparse, fnmatch
 import numpy
 from jobman import DD, flatten, api0, sql
-from noisy_encoder.scripts.icml.train import train_yaml, sp_train_yaml
 from noisy_encoder.scripts.icml.train import experiment
 from my_utils.config import get_data_path, get_result_path
+from pylearn2.utils.string_utils import preprocess
 
 DATA_PATH = get_data_path()
 
@@ -103,28 +103,71 @@ def cifar10():
 
 def svhn():
 
+    state = DD()
+    with open('exp/svhn.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
 
-    state.db = 'SVHN_briee'
-    #state.data_path = '/Tmp/mirzamom/data/SVHN/'
-    state.data_path = '/lscratch/data/SVHN/'
-    state.num_channels_0 = 96
+    state.db = 'SVHN'
+    state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/channel/')
+    state.num_channels_0 = 64
     state.num_channels_1 = 128
-    state.num_channels_2 = 128
-    state.layer_ndim = 500
+    state.num_channels_2 = 192
+    state.num_units = 240
     state.learning_rate = 0.1
-    state.save_path = "/RQexec/mirzameh/results/svhn/sot/"
+    state.save_path = "./"
+
+    ind = 0
+    TABLE_NAME = "svhn_full"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [1., 0.5, 0.1, 0.05, 0.005]:
+        state.learning_rate = lr
+        sql.insert_job(experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
+def cifar10_sp():
+
+    state = DD()
+    with open('exp/cifar_sp.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'CIFAR10'
+
+    state.learning_rate = 0.1
+    state.save_path = "./"
+
+
+    ind = 0
+    TABLE_NAME = "cifar10_sp22"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [1., 0.5, 0.1, 0.05, 0.01]:
+        state.learning_rate = lr
+        sql.insert_job(experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['svhn_ian', 'cifar10'])
+    parser.add_argument('-t', '--task', choices = ['svhn_ian', 'cifar10', 'cifar10_sp', 'svhn'])
     args = parser.parse_args()
 
     if args.task == 'svhn_ian':
         svhn_ian()
     elif args.task == 'cifar10':
         cifar10()
+    elif args.task == 'cifar10_sp':
+        cifar10_sp()
+    elif args.task == 'svhn':
+        svhn()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
