@@ -464,6 +464,7 @@ class StochasticMaxoutConvC01B(Layer):
                  W_lr_scale = None,
                  b_lr_scale = None,
                  pad = 0,
+                 temp = 1.,
                  fix_pool_shape = False,
                  fix_pool_stride = False,
                  fix_kernel_shape = False,
@@ -740,7 +741,13 @@ class StochasticMaxoutConvC01B(Layer):
                         s = T.maximum(s, t)
                 z = s
 
-            p = pool_f(c01b=z, pool_shape=self.pool_shape,
+            if test_path:
+                p = pool_f(c01b=z, pool_shape=self.pool_shape,
+                              pool_stride=self.pool_stride,
+                              image_shape=self.detector_space.shape,
+                              temp = self.temp)
+            else:
+                p = pool_f(c01b=z, pool_shape=self.pool_shape,
                               pool_stride=self.pool_stride,
                               image_shape=self.detector_space.shape)
         else:
