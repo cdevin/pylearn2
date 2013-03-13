@@ -113,7 +113,7 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: 250,
-            decay_factor: .0001
+            decay_factor: .001
         }
     ],
     save_path: "%(save_path)slast.pkl",

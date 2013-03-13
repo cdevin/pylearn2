@@ -138,10 +138,11 @@ def cifar10_sp():
 
     state.learning_rate = 0.1
     state.save_path = "./"
+    state.description = "test pooling is softmax with tempertuare"
 
 
     ind = 0
-    TABLE_NAME = "cifar10_sp22"
+    TABLE_NAME = "cifar10_sp23"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [1., 0.5, 0.1, 0.05, 0.01]:
         state.learning_rate = lr
