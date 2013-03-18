@@ -74,17 +74,18 @@ def get_best_params_ext(extensions):
 
 def svhn_experiment():
     state = DD()
-    with open('exp/svhn.yaml') as ymtmp:
+    with open('exp/svhn_2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'SVHN'
+    state.db = 'SVHN_me'
 
-    state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/')
-    state.num_channels_0 = 48
-    state.num_channels_1 = 128
+    state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/icpr/')
+    state.num_channels_0 = 64
+    state.num_channels_1 = 64
     state.num_channels_2 = 128
-    state.num_units = 240
-    state.learning_rate = 0.01
+    state.num_units_0 = 600
+    state.num_units_1 = 400
+    state.learning_rate = 0.5
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
     #state.momentum_start = 1
@@ -161,7 +162,7 @@ def cifar10_experiment():
 
     state.db = 'CIFAR10'
 
-    state.learning_rate = 0.05
+    state.learning_rate = 0.5
     state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/cifar10/sp/')
 
     experiment(state, None)
