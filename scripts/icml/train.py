@@ -24,29 +24,15 @@ def experiment(state, channel):
 
     if state.db == 'SVHN':
         # transfer data to tmp
-        orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/h5/')
-        tmp_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/h5/')
-        train_f = 'train_32x32.h5'
+        orig_path = state.orig_path + 'h5/'
+        tmp_path = state.data_path + 'h5/'
+        train_f = 'splitted_train_32x32.h5'
         valid_f = 'valid_32x32.h5'
         test_f = 'test_32x32.h5'
         if any([not os.path.isfile(tmp_path + train_f), not os.path.isfile(tmp_path + valid_f), not os.path.isfile(tmp_path + test_f)]):
             print "Moving data to local tmp"
-            try:
-                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/'))
-            except OSError:
-                pass
-            try:
-                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/data/'))
-            except OSError:
-                pass
-            try:
-                os.mkdir(preprocess('${TEMP_DIR}/mirzamom/data/SVHN/'))
-            except OSError:
-                pass
-            try:
-                os.mkdir(tmp_path)
-            except OSError:
-                pass
+            os.makedirs(tmp_path)
+
             shutil.copy(orig_path + train_f, tmp_path)
             shutil.copy(orig_path + valid_f, tmp_path)
             shutil.copy(orig_path + test_f, tmp_path)
@@ -62,8 +48,8 @@ def experiment(state, channel):
             state.test_score = float(ext.best_params['test_y_misclass'])
         except KeyError:
             state.test_score = -1.
+        print "Best valid: {}, best test: {}".format(state.valid_score, state.test_score)
 
-    print "Best valid: {}, best test: {}".format(state.valid_score, state.test_score)
     return channel.COMPLETE
 
 def get_best_params_ext(extensions):
@@ -77,14 +63,15 @@ def svhn_experiment():
     with open('exp/svhn_2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'SVHN_me'
+    state.db = 'SVHN'
 
+    state.orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/icpr/')
     state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/icpr/')
-    state.num_channels_0 = 64
-    state.num_channels_1 = 64
-    state.num_channels_2 = 128
-    state.num_units_0 = 600
-    state.num_units_1 = 400
+    state.num_channels_0 = 32
+    state.num_channels_1 = 32
+    state.num_channels_2 = 32
+    state.num_units_0 = 60
+    state.num_units_1 = 40
     state.learning_rate = 0.5
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
@@ -93,6 +80,7 @@ def svhn_experiment():
     #state.final_momentum = 0.65
     #state.termination_paitence = 100
     state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/svhn/sot/')
+    state.file_type = 'joblib'
 
     experiment(state, None)
 
