@@ -60,7 +60,7 @@ def get_best_params_ext(extensions):
 
 def svhn_experiment():
     state = DD()
-    with open('exp/svhn_2.yaml') as ymtmp:
+    with open('exp/svhn_3.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'SVHN'
@@ -73,6 +73,7 @@ def svhn_experiment():
     state.num_units_0 = 60
     state.num_units_1 = 40
     state.learning_rate = 0.5
+    state.decay_factor = 0.01
     #state.lr_min_lr = 0.00001
     #state.lr_decay_factor = 1.00004
     #state.momentum_start = 1

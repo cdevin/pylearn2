@@ -104,25 +104,32 @@ def cifar10():
 def svhn():
 
     state = DD()
-    with open('exp/svhn.yaml') as ymtmp:
+    with open('exp/svhn_2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'SVHN'
+    state.orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/channel/')
     state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/channel/')
     state.num_channels_0 = 64
     state.num_channels_1 = 128
-    state.num_channels_2 = 192
-    state.num_units = 240
-    state.learning_rate = 0.1
+    state.num_channels_2 = 256
+    state.num_units_0 = 600
+    state.num_units_1 = 400
+    state.learning_rate = 0.5
+    state.decay_factor = 0.01
     state.save_path = "./"
+    state.file_type = 'joblib'
+    state.dec = "SVHN large networks"
 
     ind = 0
-    TABLE_NAME = "svhn_full"
+    TABLE_NAME = "svhn_large3"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1., 0.5, 0.1, 0.05, 0.005]:
-        state.learning_rate = lr
-        sql.insert_job(experiment, flatten(state), db)
-        ind += 1
+    for lr in [0.5, 0.2, 0.1, 0.05]:
+	for dc in [0.01, 0.001]:
+       	    state.learning_rate = lr
+            state.decay_factor = dc
+            sql.insert_job(experiment, flatten(state), db)
+            ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
