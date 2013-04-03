@@ -6,6 +6,7 @@
     },
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
+        seed: %(mlp_seed)s,
         layers: [
                  !obj:pylearn2.models.maxout.MaxoutConvC01B {
                      layer_name: 'h0',
@@ -76,6 +77,7 @@
         train_iteration_mode: 'batchwise_shuffled_equential',
         learning_rate: %(learning_rate)f,
         init_momentum: .5,
+        seed: %(sgd_seed)s,
         monitoring_dataset:
             {
                 #'train' : *train,
