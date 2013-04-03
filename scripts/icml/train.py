@@ -60,7 +60,7 @@ def get_best_params_ext(extensions):
 
 def svhn_experiment():
     state = DD()
-    with open('exp/svhn_3.yaml') as ymtmp:
+    with open('exp/svhn_transform.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'SVHN'
@@ -80,6 +80,7 @@ def svhn_experiment():
     #state.momentum_saturate = 100
     #state.final_momentum = 0.65
     #state.termination_paitence = 100
+    state.irange = 0.005
     state.save_path = preprocess('${PYLEARN2_EXP_RESULTS}/svhn/sot/')
     state.file_type = 'joblib'
 
