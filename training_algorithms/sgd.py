@@ -1,9 +1,11 @@
 import time, sys, os
 import numpy
+import numpy as np
 from copy import deepcopy
+from pylearn2.training_algorithms.sgd import SGD
 from pylearn2.utils import serial
 from noisy_encoder.training_algorithms.utils import LearningRateAdjuster, MomentumAdjuster
-
+from pylearn2.utils.iteration import is_stochastic
 
 def sgd_full(model,
             datasets,
@@ -483,3 +485,77 @@ def sgd_large(model,
 
     return test_score * 100., best_validation_loss * 100.
 
+
+class CrawlSGD(SGD):
+
+    #def __init__(self, learning_rate, cost=None, batch_size=None,
+                 #monitoring_batches=None, monitoring_dataset=None,
+                 ##termination_criterion=None, update_callbacks=None,
+                 ##init_momentum = None, set_batch_size = False,
+                 ##train_iteration_mode = None, batches_per_iter=None,
+                 ##theano_function_mode = None, monitoring_costs=None):
+
+
+        ##super(CrawlSGD, self).__init__(self, learning_rate, cost=None, batch_size=None,
+                 ##monitoring_batches=None, monitoring_dataset=None,
+                 ##termination_criterion=None, update_callbacks=None,
+                 ##init_momentum = None, set_batch_size = False,
+                 ##train_iteration_mode = None, batches_per_iter=None,
+                 ##theano_function_mode = None, monitoring_costs=None):
+
+
+        ##self.terminate = False
+
+    def train(self, dataset):
+        if not hasattr(self, 'sgd_update'):
+            raise Exception("train called without first calling setup")
+        model = self.model
+        batch_size = self.batch_size
+
+        # Make sure none of the parameters have bad values
+        for param in self.params:
+            value = param.get_value(borrow=True)
+            if np.any(np.isnan(value)) or np.any(np.isinf(value)):
+                raise Exception("NaN in " + param.name)
+
+        self.first = False
+        rng = self.rng
+        if not is_stochastic(self.train_iteration_mode):
+            rng = None
+        if self.topo:
+            batch_idx = dataset.get_topo_batch_axis()
+        else:
+            batch_idx = 0
+        iterator = dataset.iterator(mode=self.train_iteration_mode,
+                batch_size=self.batch_size, targets=self.supervised,
+                topo=self.topo, rng = rng, num_batches = self.batches_per_iter,
+                epoch = self.monitor.get_epochs_seen())
+        if self.supervised:
+            for (batch_in, batch_target) in iterator:
+                self.sgd_update(batch_in, batch_target)
+                actual_batch_size = batch_in.shape[batch_idx]
+                self.monitor.report_batch(actual_batch_size)
+                for callback in self.update_callbacks:
+                    callback(self)
+        else:
+            for batch in iterator:
+                self.sgd_update(batch)
+                actual_batch_size = batch.shape[0] # iterator might return a smaller batch if dataset size
+                                                   # isn't divisible by batch_size
+                self.monitor.report_batch(actual_batch_size)
+                for callback in self.update_callbacks:
+                    callback(self)
+
+        # Make sure none of the parameters have bad values
+        for param in self.params:
+            value = param.get_value(borrow=True)
+            if np.any(np.isnan(value)) or np.any(np.isinf(value)):
+                raise Exception("NaN in " + param.name)
+
+        self.terminate = True
+
+    #def continue_learning(self, model):
+        #if self.terminate:
+            #return False
+        #else:
+            #return True
