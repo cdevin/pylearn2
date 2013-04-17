@@ -5,7 +5,7 @@ from black_box_dataset import BlackBoxDataset
 
 extra = BlackBoxDataset('extra')
 
-zca = ZCA(filter_bias=.1)
+zca = ZCA(filter_bias=.1, n_components = 500)
 
 zca.fit(extra.X)
 

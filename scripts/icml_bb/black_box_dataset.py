@@ -30,7 +30,9 @@ class BlackBoxDataset(DenseDesignMatrix):
             stop = None,
             preprocessor = None,
             fit_preprocessor = False,
-            fit_test_preprocessor = False):
+            fit_test_preprocessor = False,
+            shuffle = False,
+            seed = 2322):
         """
         which_set: A string specifying which portion of the dataset
             to load. Valid values are 'train' or 'public_test'
@@ -70,6 +72,14 @@ class BlackBoxDataset(DenseDesignMatrix):
             X, y = self._load_data(path, which_set == 'train')
 
 
+        if shuffle:
+            assert which_set != 'test'
+            rng = np.random.RandomState(seed)
+            rand_idx = rng.permutation(len(X))
+            X = X[rand_idx]
+            y = y[rand_idx]
+
+
         if start is not None:
             assert which_set != 'test'
             assert isinstance(start, int)
@@ -80,7 +90,6 @@ class BlackBoxDataset(DenseDesignMatrix):
             X = X[start:stop, :]
             if y is not None:
                 y = y[start:stop, :]
-
 
         super(BlackBoxDataset, self).__init__(X=X, y=y)
 

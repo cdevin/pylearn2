@@ -3,6 +3,7 @@ import argparse
 import numpy
 from pylearn2.config import yaml_parse
 from pylearn2.utils.string_utils import preprocess
+from pylearn2.utils import serial
 from my_utils.config import get_data_path, get_result_path
 from jobman.tools import DD
 
@@ -51,6 +52,40 @@ def experiment(state, channel):
         print "Best valid: {}, best test: {}".format(state.valid_score, state.test_score)
 
     return channel.COMPLETE
+
+
+def experiment_finetune(state, channel, pre_trained):
+
+    # udate path
+    if channel is None:
+        alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUWXYZ0123456789')
+        numpy.random.shuffle(alphabet)
+        state.save_path += ''.join(alphabet[:7]) + '_'
+
+    # load and save yaml
+    yaml_string = state.yaml_string % (state)
+    with open(state.save_path + 'model.yaml', 'w') as fp:
+        fp.write(yaml_string)
+
+    # now run yaml file with default train.py script
+    train_obj = yaml_parse.load(yaml_string)
+
+    # load the pre-trained models
+    model = serial.load(pre_trained)
+    train_obj.main_loop()
+
+    ext = get_best_params_ext(train_obj.extensions)
+    if ext != None:
+        state.valid_score = float(ext.best_params['valid_y_misclass'])
+        try:
+            state.test_score = float(ext.best_params['test_y_misclass'])
+        except KeyError:
+            state.test_score = -1.
+        print "Best valid: {}, best test: {}".format(state.valid_score, state.test_score)
+
+    return channel.COMPLETE
+
+
 
 def get_best_params_ext(extensions):
     from noisy_encoder.utils.best_params import MonitorBasedBest
