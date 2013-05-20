@@ -104,7 +104,7 @@ def cifar10():
 def svhn():
 
     state = DD()
-    with open('exp/svhn_3_seed.yaml') as ymtmp:
+    with open('exp/svhn_3_2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'SVHN'
@@ -123,25 +123,55 @@ def svhn():
     state.dec = "SVHN large networks"
 
     ind = 0
-    TABLE_NAME = "svhn_boost"
+    TABLE_NAME = "svhn_4"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for seed1 in [1983, 2000]:
-	for seed2 in [9, 1]:
-	    for seed3 in [13, 22, 29]: 
-                state.mlp_seed = str([seed1, seed2, seed3])
-		state.sgd_seed = state.mlp_seed
-                sql.insert_job(experiment, flatten(state), db)
-                ind += 1
-    #for lr in [0.3, 0.2, 0.1]:
-    #	for dc in [0.01, 0.001]:
-    #	    for ir in [0.5, 0.05, 0.005]:
-    #   	       state.learning_rate = lr
-    #           state.decay_factor = dc
-    #           sql.insert_job(experiment, flatten(state), db)
-    #           ind += 1
+    #for seed1 in [1983, 2000]:
+    #	for seed2 in [9, 1]:
+    #	    for seed3 in [13, 22, 29]: 
+    #            state.mlp_seed = str([seed1, seed2, seed3])
+    #		state.sgd_seed = state.mlp_seed
+    #            sql.insert_job(experiment, flatten(state), db)
+    #            ind += 1
+    for lr in [0.25, 0.2, 0.15]:
+    	for dc in [0.01, 0.001]:
+       	       state.learning_rate = lr
+               state.decay_factor = dc
+               sql.insert_job(experiment, flatten(state), db)
+               ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
+
+
+
+def svhn_resume():
+
+    state = DD()
+    with open('exp/last_step.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'SVHN'
+    state.orig_path = preprocess('${PYLEARN2_DATA_CUSTOM}/SVHN/channel/')
+    state.data_path = preprocess('${PYLEARN2_DATA_TMP}/SVHN/channel/')
+    state.learning_rate = 0.0860577896237
+    state.momentum = 0.556626737118
+    state.save_path = "./"
+    state.file_type = 'joblib'
+    state.dec = "SVHN large networks"
+
+    ind = 0
+    TABLE_NAME = "svhn_resume"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.086, 0.0086]:
+    	for mo in [0.55, 0.9, 0.5, 0.05]:
+       	       state.learning_rate = lr
+               state.momentum = mo
+               sql.insert_job(experiment, flatten(state), db)
+               ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 def cifar10_sp():
@@ -174,7 +204,7 @@ def cifar10_sp():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['svhn_ian', 'cifar10', 'cifar10_sp', 'svhn'])
+    parser.add_argument('-t', '--task', choices = ['svhn_ian', 'cifar10', 'cifar10_sp', 'svhn', 'svhn_resume'])
     args = parser.parse_args()
 
     if args.task == 'svhn_ian':
@@ -185,6 +215,8 @@ if __name__ == "__main__":
         cifar10_sp()
     elif args.task == 'svhn':
         svhn()
+    elif args.task == 'svhn_resume':
+	svhn_resume()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 

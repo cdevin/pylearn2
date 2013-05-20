@@ -13,17 +13,19 @@ batch_size = model.force_batch_size
 if hasattr(model, 'batch_size') and model.batch_size != model.force_batch_size:
     batch_size = model.batch_size
 
-batch_size = 100
+batch_size = 16
 assert src.find('train') != -1
 test = yaml_parse.load(src)
 #x = raw_input("test acc? ")
-x = 'n'
+x = 'y'
 if x == 'y':
     test = test.get_test_set()
-    assert test.X.shape[0] == 10000
+    #assert test.X.shape[0] == 10000
 else:
     assert x == 'n'
 
+print test.X.shape[0]
+"""
 if x == 'y':
     if not (test.X.shape[0] == 10000):
         print test.X.shape[0]
@@ -33,6 +35,7 @@ else:
     # was trained on, not the entire train set
     print test.X.shape
     assert test.X.shape[0] in [40000,50000,60000, 598388]
+"""
 
 #test.X = test.X.astype('float32')
 #test.y = test.y.astype('float32')
@@ -72,3 +75,4 @@ result = accs()
 
 
 print 1. - result
+print result
