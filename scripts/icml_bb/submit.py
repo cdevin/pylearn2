@@ -49,7 +49,6 @@ def blackbox_finetune():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-
 def blackbox_cae():
 
     state = DD()
@@ -91,39 +90,44 @@ def blackbox_cae():
 def blackbox():
 
     state = DD()
-    with open('exp/mlp_3.yaml') as ymtmp:
+    with open('exp/max_5.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'blackbox'
 
-    state.n_units_0 = 800
-    state.n_units_1 = 800
-    state.n_units_2 = 800
-    state.n_pieces_0 = 8
-    state.n_pieces_1 = 8
-    state.n_pieces_2 = 8
+    state.n_units_0 = 150
+    state.n_units_1 = 150
+    state.n_units_2 = 150
+    state.n_units_3 = 150
+    state.n_units_4 = 150
+    state.n_pieces_0 = 10
+    state.n_pieces_1 = 10
+    state.n_pieces_2 = 10
+    state.n_pieces_3 = 10
+    state.n_pieces_4 = 10
     state.lr_init = 0.1
     state.lr_saturate = 250
     state.lr_decay_factor = 0.001
-    state.input_drop = 0.8
-    state.irange = 0.05
-    state.sf_irange = 0.05
+    state.input_drop = .8
     state.save_path = "./"
-    state.description = "2 layer standardize preprocessing"
+    state.description = "4 layer standardize preprocessing"
 
 
     ind = 0
-    TABLE_NAME = "blackbox3"
+    TABLE_NAME = "blackbox5"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1., 0.1, 0.01]:
-        for dec in [0.1, 0.01, 0.001]:
-            for sat in [250]:
-                state.lr_init = lr
-                state.lr_decay_factor = dec
-                state.lr_saturate = sat
-                experiment(state, None)
-                sql.insert_job(experiment, flatten(state), db)
-                ind += 1
+    #for seed in [232, 1322, 3409, 94333, 238, 83871, 2992, 7292, 23872, 23872, 28328, 121]:
+    for seed in [7292]:
+        for lr in [0.4, 0.2, 0.1, 0.01, .15, .25]:
+            for dec in [0.1, 0.01]:
+                for sat in [250, 100, 50]:
+                    state.seed = seed
+                    state.lr_init = lr
+                    state.lr_decay_factor = dec
+                    state.lr_saturate = sat
+                    #experiment(state, None)
+                    sql.insert_job(experiment, flatten(state), db)
+                    ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
@@ -131,30 +135,29 @@ def blackbox():
 def blackbox_seed():
 
     state = DD()
-    with open('exp/mlp_seed.yaml') as ymtmp:
+    with open('exp/518.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'blackbox'
 
-    state.n_units_0 = 1000
-    state.n_units_1 = 1000
-    state.n_pieces_0 = 8
-    state.n_pieces_1 = 8
-    state.lr_init = 0.1
-    state.lr_saturate = 250
-    state.lr_decay_factor = 0.001
+    #state.n_units_0 = 1000
+    #state.n_units_1 = 1000
+    #state.n_pieces_0 = 8
+    #state.n_pieces_1 = 8
+    #state.lr_init = 0.1
+    #state.lr_saturate = 250
+    #state.lr_decay_factor = 0.001
     state.save_path = "./"
     state.description = "2 layer standardize preprocessing"
 
+    import random
 
     ind = 0
-    TABLE_NAME = "blackbox_seed"
+    TABLE_NAME = "blackbox_seed_3small"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    dsl = [73, 2383, 29080, 232, 1210, 7734, 3232, 8349, 48303, 8833]
-    msl = [32, 89, 882, 823, 902, 9083 ,834, 97430, 932, 9922]
-    for ds, ms in zip(dsl, msl):
-        state.seed = ds
-        state.seed_mlp = ms
+    for seed in random.sample(range(10000), 20):
+        state.seed = seed
+        #state.seed_mlp = ms
         #experiment(state, None)
         sql.insert_job(experiment, flatten(state), db)
         ind += 1

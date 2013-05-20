@@ -17,30 +17,39 @@
             # We use two hidden layers with rectified linear activations
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h0',
-                    irange: %(irange_0)f,
+                    irange: .005,
                     num_units: %(n_units_0)d,
                     num_pieces: %(n_pieces_0)d,
-                    max_col_norm: %(max_col_norm_0)f,
+                    max_col_norm: 0.95
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h1',
-                    irange: %(irange_1)f,
+                    irange: .01,
                     num_units: %(n_units_1)d,
                     num_pieces: %(n_pieces_1)d,
-                    max_col_norm: %(max_col_norm_1)f,
+                    max_col_norm: 0.95
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h2',
-                    irange: %(irange_2)f,
+                    irange: .01,
                     num_units: %(n_units_2)d,
                     num_pieces: %(n_pieces_2)d,
-                    max_col_norm: %(max_col_norm_2)f,
+                    max_col_norm: 0.95
+            },
+            !obj:pylearn2.models.maxout.Maxout {
+                    layer_name: 'h3',
+                    #irange: .05,
+                    sparse_init: 15,
+                    num_units: %(n_units_3)d,
+                    num_pieces: %(n_pieces_3)d,
+                    max_col_norm: 0.95
             },
             !obj:pylearn2.models.mlp.Softmax {
                 layer_name: 'y',
                 init_bias_target_marginals: *train,
-                # Initialize the weights to all 0s
-                irange: %(irange_y)f,
+                max_col_norm: 1.2,
+                #irange: .0,
+                sparse_init: 15,
                 n_classes: 9
             }
         ],
@@ -60,10 +69,11 @@
                     stop: 1000,
                     preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
                     fit_preprocessor: 1,
+                    fit_test_preprocessor: 1,
                 }
             },
        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            input_include_probs: { 'h0' : %(input_drop)f },
+            input_include_probs: { 'h0' : .8 },
             input_scales: { 'h0': 1. }
         },
 
@@ -88,7 +98,7 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: %(lr_saturate)d,
-            decay_factor: %(lr_decay_factor)f
+            decay_factor: %(lr_decay_factor)f,
         },
         !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
             channel_name: 'valid_y_misclass',

@@ -71,6 +71,11 @@ class BlackBoxDataset(DenseDesignMatrix):
 
             X, y = self._load_data(path, which_set == 'train')
 
+        import ipdb
+        ipdb.set_trace()
+        y_ind = numpy.argmax(y, 1)
+
+
 
         if shuffle and which_set == 'train':
             assert which_set != 'test'
@@ -95,6 +100,11 @@ class BlackBoxDataset(DenseDesignMatrix):
 
         if preprocessor:
             preprocessor.apply(self, can_fit=fit_preprocessor)
+
+    def divide_shuffle(X, y, num):
+
+        y_ind = numpy.argmax(y, 1)
+
 
     def adjust_for_viewer(self, X):
         return (X - 127.5) / 127.5
@@ -154,3 +164,7 @@ class BlackBoxDataset(DenseDesignMatrix):
             np.save(Y_path, y)
 
         return X, y
+
+
+if __name__ == "__main__":
+    BlackBoxDataset('train')

@@ -47,13 +47,14 @@ class BlackBoxDataset(DenseDesignMatrix):
         """
 
         self.test_args = locals()
-        self.test_args['which_set'] = 'public_test'
-        self.test_args['fit_preprocessor'] = fit_test_preprocessor
+        self.test_args['which_set'] = 'test'
+        self.test_args['fit_preprocessor'] = True
+        #self.test_args['fit_preprocessor'] = fit_test_preprocessor
         del self.test_args['start']
         del self.test_args['stop']
         del self.test_args['self']
 
-        files = {'train': 'train.csv', 'public_test' : 'test.csv'}
+        files = {'train': 'train.csv', 'public_test' : 'test.csv', 'test' : 'train.csv'}
 
         if which_set == 'extra':
             path = base_path + '/' + 'extra_unsupervised_data.npy'
@@ -69,19 +70,19 @@ class BlackBoxDataset(DenseDesignMatrix):
 
             path = preprocess(path)
 
-            X, y = self._load_data(path, which_set == 'train')
+            X, y = self._load_data(path, True)
+
+        #if which_set == 'test':
+            #import ipdb
+            #ipdb.set_trace()
 
 
-        if shuffle and which_set == 'train':
-            assert which_set != 'test'
-            rng = np.random.RandomState(seed)
-            rand_idx = rng.permutation(len(X))
-            X = X[rand_idx]
-            y = y[rand_idx]
-
+        if which_set == 'test':
+            start = 900
+            stop = 1000
 
         if start is not None:
-            assert which_set != 'test'
+            #assert which_set != 'test'
             assert isinstance(start, int)
             assert isinstance(stop, int)
             assert start >= 0
@@ -90,6 +91,15 @@ class BlackBoxDataset(DenseDesignMatrix):
             X = X[start:stop, :]
             if y is not None:
                 y = y[start:stop, :]
+
+        if shuffle and which_set == 'train':
+            #assert which_set != 'test'
+            rng = np.random.RandomState(seed)
+            rand_idx = rng.permutation(len(X))
+            X = X[rand_idx]
+            y = y[rand_idx]
+
+
 
         super(BlackBoxDataset, self).__init__(X=X, y=y)
 

@@ -6,7 +6,12 @@
         which_set: 'train',
         start: 0,
         stop: 900,
-        preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
+        preprocessor: !obj:pylearn2.datasets.preprocessing.Pipeline {
+            items: [
+                    !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {},
+                    !obj:pylearn2.datasets.preprocessing.Standardize {}
+                    ]
+        },
         fit_preprocessor: 1,
         fit_test_preprocessor: 1,
     },
@@ -17,30 +22,30 @@
             # We use two hidden layers with rectified linear activations
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h0',
-                    irange: %(irange_0)f,
+                    irange: %(irange)f,
                     num_units: %(n_units_0)d,
                     num_pieces: %(n_pieces_0)d,
-                    max_col_norm: %(max_col_norm_0)f,
+                    max_col_norm: 1.9
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h1',
-                    irange: %(irange_1)f,
+                    irange: %(irange)f,
                     num_units: %(n_units_1)d,
                     num_pieces: %(n_pieces_1)d,
-                    max_col_norm: %(max_col_norm_1)f,
+                    max_col_norm: 1.9
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h2',
-                    irange: %(irange_2)f,
+                    irange: %(irange)f,
                     num_units: %(n_units_2)d,
                     num_pieces: %(n_pieces_2)d,
-                    max_col_norm: %(max_col_norm_2)f,
+                    max_col_norm: 1.9
             },
             !obj:pylearn2.models.mlp.Softmax {
                 layer_name: 'y',
                 init_bias_target_marginals: *train,
                 # Initialize the weights to all 0s
-                irange: %(irange_y)f,
+                irange: %(sf_irange)f,
                 n_classes: 9
             }
         ],
@@ -58,7 +63,13 @@
                     which_set: 'train',
                     start: 900,
                     stop: 1000,
-                    preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
+                    preprocessor: !obj:pylearn2.datasets.preprocessing.Pipeline {
+                    items: [
+                            !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {},
+                            !obj:pylearn2.datasets.preprocessing.Standardize {}
+                            ]
+                    },
+
                     fit_preprocessor: 1,
                 }
             },

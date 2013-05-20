@@ -8,39 +8,38 @@
         stop: 900,
         preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
         fit_preprocessor: 1,
-        fit_test_preprocessor: 1,
+        fit_preprocessor: 1,
     },
     # Here we specify the model to train as being an MLP
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 100,
         layers : [
             # We use two hidden layers with rectified linear activations
-            !obj:pylearn2.models.maxout.Maxout {
+            !obj:pylearn2.models.mlp.RectifiedLinear {
                     layer_name: 'h0',
-                    irange: %(irange_0)f,
-                    num_units: %(n_units_0)d,
-                    num_pieces: %(n_pieces_0)d,
-                    max_col_norm: %(max_col_norm_0)f,
+                    dim: %(n_units_0)d,
+                    max_col_norm: 1.9,
+                    sparse_init: 15
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h1',
-                    irange: %(irange_1)f,
+                    irange: %(irange)f,
                     num_units: %(n_units_1)d,
                     num_pieces: %(n_pieces_1)d,
-                    max_col_norm: %(max_col_norm_1)f,
+                    max_col_norm: 1.9
             },
             !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h2',
-                    irange: %(irange_2)f,
+                    irange: %(irange)f,
                     num_units: %(n_units_2)d,
                     num_pieces: %(n_pieces_2)d,
-                    max_col_norm: %(max_col_norm_2)f,
+                    max_col_norm: 1.9
             },
             !obj:pylearn2.models.mlp.Softmax {
                 layer_name: 'y',
                 init_bias_target_marginals: *train,
                 # Initialize the weights to all 0s
-                irange: %(irange_y)f,
+                irange: %(sf_irange)f,
                 n_classes: 9
             }
         ],
@@ -63,8 +62,8 @@
                 }
             },
        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            input_include_probs: { 'h0' : %(input_drop)f },
-            input_scales: { 'h0': 1. }
+            input_include_probs: { 'h0' : 1., 'h1' :1. },
+            input_scales: { 'h0': 1., 'h1' : 1. }
         },
 
         # We stop when validation set classification error hasn't decreased for 10 epochs
