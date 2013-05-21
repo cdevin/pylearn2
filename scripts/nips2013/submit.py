@@ -23,13 +23,13 @@ def norb():
 
     ind = 0
     TABLE_NAME = "pdbm_norb"
-    #db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [5., 2., 1., .5, 0.05]:
-        for dec in [0.1, 0.01, 0.001]:
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.2]:
+        for dec in [0.1, 0.01]:
             state.learning_rate = lr
             state.decay_factor = dec
-            experiment(state, None)
-            #sql.insert_job(experiment, flatten(state), db)
+            #experiment(state, None)
+            sql.insert_job(experiment, flatten(state), db)
             ind += 1
 
     db.createView(TABLE_NAME + '_view')

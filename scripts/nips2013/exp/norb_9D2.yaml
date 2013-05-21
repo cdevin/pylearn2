@@ -6,9 +6,9 @@
         one_hot: 1
     },
     model: !obj:galatea.dbm.inpaint.super_dbm.SuperDBM {
-        inference_procedure: !obj:galatea.dbm.inpaint.super_dbm.MoreConsistent2 {},
+        inference_procedure: !obj:galatea.dbm.inpaint.super_dbm.MoreConsistent {},
               batch_size : 100,
-              niter: 10, # 14 failed
+              niter: 15, # 14 failed
               visible_layer: &vis !obj:galatea.dbm.inpaint.super_dbm.GaussianVisLayer {
                 nvis: 8976,
                 bias_from_marginals: *train,
