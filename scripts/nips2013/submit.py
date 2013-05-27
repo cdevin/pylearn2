@@ -67,16 +67,52 @@ def convex():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def rec_img():
+    state = DD()
+    with open('exp/rec_img.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'rec_img'
+    state.layer0_dim = 500
+    state.layer1_dim = 2000
+    state.layer2_dim = 3000
+    state.niter = 14
+    state.learning_rate = 2.
+    state.decay_factor = 0.066484
+    state.lr_saturate = 217
+    state.m_saturate = 2
+    state.final_momentum = 0.802294
+    state.save_path = './'
+    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pdbm/rec_img/")
+
+    ind = 0
+    TABLE_NAME = "pdbm_convex"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [10, 1, 0.1]:
+        for dec in [0.01, 0.01]:
+            state.learning_rate = lr
+            state.decay_factor = dec
+            experiment(state, None)
+            #sql.insert_job(experiment, flatten(state), db)
+            ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['norb', 'convex'])
+    parser.add_argument('-t', '--task', choices = ['norb', 'convex', 'rec_img'])
     args = parser.parse_args()
 
     if args.task == 'norb':
         norb()
     elif args.task == 'convex':
         convex()
+    elif args.task == 'rec_img':
+        rec_img()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
