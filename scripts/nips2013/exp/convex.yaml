@@ -6,7 +6,7 @@
     model: !obj:galatea.dbm.inpaint.super_dbm.SpeedMonitoringDBM {
         inference_procedure: !obj:galatea.dbm.inpaint.super_dbm.MoreConsistent {},
               batch_size : 100,
-              niter: 7, #note: since we have to backprop through the whole thing, this does
+              niter: %(niter)i, #note: since we have to backprop through the whole thing, this does
                          #increase the memory usage
               visible_layer: !obj:galatea.dbm.inpaint.super_dbm.BinaryVisLayer {
                 learn_init_inpainting_state: 1,
@@ -88,7 +88,7 @@
     extensions: [
                 !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
                         channel_name: "raw_valid_err",
-                        save_path: %(save_path)s"best.pkl"
+                        save_path: "%(save_path)sbest.pkl"
                 },
                 !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
                     start: 1,
@@ -101,6 +101,6 @@
                     decay_factor: %(decay_factor)f
                 }
         ],
-    save_path: %(save_path)s"last.pkl",
+    save_path: "%(save_path)slast.pkl",
     save_freq : 2
 }
