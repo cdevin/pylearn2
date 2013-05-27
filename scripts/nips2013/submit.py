@@ -42,8 +42,8 @@ def convex():
 
     state.db = 'convex'
     state.layer0_dim = 500
-    state.layer1_dim = 500
-    state.layer2_dim = 500
+    state.layer1_dim = 2000
+    state.layer2_dim = 3000
     state.niter = 14
     state.learning_rate = 2.
     state.decay_factor = 0.066484
@@ -51,7 +51,7 @@ def convex():
     state.m_saturate = 2
     state.final_momentum = 0.802294
     state.save_path = './'
-    state.save_path = "$PYLEARN2_EXP_RESULTS/pdbm/convex/"
+    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pdbm/convex/")
 
     ind = 0
     TABLE_NAME = "pdbm_convex"
