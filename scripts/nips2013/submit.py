@@ -87,7 +87,7 @@ def rec_img():
     state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pdbm/rec_img/")
 
     ind = 0
-    TABLE_NAME = "pdbm_convex"
+    TABLE_NAME = "pdbm_recimg"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [1.2]:
         for dec in [0.01]:
