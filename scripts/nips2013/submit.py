@@ -76,7 +76,8 @@ def rec_img():
     state.layer0_dim = 500
     state.layer1_dim = 2000
     state.layer2_dim = 3000
-    state.niter = 14
+    state.niter = 15
+    state.noise = 1
     state.learning_rate = 2.
     state.decay_factor = 0.066484
     state.lr_saturate = 217
@@ -88,8 +89,8 @@ def rec_img():
     ind = 0
     TABLE_NAME = "pdbm_convex"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [10, 1, 0.1]:
-        for dec in [0.01, 0.01]:
+    for lr in [1.2]:
+        for dec in [0.01]:
             state.learning_rate = lr
             state.decay_factor = dec
             experiment(state, None)
@@ -98,7 +99,6 @@ def rec_img():
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
-
 
 
 if __name__ == "__main__":

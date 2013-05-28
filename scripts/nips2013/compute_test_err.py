@@ -31,10 +31,11 @@ yb.name = 'yb'
 ### get error
 Y_hat = model.mf(Xb)[-1]
 Y_hat.name = 'Y hat'
-argmax = T.argmax(Y_hat, axis = 1)
-if argmax.dtype != Y_hat.dtype:
-    argmax = T.cast(argmax, Y_hat.dtype)
-mf1acc = 1.- T.neq(yb, argmax).mean()
+Y_hat_argmax = T.argmax(Y_hat, axis = 1)
+yb_argmax = T.argmax(yb, axis = 1)
+if Y_hat_argmax.dtype != Y_hat.dtype:
+    argmax = T.cast(Y_hat_argmax, Y_hat.dtype)
+mf1acc = 1.- T.neq(yb_argmax, Y_hat_argmax).mean()
 batch_acc = function([Xb,yb],[mf1acc])
 
 # The averaging math assumes batches are all same size
@@ -50,7 +51,7 @@ def accs():
         if Xb.ndim > 2:
             x_arg = test.get_topological_view(x_arg)
         mf1_accs.append( batch_acc(x_arg,
-            test.y[i*batch_size:(i+1)*batch_size,:].T)[0])
+            test.y[i*batch_size:(i+1)*batch_size,:])[0])
     return sum(mf1_accs) / float(len(mf1_accs))
 
 
