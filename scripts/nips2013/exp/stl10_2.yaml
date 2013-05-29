@@ -7,7 +7,8 @@
         dataset: !pkl: "${PYLEARN2_DATA_PATH}/stl10/stl10_32x32_whitened/train.pkl",
         fold: 0
     }}},
-    model: !obj:galatea.dbm.inpaint.super_dbm.SuperDBM {
+    #model: !obj:galatea.dbm.inpaint.super_dbm.SuperDBM {
+    model: !obj:galatea.dbm.inpaint.super_dbm.SpeedMonitoringDBM {
               inference_procedure: !obj:galatea.dbm.inpaint.super_dbm.MoreConsistent {},
               batch_size : 100,
               niter: 6, 
@@ -78,10 +79,10 @@
                            monitor_multi_inference: 1,
                           both_directions: 0,
                           noise: 0,
-                           supervised: 1,
+                           supervised: 0,
                            mask_gen: !obj:galatea.dbm.inpaint.super_inpaint.MaskGen {
                                drop_prob: 0.02,
-                               drop_prob_y: 0.5,
+                               drop_prob_y: 0,
                                balance: 0,
                                sync_channels: 0
                             }
@@ -90,14 +91,14 @@
                },
        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased
        {
-                channel_name: "valid_err",
+                channel_name: "valid_objective",
                 N: 100,
                 prop_decrease: 0.
        },
     },
     extensions: [
                 !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-                        channel_name: "valid_err",
+                        channel_name: "valid_objective",
                         save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
                 },
                 !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
