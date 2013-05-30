@@ -41,7 +41,7 @@ def convex():
         state.yaml_string = ymtmp.read()
 
     state.db = 'convex'
-    state.layer0_dim = 500
+    state.layer0_dim = 2000
     state.layer1_dim = 2000
     state.layer2_dim = 3000
     state.niter = 14
@@ -69,13 +69,13 @@ def convex():
 
 def rec_img():
     state = DD()
-    with open('exp/rec_img.yaml') as ymtmp:
+    with open('exp/rec_img2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'rec_img'
-    state.layer0_dim = 500
+    state.layer0_dim = 2000
     state.layer1_dim = 2000
-    state.layer2_dim = 3000
+    #state.layer2_dim = 3000
     state.niter = 15
     state.noise = 1
     state.learning_rate = 2.
