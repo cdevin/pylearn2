@@ -106,8 +106,8 @@ def ocr():
         state.yaml_string = ymtmp.read()
 
     state.db = 'ocr'
-    state.layer0_dim = 2000
-    state.layer1_dim = 2000
+    state.layer0_dim = 3000
+    state.layer1_dim = 3000
     state.niter = 5
     state.noise = 1
     state.learning_rate = 2.
@@ -121,8 +121,8 @@ def ocr():
     ind = 0
     TABLE_NAME = "pdbm_ocr"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1.2]:
-        for dec in [0.01]:
+    for lr in [20]:
+        for dec in [0.1]:
             state.learning_rate = lr
             state.decay_factor = dec
             experiment(state, None)
