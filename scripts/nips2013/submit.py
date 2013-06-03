@@ -106,27 +106,27 @@ def ocr():
         state.yaml_string = ymtmp.read()
 
     state.db = 'ocr'
-    state.layer0_dim = 2000
-    state.layer1_dim = 2000
+    state.layer0_dim = 3000
+    state.layer1_dim = 4000
     state.niter = 5
     state.noise = 1
     state.learning_rate = 2.
     state.decay_factor = 0.066484
-    state.lr_saturate = 217
+    state.lr_saturate = 200
     state.m_saturate = 2
     state.final_momentum = 0.802294
     state.save_path = './'
-    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pdbm/ocr/")
+    #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pdbm/ocr/")
 
     ind = 0
     TABLE_NAME = "pdbm_ocr"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1.2]:
-        for dec in [0.01]:
+    for lr in [10, 15, 5]:
+        for dec in [0.01, 1.]:
             state.learning_rate = lr
             state.decay_factor = dec
-            experiment(state, None)
-            #sql.insert_job(experiment, flatten(state), db)
+            #experiment(state, None)
+            sql.insert_job(experiment, flatten(state), db)
             ind += 1
 
     db.createView(TABLE_NAME + '_view')

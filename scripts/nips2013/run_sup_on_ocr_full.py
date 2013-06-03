@@ -18,7 +18,7 @@ parent = '/'.join(parent)
 if parent != '':
     parent = parent + '/'
 
-outpath = parent + 'sup_on_'+path.split('/')[-1]
+outpath = parent + 'sup_on_full_'+path.split('/')[-1]
 outpath = outpath.replace('.pkl','_' + decapitate + '_' + batch_size + '.yaml')
 print "THEANO_FLAGS='device=gpu' train.py",outpath
 if os.path.exists(outpath.replace('.yaml','.pkl')):
@@ -30,15 +30,15 @@ f = open(outpath, 'w')
 f.write(
 """
 !obj:pylearn2.train.Train {
-    dataset:  &train !obj:pylearn2.datasets.icml07.RectanglesImage {
-        which_set: "train",
+    dataset:  &train !obj:pylearn2.datasets.ocr.OCR {
+        which_set: "train_all",
         one_hot: 1,
     },
         model: !obj:galatea.dbm.inpaint.super_dbm.MLP_Wrapper {
                         decapitate: %(decapitate)s,
                         super_dbm: !obj:galatea.dbm.inpaint.super_dbm.set_niter {
                                 super_dbm: !pkl: "%(path)s",
-                                niter: 10
+                                niter: 5
                         },
     },
     algorithm: !obj:pylearn2.training_algorithms.bgd.BGD {
@@ -51,11 +51,11 @@ f.write(
                reset_conjugate: 0,
                monitoring_dataset: {
                                 'train' : *train,
-                                'valid' : !obj:pylearn2.datasets.icml07.RectanglesImage {
+                                'valid' : !obj:pylearn2.datasets.ocr.OCR {
                                         which_set: "valid",
                                         one_hot: 1,
                                         },
-                                'test' : !obj:pylearn2.datasets.icml07.RectanglesImage {
+                                'test' : !obj:pylearn2.datasets.ocr.OCR {
                                         which_set: "test",
                                         one_hot: 1,
                                         }

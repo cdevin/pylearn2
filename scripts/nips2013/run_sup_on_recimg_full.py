@@ -18,7 +18,7 @@ parent = '/'.join(parent)
 if parent != '':
     parent = parent + '/'
 
-outpath = parent + 'sup_on_'+path.split('/')[-1]
+outpath = parent + 'sup_on_full_'+path.split('/')[-1]
 outpath = outpath.replace('.pkl','_' + decapitate + '_' + batch_size + '.yaml')
 print "THEANO_FLAGS='device=gpu' train.py",outpath
 if os.path.exists(outpath.replace('.yaml','.pkl')):
@@ -31,14 +31,14 @@ f.write(
 """
 !obj:pylearn2.train.Train {
     dataset:  &train !obj:pylearn2.datasets.icml07.RectanglesImage {
-        which_set: "train",
+        which_set: "train_valid",
         one_hot: 1,
     },
         model: !obj:galatea.dbm.inpaint.super_dbm.MLP_Wrapper {
                         decapitate: %(decapitate)s,
                         super_dbm: !obj:galatea.dbm.inpaint.super_dbm.set_niter {
                                 super_dbm: !pkl: "%(path)s",
-                                niter: 10
+                                niter: 5
                         },
     },
     algorithm: !obj:pylearn2.training_algorithms.bgd.BGD {
@@ -72,10 +72,10 @@ f.write(
     extensions: [
                 !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
                         channel_name: "valid_err",
-                        save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+                        save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_full_best.pkl"
                 }
         ],
-    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_full.pkl",
     save_freq : 1
 }
 """ % locals())
