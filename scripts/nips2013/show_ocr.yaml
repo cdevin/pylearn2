@@ -1,0 +1,3 @@
+!obj:pylearn2.datasets.ocr.OCR {
+    which_set: 'train'
+}
