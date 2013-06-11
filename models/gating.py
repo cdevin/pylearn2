@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import numpy as np
-
+from theano import config
 from theano import tensor as T
 
 from pylearn2.linear.matrixmul import MatrixMul
@@ -360,6 +360,11 @@ class MLP_GatedRectifier(Layer):
                              ('mean_x.min_u', v_mean.min())
                              ]:
                 rval[prefix+key] = val
+
+        import ipdb
+        ipdb.set_trace()
+        gate = T.cast(T.argmax(self.gater.fprop(state)), config.floatX)
+        rval['selected_gate'] = gate
 
         return rval
 

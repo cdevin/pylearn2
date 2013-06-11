@@ -7,7 +7,7 @@
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
-                 !obj:galatea.gating.MLP_GatedRectifier {
+                 !obj:noisy_encoder.models.gating.MLP_GatedRectifier {
                      layer_name: 'h0',
                      num_units: &h0_units 20,
                      num_pieces: &h0_pieces 5,
@@ -37,7 +37,7 @@
                             nvis: 784
                         }
                  },
-                 !obj:galatea.gating.MLP_GatedRectifier {
+                 !obj:noisy_encoder.models.gating.MLP_GatedRectifier {
                      layer_name: 'h1',
                      num_units: 20,
                      num_pieces: &h1_pieces 5,
