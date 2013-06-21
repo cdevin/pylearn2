@@ -272,9 +272,9 @@ class Conv3DSpace(Space):
                 new_axes = ['b'] + [axis for axis in self.axes if axis != 'b']
                 batch = batch.transpose(*[self.axes.index(axis) for axis in new_axes])
             return batch.reshape((batch.shape[0], self.get_total_dimension()))
-        if isinstance(space, Conv2DSpace):
-            return Conv2DSpace.convert_numpy(batch, self.axes, space.axes)
-        raise NotImplementedError("Conv2DSPace doesn't know how to format as "+str(type(space)))
+        if isinstance(space, Conv3DSpace):
+            return Conv3DSpace.convert_numpy(batch, self.axes, space.axes)
+        raise NotImplementedError("Conv3DSPace doesn't know how to format as "+str(type(space)))
 
 
     @functools.wraps(Space._format_as)
@@ -286,9 +286,9 @@ class Conv3DSpace(Space):
                 new_axes = ['b'] + [axis for axis in self.axes if axis != 'b']
                 batch = batch.transpose(*[self.axes.index(axis) for axis in new_axes])
             return batch.reshape((batch.shape[0], self.get_total_dimension()))
-        if isinstance(space, Conv2DSpace):
-            return Conv2DSpace.convert(batch, self.axes, space.axes)
-        raise NotImplementedError("Conv2DSPace doesn't know how to format as "+str(type(space)))
+        if isinstance(space, Conv3DSpace):
+            return Conv3DSpace.convert(batch, self.axes, space.axes)
+        raise NotImplementedError("Conv3DSPace doesn't know how to format as "+str(type(space)))
 
 
 

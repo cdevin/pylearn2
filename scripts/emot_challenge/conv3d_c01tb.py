@@ -34,7 +34,7 @@ from pylearn2.linear.linear_transform import LinearTransform
 from pylearn2.sandbox.cuda_convnet import check_cuda
 from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
 from pylearn2.sandbox.cuda_convnet.filter_acts import ImageActs
-from noisy_encoder.scripts.emot_challenge.space import Conv3DSpace
+from pylearn2.space import Conv3DSpace
 # move this to extra packages
 from pylearn2.packaged_dependencies.theanoconv3d2d.conv3d2d import diagonal_subtensor
 
@@ -47,6 +47,8 @@ class Conv3DC01TB(LinearTransform):
 
     def __init__(self,
             filters,
+            signal_shape,
+            filter_shape,
             input_axes = ('c', 0, 1, 't', 'b'),
             batch_size=None,
             output_axes = ('c', 0, 1, 't', 'b'),
@@ -78,6 +80,8 @@ class Conv3DC01TB(LinearTransform):
         self.pad = pad
         self.partial_sum = partial_sum
         self.kernel_stride = kernel_stride
+        self.signal_shape = signal_shape
+        self.filter_shape = filter_shape
 
 
     @functools.wraps(LinearTransform.get_params)
@@ -86,6 +90,7 @@ class Conv3DC01TB(LinearTransform):
 
     @functools.wraps(LinearTransform.get_weights_topo)
     def get_weights_topo(self, borrow=False):
+        # TODO what would be real weight topo?!
         inp, rows, cols, outp = range(4)
         raw = self._filters.get_value(borrow=borrow)
         return np.transpose(raw, (outp, rows, cols, inp))
@@ -98,8 +103,9 @@ class Conv3DC01TB(LinearTransform):
         """
 
         check_cuda(str(type(self)) + ".lmul")
+        # TODO Why is it CPU??
+        print 'Por que?!?!', type(x)
         cpu = 'Cuda' not in str(type(x))
-
         if cpu:
             x = gpu_from_host(x)
 
@@ -112,39 +118,38 @@ class Conv3DC01TB(LinearTransform):
             x = x.dimshuffle(*[x_axes.index(axis) for axis in op_axes])
 
 
-        _x_shape = x.shape
         _x_4d_shape = (
-                _x_shape[0],
-                _x_shape[1],
-                _x_shape[2],
-                _x_shape[3] * _x_shape[4])
+                self.signal_shape[0],
+                self.signal_shape[1],
+                self.signal_shape[2],
+                self.signal_shape[3] * self.signal_shape[4])
 
-        _f_shape = self._filters.shape
-        _filter_4d_shape = (
-                _f_shape[0],
-                _f_shape[1],
-                _f_shape[2],
-                _f_shape[3] * _f_shape[4])
+        #_filter_4d_shape = (
+                #self.filter_shape[0],
+                #self.filter_shape[1],
+                #self.filter_shape[2],
+                #self.filter_shape[3] * self.filter_shape[4])
 
         x = x.reshape(_x_4d_shape)
-        self._filters = self._filters.reshape(_filter_4d_shape)
+        #self._filters = self._filters.reshape(_filter_4d_shape)
 
         x = gpu_contiguous(x)
-        self._filters = gpu_contiguous(self._filters)
+        #self._filters = gpu_contiguous(self._filters)
 
         rval = FilterActs(self.pad, self.partial_sum, self.kernel_stride[0])(
                 x, self._filters)
 
         if cpu:
             rval = host_from_gpu(rval)
-
+            #self._filters = host_from_gpu(self._filters)
+            #self._filters.name = 'W'
         rval = rval.reshape((
-            _f_shape[3],
-            _f_shape[4],
+            self.filter_shape[3],
+            self.filter_shape[4],
             rval.shape[1],
             rval.shape[2],
-            _x_shape[3],
-            _x_shape[4]))
+            self.signal_shape[3],
+            self.signal_shape[4]))
 
         rval = diagonal_subtensor(rval, 4, 0).sum(axis=0)
 
@@ -166,10 +171,9 @@ class Conv3DC01TB(LinearTransform):
     def set_batch_size(self, batch_size):
         pass
 
-def make_random_conv3D(irange, input_channels, input_axes, output_axes,
-        output_channels,
-        kernel_sequence_length,
-        kernel_shape,
+def make_random_conv3D(irange, input_axes, output_axes,
+        signal_shape,
+        filter_shape,
         kernel_stride = (1,1), pad=0, message = "", rng = None,
         partial_sum = None):
     """ Creates a Conv3D with random kernels.
@@ -178,12 +182,22 @@ def make_random_conv3D(irange, input_channels, input_axes, output_axes,
     if rng is None:
         rng = default_rng()
 
-    W = sharedX(rng.uniform(-irange,irange,(input_channels, \
-            kernel_shape[0], kernel_shape[1], kernel_sequence_length, output_channels)))
+    #W = sharedX(rng.uniform(-irange,irange,(input_channels, \
+            #kernel_shape[0], kernel_shape[1], kernel_sequence_length, output_channels)))
+    _filter_4d_shape = (
+                filter_shape[0],
+                filter_shape[1],
+                filter_shape[2],
+                filter_shape[3] * filter_shape[4])
+
+
+    W = sharedX(rng.uniform(-irange,irange,(_filter_4d_shape)))
 
     return Conv3DC01TB(filters = W,
         input_axes = input_axes,
         output_axes = output_axes,
+        signal_shape = signal_shape,
+        filter_shape = filter_shape,
         kernel_stride = kernel_stride, pad=pad,
         message = message, partial_sum=partial_sum)
 
@@ -267,6 +281,8 @@ def setup_detector_layer_c01tb(layer, input_space, rng, irange):
                                                     self.kernel_shape,
                                                     kernel_stride)]
     output_sequence_length = self.input_space.sequence_length - self.kernel_sequence_length + 1
+    if output_sequence_length < 0:
+        raise ValueError("Input sequence length ({}) should >= output sequence_length ({})".format(self.input_space.sequence_length, self.kernel_sequence_length))
 
     def handle_kernel_shape(idx):
         if self.kernel_shape[idx] < 1:
@@ -295,15 +311,24 @@ def setup_detector_layer_c01tb(layer, input_space, rng, irange):
     else:
         partial_sum = 1
 
+    filter_shape = (self.dummy_space.num_channels,
+                    self.kernel_shape[0],
+                    self.kernel_shape[1],
+                    self.kernel_sequence_length,
+                    self.detector_space.num_channels)
+
+    signal_shape = (self.dummy_space.num_channels,
+                    self.input_space.shape[0],
+                    self.input_space.shape[1],
+                    self.input_space.sequence_length,
+                    self.mlp.batch_size)
 
     self.transformer = make_random_conv3D(
           irange = self.irange,
           input_axes = self.input_space.axes,
           output_axes = self.detector_space.axes,
-          input_channels = self.dummy_space.num_channels,
-          output_channels = self.detector_space.num_channels,
-          kernel_shape = self.kernel_shape,
-          kernel_sequence_length = self.kernel_sequence_length,
+          signal_shape = signal_shape,
+          filter_shape = filter_shape,
           pad = self.pad,
           partial_sum = partial_sum,
           kernel_stride = kernel_stride,

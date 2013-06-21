@@ -35,7 +35,7 @@ from theano import tensor as T
 
 from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.models.mlp import Layer
-from pylearn2.space import VectorSpace
+from pylearn2.space import VectorSpace, Conv3DSpace
 from pylearn2.utils import py_integer_types
 from pylearn2.utils import sharedX
 
@@ -44,7 +44,7 @@ if cuda.cuda_available:
     from pylearn2.sandbox.cuda_convnet.pool import max_pool_c01b
 from pylearn2.linear import local_c01b
 from pylearn2.sandbox.cuda_convnet import check_cuda
-from noisy_encoder.scripts.emot_challenge.space import Conv3DSpace
+#from noisy_encoder.scripts.emot_challenge.space import Conv3DSpace
 
 
 class MaxoutConvC01TB(Layer):
@@ -214,12 +214,16 @@ class MaxoutConvC01TB(Layer):
                                 image_shape=self.detector_space.shape)
         dummy_p = dummy_p.eval()
 
-        output_sequence_length = self.detector_space.sequence_length / int(self.sequence_pool_shape)
+        if self.detector_space.sequence_length % (self.sequence_pool_shape) != 0:
+            raise ValueError("The case where detector layer's sequence length doesn't divide sequene pool shape is not implmented")
+
+        output_sequence_length = self.detector_space.sequence_length / self.sequence_pool_shape
         self.output_space = Conv3DSpace(shape=[dummy_p.shape[1], dummy_p.shape[2]],
-                                        sequence_length = output_sequence_length,
+                                        sequence_length = int(output_sequence_length),
                                         num_channels = self.num_channels, axes = ('c', 0, 1, 't', 'b') )
 
-        print 'Output space: ', self.output_space.shape
+        print "Output space shape: {}, sequence length: {}".format(self.output_space.shape,
+                        self.output_space.sequence_length)
 
     def censor_updates(self, updates):
 
@@ -390,10 +394,10 @@ class MaxoutConvC01TB(Layer):
         vars_and_prefixes = [ (P,'') ]
 
         for var, prefix in vars_and_prefixes:
-            assert var.ndim == 4
-            v_max = var.max(axis=(1,2,3))
-            v_min = var.min(axis=(1,2,3))
-            v_mean = var.mean(axis=(1,2,3))
+            assert var.ndim == 5
+            v_max = var.max(axis=(1,2,3,4))
+            v_min = var.min(axis=(1,2,3,4))
+            v_mean = var.mean(axis=(1,2,3,4))
             v_range = v_max - v_min
 
             # max_x.mean_u is "the mean over *u*nits of the max over e*x*amples"
