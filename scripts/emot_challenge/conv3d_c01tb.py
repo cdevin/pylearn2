@@ -8,12 +8,12 @@ as its native format, while the other uses ('b', 'c', 0, 1).
 This module also requires the use of GPU, while the other
 supports CPU.
 """
-__authors__ = "Ian Goodfellow"
+__authors__ = "Mehdi Mirza, Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
-__credits__ = ["Ian Goodfellow"]
+__credits__ = ["Mehdi Mirza", "Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "Mehdi Mirza"
+__email__ = "mirzamom@iro"
 
 import functools
 import numpy as np
@@ -124,25 +124,15 @@ class Conv3DC01TB(LinearTransform):
                 self.signal_shape[2],
                 self.signal_shape[3] * self.signal_shape[4])
 
-        #_filter_4d_shape = (
-                #self.filter_shape[0],
-                #self.filter_shape[1],
-                #self.filter_shape[2],
-                #self.filter_shape[3] * self.filter_shape[4])
-
         x = x.reshape(_x_4d_shape)
-        #self._filters = self._filters.reshape(_filter_4d_shape)
 
         x = gpu_contiguous(x)
-        #self._filters = gpu_contiguous(self._filters)
 
         rval = FilterActs(self.pad, self.partial_sum, self.kernel_stride[0])(
                 x, self._filters)
 
         if cpu:
             rval = host_from_gpu(rval)
-            #self._filters = host_from_gpu(self._filters)
-            #self._filters.name = 'W'
         rval = rval.reshape((
             self.filter_shape[3],
             self.filter_shape[4],
@@ -182,8 +172,6 @@ def make_random_conv3D(irange, input_axes, output_axes,
     if rng is None:
         rng = default_rng()
 
-    #W = sharedX(rng.uniform(-irange,irange,(input_channels, \
-            #kernel_shape[0], kernel_shape[1], kernel_sequence_length, output_channels)))
     _filter_4d_shape = (
                 filter_shape[0],
                 filter_shape[1],
@@ -343,6 +331,6 @@ def setup_detector_layer_c01tb(layer, input_space, rng, irange):
         self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
     self.b.name = 'b'
 
-    print 'Input shape: ', self.input_space.shape
-    print 'Detector space: ', self.detector_space.shape
+    print "Input space shape: {}, sequence length: {}".format(self.input_space.shape, self.input_space.sequence_length)
+    print "Detector space: {}, sequence length: {}".format(self.detector_space.shape, self.detector_space.sequence_length)
 
