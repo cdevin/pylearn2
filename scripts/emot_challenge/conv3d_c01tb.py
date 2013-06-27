@@ -103,8 +103,6 @@ class Conv3DC01TB(LinearTransform):
         """
 
         check_cuda(str(type(self)) + ".lmul")
-        # TODO Why is it CPU??
-        print 'Por que?!?!', type(x)
         cpu = 'Cuda' not in str(type(x))
         if cpu:
             x = gpu_from_host(x)
@@ -133,6 +131,7 @@ class Conv3DC01TB(LinearTransform):
 
         if cpu:
             rval = host_from_gpu(rval)
+
         rval = rval.reshape((
             self.filter_shape[3],
             self.filter_shape[4],
@@ -148,7 +147,8 @@ class Conv3DC01TB(LinearTransform):
         assert len(rval_axes) == 5
 
         if tuple(rval_axes) != op_axes:
-            rval = rval.dimoshuffle(*[op_axes.index(axis) for axis in rval_axes])
+            rval = rval.dimshuffle(*[op_axes.index(axis) for axis in rval_axes])
+
 
         return rval
 

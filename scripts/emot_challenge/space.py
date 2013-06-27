@@ -54,6 +54,8 @@ if theano.sparse.enable_sparse:
 
 class Conv3DSpace(Space):
     """A space whose points are defined as (multi-channel) images."""
+
+    default_axes = ('b', 't', 'c', 0, 1)
     def __init__(self, shape, sequence_length, channels = None, num_channels = None, axes = None):
         """
         Initialize a Conv2DSpace.
@@ -95,7 +97,7 @@ class Conv3DSpace(Space):
         self.num_channels = num_channels
         self.sequence_length = sequence_length
         if axes is None:
-            axes = ('b', 't', 'c', 0, 1)
+            axes = self.default_axes
         assert len(axes) == 5
         self.axes = tuple(axes)
 
@@ -138,6 +140,7 @@ class Conv3DSpace(Space):
         broadcastable = [False] * 5
         broadcastable[self.axes.index('c')] = (self.num_channels == 1)
         broadcastable[self.axes.index('b')] = (batch_size == 1)
+        broadcastable[self.axes.index('t')] = (self.sequence_length == 1)
         broadcastable = tuple(broadcastable)
 
         rval = TensorType(dtype=dtype,
@@ -191,7 +194,7 @@ class Conv3DSpace(Space):
     @staticmethod
     def convert_numpy(tensor, src_axes, dst_axes):
         """
-            tensor: a 4 tensor representing a batch of images
+            tensor: a 5D tensor representing a batch of images
 
             src_axes: the axis semantics of tensor
 
@@ -267,28 +270,35 @@ class Conv3DSpace(Space):
     def np_format_as(self, batch, space):
         self.np_validate(batch)
         if isinstance(space, VectorSpace):
-            if self.axes[0] != 'b':
-                # We need to ensure that the batch index goes on the first axis before the reshape
-                new_axes = ['b'] + [axis for axis in self.axes if axis != 'b']
-                batch = batch.transpose(*[self.axes.index(axis) for axis in new_axes])
+            # We need to ensure that the resulting batch will always be
+            # the same in `space`, no matter what the axes of `self` are.
+            if self.axes != self.self.default_axes:
+                # The batch index goes on the first axis
+                assert self.default_axes[0] == 'b'
+                batch = batch.transpose(*[self.axes.index(axis)
+                                            for axis in self.default_axes])
             return batch.reshape((batch.shape[0], self.get_total_dimension()))
         if isinstance(space, Conv3DSpace):
             return Conv3DSpace.convert_numpy(batch, self.axes, space.axes)
-        raise NotImplementedError("Conv3DSPace doesn't know how to format as "+str(type(space)))
-
+        raise NotImplementedError("%s doesn't know how to format as %"
+                                    % (str(self), str(type(space))))
 
     @functools.wraps(Space._format_as)
     def _format_as(self, batch, space):
         self.validate(batch)
         if isinstance(space, VectorSpace):
-            if self.axes[0] != 'b':
-                # We need to ensure that the batch index goes on the first axis before the reshape
-                new_axes = ['b'] + [axis for axis in self.axes if axis != 'b']
-                batch = batch.transpose(*[self.axes.index(axis) for axis in new_axes])
+            # We need to ensure that the resulting batch will always be
+            # the same in `space`, no matter what the axes of `self` are.
+            if self.axes != self.self.default_axes:
+                # The batch index goes on the first axis
+                assert self.default_axes[0] == 'b'
+                batch = batch.transpose(*[self.axes.index(axis)
+                                            for axis in self.default_axes])
             return batch.reshape((batch.shape[0], self.get_total_dimension()))
         if isinstance(space, Conv3DSpace):
             return Conv3DSpace.convert(batch, self.axes, space.axes)
-        raise NotImplementedError("Conv3DSPace doesn't know how to format as "+str(type(space)))
+        raise NotImplementedError("%s doesn't know how to format as %"
+                                    % (str(self), str(type(space))))
 
 
 

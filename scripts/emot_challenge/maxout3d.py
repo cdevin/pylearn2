@@ -1,29 +1,3 @@
-"""
-MLP Layer objects related to the paper
-
-Maxout Networks. Ian J. Goodfellow, David Warde-Farley, Mehdi Mirza, Aaron
-Courville, and Yoshua Bengio. ICML 2013.
-
-If you use this code in your research, please cite this paper.
-
-The objects in this module are Layer objects for use with
-pylearn2.models.mlp.MLP. You need to make an MLP object in
-order for thse to do anything. For an example of how to build
-an MLP with maxout hidden layers, see pylearn2/scripts/papers/maxout.
-
-Note that maxout is designed for use with dropout, so you really should
-use dropout in your MLP when using these layers.
-
-Note to developers / maintainers: when making changes to this module,
-ensure that the changes do not break the examples in
-pylearn2/scripts/papers/maxout.
-"""
-__authors__ = "Ian Goodfellow"
-__copyright__ = "Copyright 2012-2013, Universite de Montreal"
-__credits__ = ["Ian Goodfellow"]
-__license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-
 import warnings
 
 import numpy as np
@@ -44,7 +18,6 @@ if cuda.cuda_available:
     from pylearn2.sandbox.cuda_convnet.pool import max_pool_c01b
 from pylearn2.linear import local_c01b
 from pylearn2.sandbox.cuda_convnet import check_cuda
-#from noisy_encoder.scripts.emot_challenge.space import Conv3DSpace
 
 
 class MaxoutConvC01TB(Layer):
