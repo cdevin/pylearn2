@@ -19,9 +19,19 @@ from emotiw.common.datasets.faces.facetubes import FaceTubeSpace
 from emotiw.wardefar.crf_theano import forward_theano as crf
 
 
-class FrameCRF(Model):
-    """Logistic regression on top of mean along axis 't' of inputs"""
+class FrameMax(Model):
+    """Frame based classifier, then elementwise max on top of representaions,
+    and final classifier on top"""
     def __init__(self, mlp, final_layer, n_classes = None, input_source='features', input_space=None):
+        """
+        Parameters
+        ----------
+        mlp: Pylearn2 MLP class
+            The frame based classifier
+
+        final_layer: Pylearn2 MLP class
+            Sequence based classifier
+        """
 
         if n_classes is None:
             if hasattr(mlp.layers[-1], 'dim'):
@@ -41,7 +51,7 @@ class FrameCRF(Model):
         self.input_size = (input_space.shape[0]
                            * input_space.shape[1]
                            * input_space.num_channels)
-        self.output_space = VectorSpace(dim=n_classes)
+        self.output_space = VectorSpace(dim=7)
         #self.final_layer.input_space = self.mlp.layers[-1].get_output_space()
 
         self.W = theano.shared(np.zeros((n_classes, n_classes, n_classes),
@@ -66,6 +76,22 @@ class FrameCRF(Model):
 
         return rval
 
+    def dropout_fprop(self, state_below, default_input_include_prob=0.5,
+                    input_include_probs=None, default_input_scale=2.,
+                    input_scales=None, per_example=True):
+
+        state_below = self.input_space.format_as(state_below, self.mlp.input_space)
+        rval = self.mlp.dropout_fprop(state_below, default_input_include_prob,
+                    input_include_probs, default_input_scale,
+                    input_scales, per_example)
+        rval = tensor.max(rval, axis=0)
+        rval = rval.dimshuffle('x', 0)
+        rval = self.final_layer.dropout_fprop(rval, default_input_include_prob,
+                    input_include_probs, default_input_scale,
+                    input_scales, per_example)
+
+        return rval
+
     def get_params(self):
         #return self.mlp.get_params() + [self.W]
         return self.mlp.get_params() + self.final_layer.get_params()
@@ -78,105 +104,41 @@ class FrameCRF(Model):
 
     def get_monitoring_data_specs(self):
         space = CompositeSpace((self.get_input_space(),
-                                VectorSpace(dim=1)))
+                                VectorSpace(dim=7)))
         source = (self.get_input_source(), self.get_target_source())
         return (space, source)
+
 
     def get_monitoring_channels(self, data):
 
         X, Y = data
-        rval = OrderedDict()
+        X = self.input_space.format_as(X, self.mlp.input_space)
+        X = self.mlp.fprop(X)
+        X = tensor.max(X, axis=0)
+        X = X.dimshuffle('x', 0)
+        return self.final_layer.get_monitoring_channels((X, Y))
 
-        state = self.fprop(X)
-        ch = self.get_monitoring_channels_from_state(state, Y)
-        if not isinstance(ch, OrderedDict):
-            raise TypeError(str((type(ch), str(self))))
-        for key in ch:
-            rval[self.name+'_'+key]  = ch[key]
-        return rval
+    # TODO make the monitos work for main mlp
+    #def get_monitoring_channels(self, data):
 
-    def get_monitoring_channels_from_state(self, state, target=None):
+        #X, Y = data
+        #X = self.input_space.format_as(X, self.mlp.input_space)
 
-        mx = state.max(axis = 1)
-        rval = OrderedDict([
-            ('mean_max_class', mx.mean()),
-            ('max_max_class', mx.max()),
-            ('min_max_class', mx.min())])
+        ##first mlp monitors
+        #ch = self.mlp.get_monitoring_channels((X, Y))
 
-        if target is not None:
-            y_hat = tensor.argmax(state, axis=1)
-            #import ipdddb
-            #ipdb.set_trace()
-            y = target
-            misclass = tensor.neq(y, y_hat).mean()
-            misclass = tensor.cast(misclass, config.floatX)
-            rval['misclass'] = misclass
-        return rval
+        ## get final mlp monitors
+        #X = self.mlp.fprop(X)
+        #X = tensor.max(X, axis=0)
+        #X = X.dimshuffle('x', 0)
+        #second_ch = self.final_layer.get_monitoring_channels((X, Y))
 
-class DummyCost(Cost):
-    def expr(self, model, data):
-        self.get_data_specs(model)[0].validate(data)
-        X, Y = data
-        # Make Y one-hot binary.
+        #for key in second_ch:
+            #ch[key] = second_ch[key]
 
-        Y = OneHotFormatter(model.n_classes).theano_expr(
-                tensor.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
-        #Y = tensor.alloc(Y, X.shape[0], model.n_classes)
-        # Y_hat is a softmax estimate
-        Y_hat = model.fprop(X)
-        # Code copied from pylearn2/models/mlp.py:Softmax.cost
-        assert hasattr(Y_hat, 'owner')
-        owner = Y_hat.owner
-        assert owner is not None
-        op = owner.op
-        if isinstance(op, Print):
-            assert len(owner.inputs) == 1
-            Y_hat, = owner.inputs
-            owner = Y_hat.owner
-            op = owner.op
-        assert isinstance(op, tensor.nnet.Softmax)
-        z, = owner.inputs
-        assert z.ndim == 2
+        #return ch
 
-        z = z - z.max(axis=1).dimshuffle(0, 'x')
-        log_prob = z - tensor.log(tensor.exp(z).sum(axis=1).dimshuffle(0, 'x'))
-        #log_prob = Print('log_prob', attrs=('shape', 'min', 'max', '__str__'))(log_prob)
-        # we use sum and not mean because this is really one variable per row
-        #Y = Print('Y')(Y)
-        log_prob_of = (Y * log_prob).sum(axis=1)
-        #log_prob_of = Print('log_prob_of')(log_prob_of)
-        assert log_prob_of.ndim == 1
-        rval = log_prob_of.mean()
-        return -rval
-
-    def get_data_specs(self, model):
-        space = CompositeSpace([model.get_input_space(),
-                                VectorSpace(dim=1)])
-        sources = (model.get_input_source(), model.get_target_source())
-        return (space, sources)
+    def cost(self, Y, Y_hat):
+        return self.final_layer.cost(Y, Y_hat)
 
 
-def test_afew2ft_train():
-    n_classes = 7
-    dataset = AFEW2FaceTubes(which_set='Train')
-    monitoring_dataset = {
-        'train': dataset,
-        'valid': AFEW2FaceTubes(which_set='Val')}
-    model = DummyModel(n_classes=n_classes,
-                       input_space=dataset.get_data_specs()[0].components[0])
-    cost = DummyCost()
-    termination_criterion = EpochCounter(10)
-
-    learning_rate = 1e-6
-    batch_size = 1
-    algorithm = SGD(learning_rate,
-                    cost,
-                    batch_size=batch_size,
-                    monitoring_batches=batch_size,
-                    monitoring_dataset=monitoring_dataset,
-                    termination_criterion=termination_criterion)
-    train = Train(dataset,
-                  model,
-                  algorithm,
-                  save_path=None)
-    train.main_loop()
