@@ -3,7 +3,7 @@
         which_set: 'train',
         one_hot: 1
     },
-    model: !obj:mix.FrameCRF {
+    model: !obj:seq_mlp.FrameMax {
         n_classes: &n_classes 7,
         input_space: !obj:emotiw.common.datasets.faces.facetubes.FaceTubeSpace {
             shape: [96, 96],
