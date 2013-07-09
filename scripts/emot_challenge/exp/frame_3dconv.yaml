@@ -15,7 +15,7 @@
         },
         mlp: !obj:pylearn2.models.mlp.MLP {
             layers: [
-                !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                !obj:maxout3d.MaxoutConvC01B {
                      layer_name: 'h0',
                      pad: 0,
                      num_channels: %(h0_num_channels)i,
@@ -28,20 +28,6 @@
                      W_lr_scale: 0.01,
                      b_lr_scale: 0.01,
                  },
-                !obj:pylearn2.models.maxout.MaxoutConvC01B {
-                     layer_name: 'h1',
-                     pad: 0,
-                     num_channels: %(h1_num_channels)i,
-                     num_pieces: 2,
-                     kernel_shape: [8, 8],
-                     pool_shape: [3, 3],
-                     pool_stride: [2, 2],
-                     irange: .05,
-                     max_kernel_norm: .9,
-                     W_lr_scale: 0.05,
-                     b_lr_scale: 0.05,
-                 },
-
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h2',
                      num_units: &last_ndim %(last_ndim)i,

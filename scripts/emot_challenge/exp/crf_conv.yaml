@@ -3,9 +3,10 @@
         which_set: 'train',
         one_hot: 1,
         preproc: ['smooth'],
-        size: [48, 48]
+        size: [48, 48],
+        min_seq_length: 3,
     },
-    model: !obj:seq_mlp.FrameMax {
+    model: !obj:seq_mlp.FrameCRF {
         n_classes: &n_classes 7,
         scale: 1,
         input_space: !obj:emotiw.common.datasets.faces.facetubes.FaceTubeSpace {
@@ -23,7 +24,7 @@
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
                      pool_stride: [2, 2],
-                     irange: .05,
+                     irange: .005,
                      max_kernel_norm: .9,
                      W_lr_scale: 0.01,
                      b_lr_scale: 0.01,
@@ -41,13 +42,19 @@
                      W_lr_scale: 0.05,
                      b_lr_scale: 0.05,
                  },
-
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h2',
                      num_units: &last_ndim %(last_ndim)i,
                      num_pieces: 4,
                      irange: .005,
                  },
+                 !obj:pylearn2.models.mlp.Softmax {
+                     max_col_norm: 1.9365,
+                     layer_name: 'softmax',
+                     n_classes: *n_classes,
+                     sparse_init: 23,
+                    #irange: .005
+                },
             ],
         input_space: !obj:pylearn2.space.Conv2DSpace {
             shape: [48, 48],
@@ -55,18 +62,6 @@
             axes: ['c', 0, 1, 'b'],
             },
         },
-        final_layer: !obj:pylearn2.models.mlp.MLP {
-        layers: [
-            !obj:pylearn2.models.mlp.Softmax {
-                 max_col_norm: 1.9365,
-                 layer_name: 'y',
-                 n_classes: *n_classes,
-                 sparse_init: 23,
-                 #irange: .005
-            }
-        ],
-        nvis: *last_ndim
-        }
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 1,
@@ -78,7 +73,8 @@
                         which_set: 'Val',
                         one_hot: 1,
                         preproc: ['smooth'],
-                        size: [48, 48]
+                        size: [48, 48],
+                        min_seq_length: 3,
                 },
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
@@ -108,5 +104,5 @@
         }
     ],
     save_path: "%(save_path)slast.pkl",
-    save_freq: 1
+    save_freq: 10
 }
