@@ -6,10 +6,12 @@ import numpy
 from pylearn2.utils import py_integer_types
 from pylearn2.utils import serial
 from pylearn2.config import yaml_parse
+from pylearn2.datasets import preprocessing
 import theano.tensor as T
 from theano import function
 import sys
-from emotiw.common.datasets.faces.afew2_facetubes import AFEW2FaceTubes
+#from emotiw.common.datasets.faces.afew2_facetubes import AFEW2FaceTubes
+from afew2 import AFEW2FaceTubes
 import ipdb
 
 def get_classifier(model):
@@ -31,23 +33,44 @@ def accuracy(predictions, target):
         mask[i, mx[i]] = 1.
     predictions = mask * predictions
     y_hat = numpy.argmax(predictions.sum(axis=0))
-    if y_hat != 3:
-        print y_hat, target
+
+    #max = predictions.max(axis=0)
+    #hapoo = numpy.log(numpy.exp(predictions-max[numpy.newaxis,:]).sum(axis=0))
+    #y_hat = numpy.argmax(hapoo)
+    print y_hat, target
     return int(y_hat != target)
 
 
-def get_data(which='raul'):
-    if which == 'raul':
-        data = AFEW2FaceTubes(which_set='valid', one_hot=True, preproc=['smooth'], size=[48,48])
-        # organize axis
-        data_axes = data.data_specs[0].components[0].axes
-        if 't' in data_axes:
-            data_axes = [axis for axis in data_axes if axis not in ['t']]
-        targets = numpy.argmax(data.targets, axis=1)
-        return data.features, data.targets, data_axes
-    elif which == 'samira':
-        data = serial.load("/data/lisa/data/faces/EmotiW/preproc/samira/KGL-AFEW/afew2_val.pkl")
-        return data['data_x'], data['data_y'], ('b', 0, 1, 'c')
+def get_stats(predictions):
+
+    stats=[]
+
+    #
+    stats.append(predictions.mean(axis=0))
+
+    #
+    max = predictions.max(axis=0)
+    stats.append(numpy.log(numpy.exp(predictions-max[numpy.newaxis,:]).sum(axis=0)))
+
+    #
+    mx = numpy.argmax(predictions, axis=1)
+    mask = numpy.zeros(predictions.shape)
+    for i in range(mask.shape[0]):
+        mask[i, mx[i]] = 1.
+    stats.append((mask * predictions).sum(axis=0))
+
+    return numpy.concatenate(stats)
+
+def get_data(which):
+    data = AFEW2FaceTubes(which_set='valid', one_hot=True, preproc=['smooth'], size=[48,48], source=which, prep='_prep')
+
+    # organize axis
+    data_axes = data.data_specs[0].components[0].axes
+    if 't' in data_axes:
+        data_axes = [axis for axis in data_axes if axis not in ['t']]
+
+    targets = numpy.argmax(data.targets, axis=1)
+    return data.features, targets, data_axes
 
 
 if __name__ == "__main__":
@@ -64,8 +87,9 @@ if __name__ == "__main__":
     features, targets, data_axes = get_data('samira')
 
     misclass = []
+    stats = []
     for feature, target in zip(features, targets):
-        feature = feature / 255.
+        #feature = feature / 255.
         feature = feature.astype('float32')
         if data_axes != model_axes:
             feature = feature.transpose(*[data_axes.index(axis) for axis in model_axes])
@@ -91,6 +115,7 @@ if __name__ == "__main__":
             predictions.append(classifier(feature)[:batch_size - modulo])
         predictions = numpy.concatenate(predictions, axis=0)
         misclass.append(accuracy(predictions, target))
+        #stats.append(get_stats(predictions))
 
-
-    print numpy.sum(misclass) / float(len(features))
+    error = numpy.sum(misclass) / float(len(features))
+    print error, 1-error

@@ -83,12 +83,42 @@ def crf():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def tfd():
+    state = DD()
+    with open('exp/tfd.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'afew'
+    state.learning_rate = 0.5
+    state.lr_de_fac = 0.001
+    state.h0_ch = 64
+    state.h1_ch = 64
+    state.h2_ch = 128
+    state.h3_units = 240
+    state.fold = 0
+    #state.save_path = './'
+    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/challenge/frame/")
+
+    ind = 0
+    TABLE_NAME = "challenge_tfd"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.5, 0.1, 1.]:
+        for dec in [0.01, 0.001]:
+            state.lr_de_fac = dec
+        state.learning_rate = lr
+        experiment(state, None)
+        #sql.insert_job(experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['frame', 'crf', 'seq3d'])
+    parser.add_argument('-t', '--task', choices = ['frame', 'crf', 'seq3d', 'tfd'])
     args = parser.parse_args()
 
     if args.task == 'frame':
@@ -97,6 +127,8 @@ if __name__ == "__main__":
         crf()
     elif args.task == 'seq3d':
         seq3d()
+    elif args.task == 'tfd':
+        tfd()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
