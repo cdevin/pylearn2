@@ -52,6 +52,9 @@ class AFEW2FaceTubes(DenseDesignMatrix):
                     _clip_ids.append(idx)
                     _targets.append(tgt)
 
+            import ipdb
+            ipdb.set_trace()
+
             features = []
             #self.clip_ids = []
             targets = []

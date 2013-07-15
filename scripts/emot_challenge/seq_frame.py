@@ -12,10 +12,7 @@ import sys
 from emotiw.common.datasets.faces.afew2_facetubes import AFEW2FaceTubes
 import ipdb
 
-
-
 def get_classifier(model):
-
 
     X = model.get_input_space().make_batch_theano()
     X.name = 'X'
@@ -25,36 +22,49 @@ def get_classifier(model):
 
     return function([X],y)
 
-
 def accuracy(predictions, target):
 
     mx = numpy.argmax(predictions, axis=1)
     mask = numpy.zeros(predictions.shape)
+
     for i in range(mask.shape[0]):
         mask[i, mx[i]] = 1.
     predictions = mask * predictions
     y_hat = numpy.argmax(predictions.sum(axis=0))
-    return int(y_hat != numpy.argmax(target))
+    if y_hat != 3:
+        print y_hat, target
+    return int(y_hat != target)
+
+
+def get_data(which='raul'):
+    if which == 'raul':
+        data = AFEW2FaceTubes(which_set='valid', one_hot=True, preproc=['smooth'], size=[48,48])
+        # organize axis
+        data_axes = data.data_specs[0].components[0].axes
+        if 't' in data_axes:
+            data_axes = [axis for axis in data_axes if axis not in ['t']]
+        targets = numpy.argmax(data.targets, axis=1)
+        return data.features, data.targets, data_axes
+    elif which == 'samira':
+        data = serial.load("/data/lisa/data/faces/EmotiW/preproc/samira/KGL-AFEW/afew2_val.pkl")
+        return data['data_x'], data['data_y'], ('b', 0, 1, 'c')
+
 
 if __name__ == "__main__":
 
-    data = AFEW2FaceTubes(which_set='valid', one_hot=True, preproc=['smooth'], size=[48,48])
     _, model_path = sys.argv
     model = serial.load(model_path)
     batch_size = model.batch_size
     classifier = get_classifier(model)
 
-    garbage = numpy.ones((1, 48, 48, 100)).astype('float32')
-    # organize axis
-    data_axes = data.data_specs[0].components[0].axes
-    if 't' in data_axes:
-        data_axes = [axis for axis in data_axes if axis not in ['t']]
     model_axes = model.input_space.axes
     if model_axes != ('c', 0, 1, 'b'):
         raise ValueError("Model axis is not supoorted")
 
+    features, targets, data_axes = get_data('samira')
+
     misclass = []
-    for feature, target in zip(data.features, data.targets):
+    for feature, target in zip(features, targets):
         feature = feature / 255.
         feature = feature.astype('float32')
         if data_axes != model_axes:
@@ -83,4 +93,4 @@ if __name__ == "__main__":
         misclass.append(accuracy(predictions, target))
 
 
-    print numpy.sum(misclass) / float(len(data.features))
+    print numpy.sum(misclass) / float(len(features))
