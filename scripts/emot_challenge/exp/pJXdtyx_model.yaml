@@ -1,9 +1,10 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:googleFaceDataset.GoogleDataset {
+    dataset: &train !obj:pylearn2.datasets.tfd.TFD {
         axes: ['c', 0, 1, 'b'],
-        shuffle: 1,
-        which_ds: 'kaggle',
+        which_set: 'train',
+        fold: 0,
         scale: 1,
+        one_hot: 1,
         preprocessor: !obj:pylearn2.datasets.preprocessing.Pipeline {
             items: [
                 !obj:pylearn2.datasets.preprocessing.GlobalContrastNormalization {},
@@ -16,12 +17,11 @@
         }
     },
     model: !obj:pylearn2.models.mlp.MLP {
-        batch_size: 128,
         layers: [
                  !obj:pylearn2.models.maxout.MaxoutConvC01B {
                      layer_name: 'h0',
                      pad: 0,
-                     num_channels: %(h0_ch)i,
+                     num_channels: 64,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -34,7 +34,7 @@
                  !obj:pylearn2.models.maxout.MaxoutConvC01B {
                      layer_name: 'h1',
                      pad: 3,
-                     num_channels: %(h1_ch)i,
+                     num_channels: 64,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -47,7 +47,7 @@
                  !obj:pylearn2.models.maxout.MaxoutConvC01B {
                      pad: 3,
                      layer_name: 'h2',
-                     num_channels: %(h2_ch)i,
+                     num_channels: 128,
                      num_pieces: 4,
                      kernel_shape: [5, 5],
                      pool_shape: [2, 2],
@@ -60,7 +60,7 @@
                  !obj:pylearn2.models.maxout.Maxout {
                     layer_name: 'h3',
                     irange: .005,
-                    num_units: %(h3_units)i,
+                    num_units: 240,
                     num_pieces: 5,
                     max_col_norm: 1.9
                  },
@@ -68,7 +68,8 @@
                      max_col_norm: 1.9365,
                      layer_name: 'y',
                      n_classes: 7,
-                     irange: .005
+                     #irange: .005
+                     sparse_init: 23,
                  }
                 ],
         input_space: !obj:pylearn2.space.Conv2DSpace {
@@ -78,13 +79,13 @@
         },
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        learning_rate: %(learning_rate)f,
+        learning_rate: 0.500000,
         init_momentum: .5,
         monitoring_dataset:
             {
                 'valid' : !obj:pylearn2.datasets.tfd.TFD {
                               axes: ['c', 0, 1, 'b'],
-                              which_set: 'test',
+                              which_set: 'valid',
                               fold: 0,
                               scale: 1,
                               one_hot: 1,
@@ -118,7 +119,7 @@
         },
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             save_path: "%(save_path)sbest.pkl"
+             save_path: "pJXdtyx_best.pkl"
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
@@ -128,7 +129,14 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: 250,
-            decay_factor: %(lr_de_fac)f
-        }
-    ]
+            decay_factor: 0.001000,
+        },
+        !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
+            channel_name: 'valid_y_misclass',
+            save_channel_names: ['valid_y_misclass'],
+        },
+
+    ],
+    save_freq: 10,
+    save_path: "pJXdtyx_last.pkl"
 }

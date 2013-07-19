@@ -15,6 +15,7 @@ def experiment(state, channel):
         numpy.random.shuffle(alphabet)
         state.save_path += ''.join(alphabet[:7]) + '_'
 
+    print "Saving results at: {}".format(state.save_path)
     # load and save yaml
     yaml_string = state.yaml_string % (state)
     with open(state.save_path + 'model.yaml', 'w') as fp:
