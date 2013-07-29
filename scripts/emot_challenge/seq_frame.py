@@ -93,6 +93,7 @@ def get_stats(predictions, target, scale = True):
     y_hat = numpy.argmax(predictions,axis=1)
     y =numpy.ones(y_hat.shape) * target
     counts = Counter(y_hat)
+    #print counts, target
     _stats = []
     for i in xrange(7):
         if i in counts.keys():
@@ -130,7 +131,7 @@ def get_data(which_set, which_source):
 def run_model(which_set, classifier, batch_size, model_axes):
 
 
-    features, targets, data_axes = get_data(which_set, 'samira')
+    features, targets, data_axes = get_data(which_set, 'samira_iso')
     misclass = []
     frame_misclass = []
     stats = []

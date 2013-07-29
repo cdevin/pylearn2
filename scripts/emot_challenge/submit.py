@@ -239,7 +239,7 @@ def combo():
     ind = 0
     TABLE_NAME = "challenge_google"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.5]:
+    for lr in [0.2]:
         for dec in [0.001]:
             state.lr_de_fac = dec
             state.learning_rate = lr

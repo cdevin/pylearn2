@@ -118,6 +118,10 @@ class AFEW2FaceTubes(FaceTubeDataset):
             path = "/data/lisa/data/faces/EmotiW/preproc/samira/KGL-AFEW/afew2_{}{}.pkl".format(which_set, prep)
             data = serial.load(path)
             return data['data_x'], data['clip_ids'], data['data_y']
+        elif source == 'samira_iso':
+            path = "/data/lisa/data/faces/EmotiW/preproc/samira/KGLIS-AFEWIS/afew2_{}.pkl".format(which_set)
+            data = serial.load(path)
+            return data['data_x'], data['clip_ids'], data['data_y']
         else:
             raise ValueError("Unknow source")
 
