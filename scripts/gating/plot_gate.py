@@ -6,6 +6,8 @@ from pylearn2.config import yaml_parse
 import sys
 import theano.tensor as T
 import matplotlib.pyplot as plt
+from pylearn2.format.target_format import OneHotFormatter
+from collections import Counter
 
 _, model_path = sys.argv
 
@@ -29,7 +31,10 @@ Xb.name = 'Xb'
 #yb.name = 'yb'
 
 
-gate_output = model.layers[0].gater.fprop(Xb)
+gater = model.layers[0].gater
+gate_output = gater.fprop(Xb)
+#gate_output = T.argmax(gate_output, axis=1)
+gate_output = OneHotFormatter(gater.layers[-1].n_classes).theano_expr(T.argmax(gate_output, axis=1))
 
 f = function([Xb],gate_output)
 
@@ -53,17 +58,32 @@ def accs():
 result = accs()
 
 
-def plot_hist(x, name, nbins = 100):
-    colors = ['r', 'b', 'g', 'c', 'y']
-    for i in range(x.shape[1]):
-        plt.hist(x[:,i], bins = nbins, color = colors[i])
-    plt.savefig("{}.png".format(name))
-    plt.clf()
+#def plot_hist(x, name, nbins = 100):
+    #colors = ['r', 'b', 'g', 'c', 'y']
+    #for i in range(x.shape[1]):
+        #plt.hist(x[:,i], bins = nbins, color = colors[i])
+    #plt.savefig("{}.png".format(name))
+    #plt.clf()
 
+def plot_hist(data, name):
+    x = numpy.arange(data.shape[1])
+    data_max = numpy.argmax(data, axis=1)
+    y = [len(data_max[data_max == item]) for item in x]
+    #import ipdb
+    #ipdb.set_trace()
+    print x, y
+    #plt.bar(x, y)
+    #plt.savefig("{}.png".format(name))
+    #plt.clf()
 
 
 test_y = numpy.argmax(test.y, axis=1)
 for i in range(test.y.shape[1]):
     plot_hist(result[numpy.where(test_y == i)], name = i)
 
+
+res_1d = numpy.argmax(result, axis=1)
+print Counter(list(res_1d))
+#import ipdb
+#ipdb.set_trace()
 #plot_hist(result)
