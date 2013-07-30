@@ -36,7 +36,12 @@ gate_output = gater.fprop(Xb)
 #gate_output = T.argmax(gate_output, axis=1)
 gate_output = OneHotFormatter(gater.layers[-1].n_classes).theano_expr(T.argmax(gate_output, axis=1))
 
-f = function([Xb],gate_output)
+
+gater2 = model.layers[1].gater
+gate_output2 = gater2.fprop(model.layers[0].fprop(Xb))
+gate_output2 = OneHotFormatter(gater2.layers[-1].n_classes).theano_expr(T.argmax(gate_output2, axis=1))
+
+f = function([Xb],[gate_output, gate_output2])
 
 
 # The averaging math assumes batches are all same size
@@ -46,16 +51,19 @@ def accs():
     assert isinstance(test.X.shape[0], (int, long))
     assert isinstance(batch_size, py_integer_types)
     rval = []
+    rval2 = []
     for i in xrange(test.X.shape[0]/batch_size):
         x_arg = test.X[i*batch_size:(i+1)*batch_size,:]
         if Xb.ndim > 2:
             x_arg = test.get_topological_view(x_arg)
-        rval.append(f(x_arg))
+        r1, r2 = f(x_arg)
+        rval.append(r1)
+        rval2.append(r2)
 
-    return numpy.concatenate(rval)
+    return numpy.concatenate(rval), numpy.concatenate(rval2)
 
 
-result = accs()
+result, result2 = accs()
 
 
 #def plot_hist(x, name, nbins = 100):
@@ -82,8 +90,13 @@ for i in range(test.y.shape[1]):
     plot_hist(result[numpy.where(test_y == i)], name = i)
 
 
+for i in range(test.y.shape[1]):
+    plot_hist(result2[numpy.where(test_y == i)], name = i)
+
 res_1d = numpy.argmax(result, axis=1)
 print Counter(list(res_1d))
-#import ipdb
-#ipdb.set_trace()
+res_1d = numpy.argmax(result2, axis=1)
+print Counter(list(res_1d))
+import ipdb
+ipdb.set_trace()
 #plot_hist(result)
