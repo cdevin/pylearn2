@@ -34,6 +34,8 @@ class MLP_GatedRectifier(Layer):
                  sparse_init = None,
                  sparse_stdev = 1.,
                  include_prob = 1.0,
+                 sparsity_type = 'kl',
+                 sparsity_ratio = 0.3,
                  init_bias = 0.,
                  W_lr_scale = None,
                  b_lr_scale = None,
@@ -404,12 +406,14 @@ class MLP_GatedRectifier(Layer):
 
         gate = self.gater.fprop(state_below)
         if self.selection_type == 'one_hot':
-            gate = OneHotFormatter(self.gater.layers[-1].n_classes, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1).astype('int8'))
+            gate = OneHotFormatter(self.gater.layers[-1].n_classes, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1))
         elif self.selection_type == 'stochastic':
             prob = self.theano_rng.multinomial(pvals = gate, dtype = theano.config.floatX)
             gate = prob * gate
         elif self.selection_type == 'softmax':
             gate = gate
+        elif self.selection_type == 'rec':
+            gate = T.where(gate > 0, 1., 0.)
         else:
             raise ValueError("Wrong gate selection type {}".format(self.selection_type))
 
@@ -428,12 +432,75 @@ class MLP_GatedRectifier(Layer):
     def cost_sparsity(self, state):
 
         z = self.gater.fprop(state)
-        rval = z.sum(axis=1).mean()
+        if self.sparsity_type == 'l1':
+            rval = z.sum(axis=1).mean()
+        elif self.sparsity_type == 'kl':
+            rval = self.sparsity_ratio * T.log(z) + (1. - self.sparsity_ratio) * T.log(1-z)
+            rval = rval.sum(axis=1).mean()
+        else:
+            raise ValueError("Unknown sparsity type: {}".format(sparsity_type))
         return rval
+
+
+#class NoisyReCLUGated(MLP_GatedRectifier):
+
+    #def fprop(self, state_below):
+
+        #self.input_space.validate(state_below)
+
+        #if self.requires_reformat:
+            #if not isinstance(state_below, tuple):
+                #for sb in get_debug_values(state_below):
+                    #if sb.shape[0] != self.dbm.batch_size:
+                        #raise ValueError("self.dbm.batch_size is %d but got shape of %d" % (self.dbm.batch_size, sb.shape[0]))
+                    #assert reduce(lambda x,y: x * y, sb.shape[1:]) == self.input_dim
+
+            #state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        #z = self.transformer.lmul(state_below) + self.b
+
+        #if not hasattr(self, 'randomize_pools'):
+            #self.randomize_pools = False
+
+        #if not hasattr(self, 'pool_stride'):
+            #self.pool_stride = self.pool_size
+
+        #if self.randomize_pools:
+            #z = T.dot(z, self.permute)
+
+        #if not hasattr(self, 'min_zero'):
+            #self.min_zero = False
+
+        #z = T.clip(z, 0., 1e30)
+        #p = None
+
+        #gate = self.gater.fprop(state_below)
+        #if self.selection_type == 'one_hot':
+            #gate = OneHotFormatter(self.gater.layers[-1].n_classes, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1).astype('int8'))
+        #elif self.selection_type == 'stochastic':
+            #prob = self.theano_rng.multinomial(pvals = gate, dtype = theano.config.floatX)
+            #gate = prob * gate
+        #elif self.selection_type == 'softmax':
+            #gate = gate
+        #else:
+            #raise ValueError("Wrong gate selection type {}".format(self.selection_type))
+
+        #last_start = self.detector_layer_dim  - self.pool_size
+        #for i in xrange(self.pool_size):
+            #cur = z[:,i:last_start+i+1:self.pool_stride] * gate[:, i].dimshuffle(0, 'x')
+            #if p is None:
+                #p = cur
+            #else:
+                #p = cur + p
+
+        #p.name = self.layer_name + '_p_'
+
+        #return p
+
 
 class Gated_MLP(MLP):
 
-    def cost_sparsity(self, data):
+    def cost_sparsity(self, data, *args, **kwargs):
         """
         Computes self.cost, but takes data=(X, Y) rather than Y_hat as an argument.
         This is just a wrapper around self.cost that computes Y_hat by
@@ -445,7 +512,7 @@ class Gated_MLP(MLP):
         state = X
         for layer in self.layers:
             if hasattr(layer, 'cost_sparsity'):
-                cost += layer.cost_sparsity(state)
+                cost += layer.cost_sparsity(state, *args, **kwargs)
             state = layer.fprop(state)
 
         return cost
