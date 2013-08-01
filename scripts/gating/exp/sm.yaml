@@ -15,7 +15,7 @@
                      max_col_norm: 1.9365,
                      selection_type: 'one_hot',
                      sparsity_type: 'kl',
-                     sparsity_ratio: 0.1,
+                     sparsity_ratio: %(sparsity_ratio_0)f,
                      gater: !obj:pylearn2.models.mlp.MLP {
                             layers: [
                                 !obj:pylearn2.models.mlp.RectifiedLinear {
@@ -48,7 +48,7 @@
                      max_col_norm: 1.9365,
                      selection_type: 'one_hot',
                      sparsity_type: 'kl',
-                     sparsity_ratio: 0.3,
+                     sparsity_ratio: %(sparsity_ratio_1)f,
                      gater: !obj:pylearn2.models.mlp.MLP {
                             layers: [
                                 !obj:pylearn2.models.mlp.RectifiedLinear {
@@ -84,7 +84,7 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 100,
-        learning_rate: .1,
+        learning_rate: %(learning_rate)f,
         init_momentum: .5,
         monitoring_dataset:
             {
@@ -125,7 +125,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+             save_path: "%(save_path)sbest.pkl"
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
@@ -135,9 +135,9 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: 250,
-            decay_factor: 0.01
+            decay_factor: %(decay_factor)f
         },
     ],
-    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_path: "%(save_path)slast.pkl",
     save_freq: 100
 }

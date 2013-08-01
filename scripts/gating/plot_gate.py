@@ -94,7 +94,7 @@ def plot_hist(data, labels, name):
         x = numpy.arange(col.shape[1])
         data_max = numpy.argmax(col, axis=1)
         y = [len(data_max[data_max == item]) for item in x]
-        print x, y
+        print y
         plt.bar(x, y, color=color_list[i])
         plt.xticks(x)
         plt.savefig("{}_{}.png".format(name, i))
