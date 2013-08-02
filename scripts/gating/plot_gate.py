@@ -45,12 +45,20 @@ Xb.name = 'Xb'
 gater = model.layers[0].gater
 gate_output = gater.fprop(Xb)
 #gate_output = T.argmax(gate_output, axis=1)
-gate_output = OneHotFormatter(gater.layers[-1].n_classes).theano_expr(T.argmax(gate_output, axis=1))
+if 'Sigmoid' in str(gater.layers[-1]):
+    n_gates = gater.layers[-1].dim
+else:
+    n_gates = gater.layers[-1].n_classes
+gate_output = OneHotFormatter(n_gates).theano_expr(T.argmax(gate_output, axis=1))
 
 
 gater2 = model.layers[1].gater
+if 'Sigmoid' in str(gater.layers[-1]):
+    n_gates2 = gater2.layers[-1].dim
+else:
+    n_gates2 = gater2.layers[-1].n_classes
 gate_output2 = gater2.fprop(model.layers[0].fprop(Xb))
-gate_output2 = OneHotFormatter(gater2.layers[-1].n_classes).theano_expr(T.argmax(gate_output2, axis=1))
+gate_output2 = OneHotFormatter(n_gates2).theano_expr(T.argmax(gate_output2, axis=1))
 
 f = function([Xb],[gate_output, gate_output2])
 

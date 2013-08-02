@@ -320,8 +320,8 @@ class MLP_GatedRectifier(Layer):
         row_norms = T.sqrt(sq_W.sum(axis=1))
         col_norms = T.sqrt(sq_W.sum(axis=0))
 
-        var = self.gater.layers[-1].W
-        var = T.argmax(var, axis=1).std().astype(theano.config.floatX)
+        #var = self.gater.layers[-1].W
+        #var = T.argmax(var, axis=1).std().astype(theano.config.floatX)
         return OrderedDict([
                             ('row_norms_min'  , row_norms.min()),
                             ('row_norms_mean' , row_norms.mean()),
@@ -329,7 +329,7 @@ class MLP_GatedRectifier(Layer):
                             ('col_norms_min'  , col_norms.min()),
                             ('col_norms_mean' , col_norms.mean()),
                             ('col_norms_max'  , col_norms.max()),
-                            ('softmax_weights_std', var),
+                            #('softmax_weights_std', var),
                             ])
 
 
@@ -407,6 +407,8 @@ class MLP_GatedRectifier(Layer):
         gate = self.gater.fprop(state_below)
         if self.selection_type == 'one_hot':
             gate = OneHotFormatter(self.gater.layers[-1].n_classes, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1))
+        if self.selection_type == 'one_hot_sigmoid':
+            gate = OneHotFormatter(self.gater.layers[-1].dim, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1))
         elif self.selection_type == 'stochastic':
             prob = self.theano_rng.multinomial(pvals = gate, dtype = theano.config.floatX)
             gate = prob * gate
@@ -435,11 +437,219 @@ class MLP_GatedRectifier(Layer):
         if self.sparsity_type == 'l1':
             rval = z.sum(axis=1).mean()
         elif self.sparsity_type == 'kl':
+
+
+            #assert hasattr(y_hat, 'owner')
+            #owner = y_hat.owner
+            #assert owner is not None
+            #op = owner.op
+            #if isinstance(op, Print):
+                #assert len(owner.inputs) == 1
+                #y_hat, = owner.inputs
+                #owner = y_hat.owner
+                #op = owner.op
+            #assert isinstance(op, T.nnet.Softmax)
+            #z, = owner.inputs
+            #assert z.ndim == 2
+
+            #z = z - z.max(axis=1).dimshuffle(0, 'x')
+            #log_z = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+            #log_1-z =
+            z = z.mean(axis=0)
             rval = self.sparsity_ratio * T.log(z) + (1. - self.sparsity_ratio) * T.log(1-z)
-            rval = rval.sum(axis=1).mean()
+            rval = rval.sum()
         else:
             raise ValueError("Unknown sparsity type: {}".format(sparsity_type))
+        return -rval
+
+
+class MLP_GatedRectifierConvC01B():
+
+    def set_input_space(self, space):
+        """ Note: this resets parameters! """
+
+        setup_detector_layer_c01b(layer=self,
+                input_space=space,
+                rng=self.mlp.rng,
+                irange=self.irange)
+
+        rng = self.mlp.rng
+
+        detector_shape = self.detector_space.shape
+
+
+    def get_params(self):
+        assert self.b.name is not None
+        W ,= self.transformer.get_params()
+        assert W.name is not None
+        rval = self.transformer.get_params()
+        assert not isinstance(rval, set)
+        rval = list(rval)
+        assert self.b not in rval
+        rval.append(self.b)
         return rval
+
+
+
+        def handle_pool_shape(idx):
+            if self.pool_shape[idx] < 1:
+                raise ValueError("bad pool shape: " + str(self.pool_shape))
+            if self.pool_shape[idx] > detector_shape[idx]:
+                if self.fix_pool_shape:
+                    assert detector_shape[idx] > 0
+                    self.pool_shape[idx] = detector_shape[idx]
+                else:
+                    raise ValueError("Pool shape exceeds detector layer shape on axis %d" % idx)
+
+        map(handle_pool_shape, [0, 1])
+
+        assert self.pool_shape[0] == self.pool_shape[1]
+        assert self.pool_stride[0] == self.pool_stride[1]
+        assert all(isinstance(elem, py_integer_types) for elem in self.pool_stride)
+        if self.pool_stride[0] > self.pool_shape[0]:
+            if self.fix_pool_stride:
+                warnings.warn("Fixing the pool stride")
+                ps = self.pool_shape[0]
+                assert isinstance(ps, py_integer_types)
+                self.pool_stride = [ps, ps]
+            else:
+                raise ValueError("Stride too big.")
+        assert all(isinstance(elem, py_integer_types) for elem in self.pool_stride)
+
+        dummy_detector = sharedX(self.detector_space.get_origin_batch(2)[0:16,:,:,:])
+
+        dummy_p = max_pool_c01b(c01b=dummy_detector, pool_shape=self.pool_shape,
+                                pool_stride=self.pool_stride,
+                                image_shape=self.detector_space.shape)
+        dummy_p = dummy_p.eval()
+        self.output_space = Conv2DSpace(shape=[dummy_p.shape[1], dummy_p.shape[2]],
+                                        num_channels = self.num_channels, axes = ('c', 0, 1, 'b') )
+
+        print 'Output space: ', self.output_space.shape
+
+
+    def fprop(self, state_below):
+        check_cuda(str(type(self)))
+
+        self.input_space.validate(state_below)
+
+        if not hasattr(self, 'input_normalization'):
+            self.input_normalization = None
+
+        if self.input_normalization:
+            state_below = self.input_normalization(state_below)
+
+        # Alex's code requires # input channels to be <= 3 or a multiple of 4
+        # so we add dummy channels if necessary
+        if not hasattr(self, 'dummy_channels'):
+            self.dummy_channels = 0
+        if self.dummy_channels > 0:
+            state_below = T.concatenate((state_below,
+                                         T.zeros_like(state_below[0:self.dummy_channels, :, :, :])),
+                                        axis=0)
+
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle(0, 'x', 'x', 'x')
+        else:
+            b = self.b.dimshuffle(0, 1, 2, 'x')
+
+
+        z = z + b
+        if self.layer_name is not None:
+            z.name = self.layer_name + '_z'
+
+        self.detector_space.validate(z)
+
+        assert self.detector_space.num_channels % 16 == 0
+
+        if self.output_space.num_channels % 16 == 0:
+            # alex's max pool op only works when the number of channels
+            # is divisible by 16. we can only do the cross-channel pooling
+            # first if the cross-channel pooling preserves that property
+            if self.num_pieces != 1:
+                s = None
+                for i in xrange(self.num_pieces):
+                    t = z[i::self.num_pieces,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+
+            if self.detector_normalization:
+                z = self.detector_normalization(z)
+
+            p = max_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+                              pool_stride=self.pool_stride,
+                              image_shape=self.detector_space.shape)
+        else:
+
+            if self.detector_normalization is not None:
+                raise NotImplementedError("We can't normalize the detector "
+                        "layer because the detector layer never exists as a "
+                        "stage of processing in this implementation.")
+            z = max_pool_c01b(c01b=z, pool_shape=self.pool_shape,
+                              pool_stride=self.pool_stride,
+                              image_shape=self.detector_space.shape)
+            if self.num_pieces != 1:
+                s = None
+                for i in xrange(self.num_pieces):
+                    t = z[i::self.num_pieces,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+            p = z
+
+
+        self.output_space.validate(p)
+
+        if hasattr(self, 'min_zero') and self.min_zero:
+            p = p * (p > 0.)
+
+        if not hasattr(self, 'output_normalization'):
+            self.output_normalization = None
+
+        if self.output_normalization:
+            p = self.output_normalization(p)
+
+        return p
+
+
+class Gated_MLP(MLP):
+
+    def cost_sparsity(self, data, *args, **kwargs):
+        """
+        Computes self.cost, but takes data=(X, Y) rather than Y_hat as an argument.
+        This is just a wrapper around self.cost that computes Y_hat by
+        calling Y_hat = self.fprop(X)
+        """
+        self.cost_sparsity_data_specs()[0].validate(data)
+        X, Y = data
+        cost = 0
+        state = X
+        for layer in self.layers:
+            if hasattr(layer, 'cost_sparsity'):
+                cost += layer.cost_sparsity(state, *args, **kwargs)
+            state = layer.fprop(state)
+
+        return cost
+
+    def cost_sparsity_data_specs(self):
+        """
+        Returns the data specs needed by cost_from_X.
+
+        This is useful if cost_from_X is used in a MethodCost.
+        """
+        space = CompositeSpace((self.get_input_space(),
+                                self.get_output_space()))
+        source = (self.get_input_source(), self.get_target_source())
+        return (space, source)
+
 
 
 #class NoisyReCLUGated(MLP_GatedRectifier):
@@ -497,34 +707,4 @@ class MLP_GatedRectifier(Layer):
 
         #return p
 
-
-class Gated_MLP(MLP):
-
-    def cost_sparsity(self, data, *args, **kwargs):
-        """
-        Computes self.cost, but takes data=(X, Y) rather than Y_hat as an argument.
-        This is just a wrapper around self.cost that computes Y_hat by
-        calling Y_hat = self.fprop(X)
-        """
-        self.cost_sparsity_data_specs()[0].validate(data)
-        X, Y = data
-        cost = 0
-        state = X
-        for layer in self.layers:
-            if hasattr(layer, 'cost_sparsity'):
-                cost += layer.cost_sparsity(state, *args, **kwargs)
-            state = layer.fprop(state)
-
-        return cost
-
-    def cost_sparsity_data_specs(self):
-        """
-        Returns the data specs needed by cost_from_X.
-
-        This is useful if cost_from_X is used in a MethodCost.
-        """
-        space = CompositeSpace((self.get_input_space(),
-                                self.get_output_space()))
-        source = (self.get_input_source(), self.get_target_source())
-        return (space, source)
 
