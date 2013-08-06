@@ -8,7 +8,7 @@ from pylearn2.utils.string_utils import preprocess
 
 DATA_PATH = get_data_path()
 
-def kl():
+def kl(submit = False):
     state = DD()
     with open('exp/kl.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
@@ -20,21 +20,29 @@ def kl():
     state.h1_pieces = 10
     state.sparsity_ratio_0 = 0.1
     state.sparsity_ratio_1 = 0.1
+    state.sparsity_momentum_0 = 0.9
+    state.sparsity_momentum_1 = 0.9
+    state.sparsity_penalty = 0.1
     state.learning_rate = 0.1
-    state.decay_factor = 0.01
-    #state.save_path = './'
-    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/rec/")
+    state.decay_factor = 0.001
+    state.save_path = './'
+    #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/sig/")
 
     ind = 0
-    TABLE_NAME = "gate_kl"
+    TABLE_NAME = "gate_kl_sm"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [0.1]:
-        for dec in [0.001]:
-            state.learning_rate = lr
-            state.decay_factor = dec
-            experiment(state, None)
-            #sql.insert_job(experiment, flatten(state), db)
-            ind += 1
+    for lr in [0.1, 0.01, 0.5]:
+        for s0, s1 in zip ([0.1, 0.01], [0.1, 0.01]):
+            for sp in [0.1, 0.01, 0.001, 1., 10]:
+                state.learning_rate = lr
+                state.sparsity_ratio_0 = s0
+                state.sparsity_ratio_1 = s1
+                state.sparsity_penalty = sp
+                if submit:
+                    sql.insert_job(experiment, flatten(state), db)
+                else:
+                    experiment(state, None)
+                ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
@@ -53,20 +61,22 @@ def kl_sig(submit = False):
     state.sparsity_ratio_1 = 0.1
     state.sparsity_momentum_0 = 0.9
     state.sparsity_momentum_1 = 0.9
+    state.sparsity_penalty = 0.1
     state.learning_rate = 0.1
     state.decay_factor = 0.001
     state.save_path = './'
     #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/sig/")
 
     ind = 0
-    TABLE_NAME = "gate_kl_sig2"
+    TABLE_NAME = "gate_kl_sig3"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [0.1, 0.01, 0.5]:
-        for s0 in [0.1, 0.01, 0.001]:
-            for s1 in [0.1, 0.01, 0.001]:
+        for s0, s1 in zip ([0.1, 0.01], [0.1, 0.01]):
+            for sp in [0.1, 0.01, 0.001, 1., 10]:
                 state.learning_rate = lr
                 state.sparsity_ratio_0 = s0
                 state.sparsity_ratio_1 = s1
+                state.sparsity_penalty = sp
                 if submit:
                     sql.insert_job(experiment, flatten(state), db)
                 else:
@@ -112,7 +122,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.task == 'kl':
-        kl()
+        kl(args.submit)
     elif args.task == 'kl_sig':
         kl_sig(args.submit)
     elif args.task == 'normal':

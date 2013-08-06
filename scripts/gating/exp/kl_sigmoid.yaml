@@ -108,7 +108,7 @@
                     input_include_probs: { 'h0' : .8 },
                     input_scales: { 'h0': 1. }
                 },
-                [0.1, !obj:pylearn2.costs.cost.MethodCost {
+                [%(sparsity_penalty)f, !obj:pylearn2.costs.cost.MethodCost {
                     method: 'cost_sparsity'
                 }],
             ]
