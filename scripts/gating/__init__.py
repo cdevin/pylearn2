@@ -36,6 +36,7 @@ class MLP_GatedRectifier(Layer):
                  include_prob = 1.0,
                  sparsity_type = 'kl',
                  sparsity_ratio = 0.3,
+                 sparsity_momentum = 0.9,
                  init_bias = 0.,
                  W_lr_scale = None,
                  b_lr_scale = None,
@@ -407,7 +408,7 @@ class MLP_GatedRectifier(Layer):
         gate = self.gater.fprop(state_below)
         if self.selection_type == 'one_hot':
             gate = OneHotFormatter(self.gater.layers[-1].n_classes, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1))
-        if self.selection_type == 'one_hot_sigmoid':
+        elif self.selection_type == 'one_hot_sigmoid':
             gate = OneHotFormatter(self.gater.layers[-1].dim, dtype = gate.dtype).theano_expr(T.argmax(gate, axis=1))
         elif self.selection_type == 'stochastic':
             prob = self.theano_rng.multinomial(pvals = gate, dtype = theano.config.floatX)
@@ -455,9 +456,11 @@ class MLP_GatedRectifier(Layer):
             #z = z - z.max(axis=1).dimshuffle(0, 'x')
             #log_z = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
             #log_1-z =
-            z = z.mean(axis=0)
+            z_old = z.mean(axis=0)
+            z = self.sparsity_momentum * z_old + (1. - self.sparsity_momentum) * z
+
             rval = self.sparsity_ratio * T.log(z) + (1. - self.sparsity_ratio) * T.log(1-z)
-            rval = rval.sum()
+            rval = rval.sum(axis=1).mean()
         else:
             raise ValueError("Unknown sparsity type: {}".format(sparsity_type))
         return -rval

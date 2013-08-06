@@ -39,7 +39,7 @@ def kl():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
-def kl_sig():
+def kl_sig(submit = False):
     state = DD()
     with open('exp/kl_sigmoid.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
@@ -51,6 +51,8 @@ def kl_sig():
     state.h1_pieces = 10
     state.sparsity_ratio_0 = 0.1
     state.sparsity_ratio_1 = 0.1
+    state.sparsity_momentum_0 = 0.9
+    state.sparsity_momentum_1 = 0.9
     state.learning_rate = 0.1
     state.decay_factor = 0.001
     state.save_path = './'
@@ -65,8 +67,10 @@ def kl_sig():
                 state.learning_rate = lr
                 state.sparsity_ratio_0 = s0
                 state.sparsity_ratio_1 = s1
-                #experiment(state, None)
-                sql.insert_job(experiment, flatten(state), db)
+                if submit:
+                    sql.insert_job(experiment, flatten(state), db)
+                else:
+                    experiment(state, None)
                 ind += 1
 
     db.createView(TABLE_NAME + '_view')
@@ -102,12 +106,13 @@ if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
     parser.add_argument('-t', '--task', choices = ['kl', 'kl_sig', 'normal'])
+    parser.add_argument('-s', '--submit', default = False, action='store_true')
     args = parser.parse_args()
 
     if args.task == 'kl':
         kl()
     elif args.task == 'kl_sig':
-        kl_sig()
+        kl_sig(args.submit)
     elif args.task == 'normal':
         normal()
     else:
