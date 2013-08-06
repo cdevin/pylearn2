@@ -67,7 +67,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             save_path: "%(save_path)slast.pkl"
+             save_path: "%(save_path)sbest.pkl"
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
