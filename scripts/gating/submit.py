@@ -72,18 +72,44 @@ def kl_sig():
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def normal():
+    state  = DD()
+    with open('exp/mnist.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'mnist'
+    state.learning_rate = 0.1
+    state.decay_factor = 0.001
+    state.save_path = './'
+    state.min_zero = 1
+    #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/sig/")
+
+    ind = 0
+    TABLE_NAME = "gate_normal"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.1, 0.01, 0.5, 0.05]:
+        state.learning_rate = lr
+        #experiment(state, None)
+        sql.insert_job(experiment, flatten(state), db)
+        ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
+
 
 
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['kl', 'kl_sig'])
+    parser.add_argument('-t', '--task', choices = ['kl', 'kl_sig', 'normal'])
     args = parser.parse_args()
 
     if args.task == 'kl':
         kl()
     elif args.task == 'kl_sig':
         kl_sig()
+    elif args.task == 'normal':
+        normal()
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
