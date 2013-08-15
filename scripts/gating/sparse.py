@@ -3,10 +3,12 @@ import numpy as np
 import theano
 from theano import tensor as T
 from theano.sandbox.rng_mrg import MRG_RandomStreams
+from theano.gof.op import get_debug_values
 from pylearn2.linear.matrixmul import MatrixMul
-from pylearn2.models.mlp import Layer, MLP
+from pylearn2.models.mlp import Layer, MLP, Softmax
 from pylearn2.space import Conv2DSpace
 from pylearn2.space import VectorSpace
+from pylearn2.space import Space
 from pylearn2.space import CompositeSpace
 from pylearn2.format.target_format import OneHotFormatter
 from pylearn2.utils import sharedX
@@ -25,11 +27,9 @@ class MLP_GatedRectifier(Layer):
     def __init__(self,
                  layer_name,
                  dim,
-                 num_pieces,
                  gater = None,
                  pool_stride = None,
                  randomize_pools = False,
-                 selection_type = 'one_hot',
                  irange = None,
                  sparse_init = None,
                  sparse_stdev = 1.,
@@ -81,11 +81,6 @@ class MLP_GatedRectifier(Layer):
                     rectified linear units.
         """
 
-        pool_size = num_pieces
-
-        if pool_stride is None:
-            pool_stride = pool_size
-
         self.__dict__.update(locals())
         del self.self
 
@@ -129,7 +124,7 @@ class MLP_GatedRectifier(Layer):
             self.input_dim = space.get_total_dimension()
             self.desired_space = VectorSpace(self.input_dim)
 
-        self.output_space = VectorSpace(self.dim)
+        self.output_space = VectorSpace(self.dim, sparse = True)
 
         rng = self.mlp.rng
         if self.irange is not None:
@@ -157,14 +152,7 @@ class MLP_GatedRectifier(Layer):
 
         W = sharedX(W)
         W.name = self.layer_name + '_W'
-
-        self.transformer = MatrixMul(W)
-
-        W ,= self.transformer.get_params()
-        assert W.name is not None
-
-        if not hasattr(self, 'randomize_pools'):
-            self.randomize_pools = False
+        self.W = W
 
         if self.mask_weights is not None:
             expected_shape =  (self.input_dim, self.dim)
@@ -197,28 +185,9 @@ class MLP_GatedRectifier(Layer):
 
     def get_params(self):
         assert self.b.name is not None
-        W ,= self.transformer.get_params()
-        assert W.name is not None
-        rval = self.transformer.get_params()
-        assert not isinstance(rval, set)
-        rval = list(rval)
-        assert self.b not in rval
-        rval.append(self.b)
+        assert self.W.name is not None
+        rval = [self.W, self.b]
         return rval + self.gater.get_params()
-
-    def get_weight_decay(self, coeff):
-        if isinstance(coeff, str):
-            coeff = float(coeff)
-        assert isinstance(coeff, float) or hasattr(coeff, 'dtype')
-        W ,= self.transformer.get_params()
-        return coeff * T.sqr(W).sum()
-
-    def get_l1_weight_decay(self, coeff):
-        if isinstance(coeff, str):
-            coeff = float(coeff)
-        assert isinstance(coeff, float) or hasattr(coeff, 'dtype')
-        W ,= self.transformer.get_params()
-        return coeff * T.abs(W).sum()
 
     def get_weights(self):
 
@@ -238,26 +207,14 @@ class MLP_GatedRectifier(Layer):
             # in design space. We got the data in topo space
             # and we don't have access to the dataset
             raise NotImplementedError()
-        W ,= self.transformer.get_params()
-        W = W.get_value()
-
-        if not hasattr(self, 'randomize_pools'):
-            self.randomize_pools = False
-
-        if self.randomize_pools:
-            warnings.warn("randomize_pools makes get_weights multiply by the permutation matrix. "
-                    "If you call set_weights(W) and then call get_weights(), the return value will "
-                    "WP not W.")
-            P = self.permute.get_value()
-            return np.dot(W,P)
+        W = self.W.get_value()
 
         print W.shape
 
         return W
 
     def set_weights(self, weights):
-        W, = self.transformer.get_params()
-        W.set_value(weights)
+        self.W.set_value(weights)
 
     def set_biases(self, biases):
         self.b.set_value(biases)
@@ -278,7 +235,7 @@ class MLP_GatedRectifier(Layer):
 
     def get_monitoring_channels(self):
 
-        W ,= self.transformer.get_params()
+        W = self.W
 
         assert W.ndim == 2
 
@@ -300,46 +257,43 @@ class MLP_GatedRectifier(Layer):
                             ])
 
 
-    def get_monitoring_channels_from_state(self, state):
+    #def get_monitoring_channels_from_state(self, state):
 
-        P = state
+        #P = state
 
-        rval = OrderedDict()
+        #rval = OrderedDict()
 
-        if self.pool_size == 1:
-            vars_and_prefixes = [ (P,'') ]
-        else:
-            vars_and_prefixes = [ (P, 'p_') ]
+        #vars_and_prefixes = [ (P,'') ]
 
-        for var, prefix in vars_and_prefixes:
-            v_max = var.max(axis=0)
-            v_min = var.min(axis=0)
-            v_mean = var.mean(axis=0)
-            v_range = v_max - v_min
+        #for var, prefix in vars_and_prefixes:
+            #v_max = var.max(axis=0)
+            #v_min = var.min(axis=0)
+            #v_mean = var.mean(axis=0)
+            #v_range = v_max - v_min
 
-            # max_x.mean_u is "the mean over *u*nits of the max over e*x*amples"
-            # The x and u are included in the name because otherwise its hard
-            # to remember which axis is which when reading the monitor
-            # I use inner.outer rather than outer_of_inner or something like that
-            # because I want mean_x.* to appear next to each other in the alphabetical
-            # list, as these are commonly plotted together
-            for key, val in [
-                             ('max_x.max_u', v_max.max()),
-                             ('max_x.mean_u', v_max.mean()),
-                             ('max_x.min_u', v_max.min()),
-                             ('min_x.max_u', v_min.max()),
-                             ('min_x.mean_u', v_min.mean()),
-                             ('min_x.min_u', v_min.min()),
-                             ('range_x.max_u', v_range.max()),
-                             ('range_x.mean_u', v_range.mean()),
-                             ('range_x.min_u', v_range.min()),
-                             ('mean_x.max_u', v_mean.max()),
-                             ('mean_x.mean_u', v_mean.mean()),
-                             ('mean_x.min_u', v_mean.min())
-                             ]:
-                rval[prefix+key] = val
+            ## max_x.mean_u is "the mean over *u*nits of the max over e*x*amples"
+            ## The x and u are included in the name because otherwise its hard
+            ## to remember which axis is which when reading the monitor
+            ## I use inner.outer rather than outer_of_inner or something like that
+            ## because I want mean_x.* to appear next to each other in the alphabetical
+            ## list, as these are commonly plotted together
+            #for key, val in [
+                             #('max_x.max_u', v_max.max()),
+                             #('max_x.mean_u', v_max.mean()),
+                             #('max_x.min_u', v_max.min()),
+                             #('min_x.max_u', v_min.max()),
+                             #('min_x.mean_u', v_min.mean()),
+                             #('min_x.min_u', v_min.min()),
+                             #('range_x.max_u', v_range.max()),
+                             #('range_x.mean_u', v_range.mean()),
+                             #('range_x.min_u', v_range.min()),
+                             #('mean_x.max_u', v_mean.max()),
+                             #('mean_x.mean_u', v_mean.mean()),
+                             #('mean_x.min_u', v_mean.min())
+                             #]:
+                #rval[prefix+key] = val
 
-        return rval
+        #return rval
 
     def fprop(self, state_below):
 
@@ -354,8 +308,6 @@ class MLP_GatedRectifier(Layer):
 
             state_below = self.input_space.format_as(state_below, self.desired_space)
 
-        z = self.transformer.lmul(state_below) + self.b
-
 
         if not hasattr(self, 'min_zero'):
             self.min_zero = False
@@ -364,15 +316,119 @@ class MLP_GatedRectifier(Layer):
         #p = None
 
         gate = self.gater.fprop(state_below)
-
-        gate = csr_from_dense(gate)
-        z = theano.sparse.basic.SamplingDot(gate, state_below, self.weight)
-        b = theano.sparse.basic.mul(gate, self.b)
-        b = csr_from_dense(b)
-        z = theano.sparse.basic.AddSD(z, b)
+        gate = theano.sparse.csr_from_dense(gate)
+        #z = theano.sparse.basic.sampling_dot(state_below, self.W.T, gate)
+        #b = theano.sparse.basic.mul_s_v(gate, self.b)
+        #z = theano.sparse.basic.add_s_s(z, b)
+        z = T.dot(state_below, self.W.T) + self.b
+        z = theano.sparse.mul_s_d(gate, z)
         z = theano.sparse.basic.structured_sigmoid(z)
         z.name = self.layer_name + '_z_'
 
 
         return z
 
+    def cost_sparsity(self, state):
+
+        z = self.gater.fprop(state)
+        if self.sparsity_type == 'l1':
+            rval = z.sum(axis=1).mean()
+        elif self.sparsity_type == 'kl':
+            z_old = z.mean(axis=0)
+            z = self.sparsity_momentum * z_old + (1. - self.sparsity_momentum) * z
+            rval = self.sparsity_ratio * T.log(z) + (1. - self.sparsity_ratio) * T.log(1-z)
+            rval = rval.sum(axis=1).mean()
+        else:
+            raise ValueError("Unknown sparsity type: {}".format(sparsity_type))
+        return -rval
+
+
+class SparseSoftmax(Softmax):
+
+    def set_input_space(self, space):
+        self.input_space = space
+
+        if not isinstance(space, Space):
+            raise TypeError("Expected Space, got "+
+                    str(space)+" of type "+str(type(space)))
+
+        self.input_dim = space.get_total_dimension()
+        self.needs_reformat = not isinstance(space, VectorSpace)
+
+        if self.no_affine:
+            desired_dim = self.n_classes
+            assert self.input_dim == desired_dim
+        else:
+            desired_dim = self.input_dim
+        self.desired_space = VectorSpace(desired_dim, sparse = True)
+
+        if not self.needs_reformat:
+            assert self.desired_space == self.input_space
+
+        rng = self.mlp.rng
+
+        if self.no_affine:
+            self._params = []
+        else:
+            if self.irange is not None:
+                assert self.istdev is None
+                assert self.sparse_init is None
+                W = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
+            elif self.istdev is not None:
+                assert self.sparse_init is None
+                W = rng.randn(self.input_dim, self.n_classes) * self.istdev
+            else:
+                assert self.sparse_init is not None
+                W = np.zeros((self.input_dim, self.n_classes))
+                for i in xrange(self.n_classes):
+                    for j in xrange(self.sparse_init):
+                        idx = rng.randint(0, self.input_dim)
+                        while W[idx, i] != 0.:
+                            idx = rng.randint(0, self.input_dim)
+                        W[idx, i] = rng.randn()
+
+            self.W = sharedX(W,  'softmax_W' )
+
+            self._params = [ self.b, self.W ]
+
+    def fprop(self, state_below):
+
+        #import ipdb
+        #ipdb.set_trace()
+        self.input_space.validate(state_below)
+
+        if self.needs_reformat:
+            state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        for value in get_debug_values(state_below):
+            if self.mlp.batch_size is not None and value.shape[0] != self.mlp.batch_size:
+                raise ValueError("state_below should have batch size "+str(self.dbm.batch_size)+" but has "+str(value.shape[0]))
+
+        self.desired_space.validate(state_below)
+        assert state_below.ndim == 2
+
+        if not hasattr(self, 'no_affine'):
+            self.no_affine = False
+
+        if self.no_affine:
+            Z = state_below
+        else:
+            assert self.W.ndim == 2
+            b = self.b
+
+            #Z = T.dot(state_below, self.W) + b
+            Z = theano.sparse.basic.structured_dot(state_below, self.W) + b
+
+        rval = T.nnet.softmax(Z)
+
+        for value in get_debug_values(rval):
+            if self.mlp.batch_size is not None:
+                assert value.shape[0] == self.mlp.batch_size
+
+        return rval
+
+    def get_monitoring_channels(self):
+        return OrderedDict([])
+
+    def get_monitoring_channels_from_state(self, state, target=None):
+        return OrderedDict([])

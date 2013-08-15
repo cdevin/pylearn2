@@ -135,7 +135,7 @@ def stochastic(submit = False):
     #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/sig/")
 
     ind = 0
-    TABLE_NAME = "gate_kl_sm"
+    TABLE_NAME = "sparse"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [0.1]:
         for s0, s1 in zip ([0.1], [0.1]):
@@ -153,11 +153,44 @@ def stochastic(submit = False):
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
 
+def sparse(submit = False):
+    state = DD()
+    with open('exp/sparse.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'mnist'
+    state.h0_dim = 1000
+    state.sparsity_ratio_0 = 0.1
+    state.sparsity_momentum_0 = 0.9
+    state.sparsity_penalty = 0.1
+    state.learning_rate = 0.1
+    state.decay_factor = 0.001
+    #state.save_path = './'
+    state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/gating/sparse/")
+
+    ind = 0
+    TABLE_NAME = "gate_kl_sig3"
+    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+    for lr in [0.1, 0.01, 0.5]:
+        for s0, s1 in zip ([0.1, 0.01], [0.1, 0.01]):
+            for sp in [0.1, 0.01, 0.001, 1., 10]:
+                state.learning_rate = lr
+                state.sparsity_ratio_0 = s0
+                state.sparsity_ratio_1 = s1
+                state.sparsity_penalty = sp
+                if submit:
+                    sql.insert_job(experiment, flatten(state), db)
+                else:
+                    experiment(state, None)
+                ind += 1
+
+    db.createView(TABLE_NAME + '_view')
+    print "{} jobs submitted".format(ind)
 
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['softmax', 'kl_sig', 'normal', 'stochastic'])
+    parser.add_argument('-t', '--task', choices = ['softmax', 'kl_sig', 'normal', 'stochastic', 'sparse'])
     parser.add_argument('-s', '--submit', default = False, action='store_true')
     args = parser.parse_args()
 
@@ -169,6 +202,8 @@ if __name__ == "__main__":
         normal(args.submit)
     elif args.task == 'stochastic':
         stochastic(args.submit)
+    elif args.task == 'sparse':
+        sparse(args.submit)
     else:
         raise ValueError("Wrong task optipns {}".fromat(args.task))
 
