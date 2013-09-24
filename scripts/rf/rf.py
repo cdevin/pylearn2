@@ -17,7 +17,7 @@ def get_data(which_set = 'train'):
 
 def rf_classify(train_x, train_y, test_x, test_y):
 
-    rf = RandomForestClassifier(n_estimators=10, n_jobs = 6)
+    rf = RandomForestClassifier(n_estimators=100, n_jobs = 6)
     rf.fit(train_x, train_y)
 
     y_hat = rf.predict(test_x)
@@ -62,7 +62,7 @@ def test_classic():
 def test_feature():
 
     train_x, train_y = get_data('train')
-    rf = RandomForestClassifier(n_estimators=10, n_jobs = 6)
+    rf = RandomForestClassifier(n_estimators=100, n_jobs = 6)
     rf.fit(train_x, train_y)
 
     test_x, test_y = get_data('test')
@@ -79,7 +79,7 @@ def test_feature():
     test_feats = np.array(test_feats)
 
     # 0.9489
-    return (train_x, train_y, test_x, test_y)
+    return (train_feats, train_y, test_feats, test_y)
 
 def svm(train_x, train_y, test_x, test_y, C=100):
     # train svm
@@ -92,9 +92,16 @@ def svm(train_x, train_y, test_x, test_y, C=100):
 
 if __name__ == "__main__":
     feats = test_feature()
-    print rf_classify(*feats)
-    print svm(*feats)
-    print svm(*feats, C=10000)
+
+    train_x, train_y, test_x, test_y = feats
+    np.save('data/train_x.npy', train_x)
+    np.save('data/train_y.npy', train_y)
+    np.save('data/test_x.npy', test_x)
+    np.save('data/test_y.npy', test_y)
+
+    print rf_classify(*feats) # 0.9705
+    print svm(*feats) # 0.9178
+    print svm(*feats, C=10000) #0.9184
     # svm rbf: 0.875
     # linear svc, c=100: 0.9182
     # linear svc, c=10000: 0.9172
