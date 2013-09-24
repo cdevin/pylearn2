@@ -1,0 +1,63 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.scripts.icml_2013_wrepl.black_box.black_box_dataset.BlackBoxDataset {
+        which_set: 'extra',
+        preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
+        fit_preprocessor: 1,
+        fit_test_preprocessor: 1,
+    },
+    model: !obj:pylearn2.models.rbm.GaussianBinaryRBM {
+        nvis : 1875,
+        nhid : 5000,
+        irange : 0.05,
+        energy_function_class : !obj:pylearn2.energy_functions.rbm_energy.grbm_type_1 {},
+        #energy_function_class : !obj:pylearn2.energy_functions.rbm_energy.GRBM_EnergyFunction {},
+        learn_sigma : True,
+        init_bias_hid : -2.,
+        mean_vis : True,
+        sigma_lr_scale : 1e-3
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate : 2e-1,
+        init_momentum: .5,
+        batch_size : 100,
+        monitoring_dataset: !obj:pylearn2.scripts.icml_2013_wrepl.black_box.black_box_dataset.BlackBoxDataset {
+            which_set: 'train',
+            start: 900,
+            stop: 1000,
+            preprocessor: !obj:pylearn2.datasets.preprocessing.Standardize {},
+            fit_preprocessor: 1,
+            fit_preprocessor: 1,
+        },
+        cost : !obj:pylearn2.costs.ebm_estimation.SMD {
+            corruptor : !obj:pylearn2.corruption.GaussianCorruptor {
+                    stdev : 0.3
+            },
+        },
+        #cost: !obj:pylearn2.costs.dbm.PCD {
+            #num_chains: 100,
+            #num_gibbs_steps: 5,
+        #},
+        #},
+        termination_criterion : !obj:pylearn2.termination_criteria.MonitorBased {
+            prop_decrease : 0.01,
+            N : 100,
+        },
+        },
+    extensions : [
+        #!obj:pylearn2.training_algorithms.sgd.MonitorBasedLRAdjuster {}
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 150,
+            decay_factor: 0.01
+        },
+
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+                final_momentum: .8,
+                start: 5,
+                saturate: 100
+        },
+    ],
+    save_freq : 10
+}
+
+

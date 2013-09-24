@@ -1,0 +1,4 @@
+!obj:pylearn2.datasets.svhn.SVHN {
+    #which_set: 'splitted_train',
+    which_set: 'test',
+    path: '/data/lisatmp/mirzamom/data/SVHN/channel/'}

@@ -2,6 +2,9 @@
 *.pyc
 *.pkl
 *.swp
+*.npy
+*.png
+*.csv
 *egg-info*
 build/
 dist/
