@@ -45,9 +45,45 @@ if cuda.cuda_available:
     from pylearn2.sandbox.cuda_convnet.pool import max_pool_c01b
 from pylearn2.linear import local_c01b
 from pylearn2.sandbox.cuda_convnet import check_cuda
+from pylearn2.models.maxout import Maxout
 
 
 class Maxout2(Maxout):
+
+    def set_input_space(self, space):
+
+        super(Maxout2, self).set_input_space(space)
+        self.output_space = (VectorSpace(self.pool_layer_dim / 2), VectorSpace((self.pool_layer_dim -1)/ 2))
+
+        rng = self.mlp.rng
+        if self.irange is not None:
+            assert self.sparse_init is None
+            W = rng.uniform(-self.irange,
+                            self.irange,
+                            (self.input_dim, self.detector_layer_dim)) * \
+                (rng.uniform(0.,1., (self.input_dim, self.detector_layer_dim))
+                 < self.include_prob)
+        else:
+            assert self.sparse_init is not None
+            W = np.zeros((self.input_dim, self.detector_layer_dim))
+            def mask_rejects(idx, i):
+                if self.mask_weights is None:
+                    return False
+                return self.mask_weights[idx, i] == 0.
+            for i in xrange(self.detector_layer_dim):
+                assert self.sparse_init <= self.input_dim
+                for j in xrange(self.sparse_init):
+                    idx = rng.randint(0, self.input_dim)
+                    while W[idx, i] != 0 or mask_rejects(idx, i):
+                        idx = rng.randint(0, self.input_dim)
+                    W[idx, i] = rng.randn()
+            W *= self.sparse_stdev
+
+        W = sharedX(W)
+        W.name = self.layer_name + '_W'
+
+        self.transformer = MatrixMul(W)
+
 
     def fprop(self, state_below):
 

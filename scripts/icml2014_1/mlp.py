@@ -37,6 +37,7 @@ from pylearn2.utils import py_integer_types
 from pylearn2.utils import safe_union
 from pylearn2.utils import safe_zip
 from pylearn2.utils import sharedX
+from pylearn2.models.mlp import Layer
 
 warnings.warn("MLP changing the recursion limit.")
 # We need this to be high enough that the big theano graphs we make
@@ -105,16 +106,17 @@ class MLP(Layer):
         self.setup_rng()
 
         assert isinstance(layers, list)
-        assert all(isinstance(layer, Layer) for layer in layers)
+        assert all(isinstance(layer, Layer) for layer in layers[:-2])
+        assert isinstance(layers[-1], list)
         assert len(layers) >= 1
         self.layer_names = set()
         for layer in layers:
-            if isinstance(layer, tuple):
+            if isinstance(layer, list):
                 for item in layer:
-                    assert layer.get_mlp() is None
-                    assert layer.layer_name not in self.layer_names
-                    layer.set_mlp(self)
-                    self.layer_names.add(layer.layer_name)
+                    assert item.get_mlp() is None
+                    assert item.layer_name not in self.layer_names
+                    item.set_mlp(self)
+                    self.layer_names.add(item.layer_name)
             else:
                 assert layer.get_mlp() is None
                 assert layer.layer_name not in self.layer_names
@@ -148,6 +150,8 @@ class MLP(Layer):
         return Default()
 
     def get_output_space(self):
+        rval = []
+        for item
         return self.layers[-1].get_output_space()
 
     def _update_layer_input_spaces(self):
@@ -157,8 +161,12 @@ class MLP(Layer):
         """
         layers = self.layers
         layers[0].set_input_space(self.input_space)
-        for i in xrange(1,len(layers)):
+        for i in xrange(1,len(layers)-1):
             layers[i].set_input_space(layers[i-1].get_output_space())
+
+        maxout2_outputspace = layers[-2].get_output_space()
+        for layer, output_space in zip(layers[-1], maxout2_outputspace):
+            layer.set_input_space(output_space)
 
     def add_layers(self, layers):
         """
@@ -187,7 +195,8 @@ class MLP(Layer):
         state = X
         rval = OrderedDict()
 
-        for layer in self.layers:
+        # TODO FIXME
+        for layer in self.layers[:-2]:
             ch = layer.get_monitoring_channels()
             for key in ch:
                 rval[layer.layer_name+'_'+key] = ch[key]
@@ -217,7 +226,7 @@ class MLP(Layer):
     def get_params(self):
 
         rval = []
-        for layer in self.layers:
+        for layer in self.layers[:-2]:
             for param in layer.get_params():
                 if param.name is None:
                     print type(layer)
@@ -226,6 +235,16 @@ class MLP(Layer):
             for param in layer_params:
                 if param not in rval:
                     rval.append(param)
+        for layer in self.layers[-1]:
+            for param in layer.get_params():
+                if param.name is None:
+                    print type(layer)
+            layer_params = layer.get_params()
+            assert not isinstance(layer_params, set)
+            for param in layer_params:
+                if param not in rval:
+                    rval.append(param)
+
 
         rval = [elem for elem in rval if elem not in self.freeze_set]
 
