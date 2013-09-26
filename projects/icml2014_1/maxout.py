@@ -50,6 +50,10 @@ from pylearn2.models.maxout import Maxout
 
 class Maxout2(Maxout):
 
+    def __init__(self, *args, **kwargs, pool_group_size):
+        super(self, Maxout2).__init__(*args, **kwargs)
+        self.pool_group_size = pool_group_size
+
     def set_input_space(self, space):
 
         super(Maxout2, self).set_input_space(space)
@@ -120,7 +124,7 @@ class Maxout2(Maxout):
             p_2 = None
 
         last_start = self.detector_layer_dim  - self.pool_size
-        for i in xrange(0,self.pool_size, 2):
+        for i in xrange(self.pool_size):
             cur = z[:,i:last_start+i+1:self.pool_stride]
             if p is None:
                 p_1 = cur
@@ -129,8 +133,7 @@ class Maxout2(Maxout):
 
         p_1.name = self.layer_name + '_p_1_'
 
-        last_start +=1
-        for i in xrange(1, self.pool_size, 2):
+        for i in xrange(0,self.pool_size, self.pool_group_size):
             cur = z[:,i:last_start+i+1:self.pool_stride]
             if p is None:
                 p_2 = cur

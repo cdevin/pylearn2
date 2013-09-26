@@ -12,7 +12,7 @@ from pylearn2.utils.serial import load
 from pylearn2.utils.string_utils import preprocess
 
 class GFD(dense_design_matrix.DenseDesignMatrixPyTables):
-    
+
     nbTags = 166
     imageShape = (48, 48, 1)
     imageSize = imageShape[0] * imageShape[1] * imageShape[2]
