@@ -1,9 +1,7 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.mnist.MNIST {
+    dataset: &train !obj:noisy_encoder.scripts.icml2014_1.tfd.MyTFD {
         which_set: 'train',
         one_hot: 1,
-        start: 0,
-        stop: 50000
     },
     model: !obj:noisy_encoder.scripts.icml2014_1.mlp.MLP {
         layers: [
@@ -25,17 +23,17 @@
                  !obj:pylearn2.models.mlp.Softmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y1',
-                     n_classes: 10,
+                     n_classes: 7,
                      irange: .005
                  },
                 !obj:pylearn2.models.mlp.Softmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y2',
-                     n_classes: 10,
+                     n_classes: 7,
                      irange: .005
                  }]
                 ],
-        nvis: 784,
+        nvis: 2304,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 100,
@@ -43,19 +41,12 @@
         init_momentum: .5,
         monitoring_dataset:
             {
-                'train' : *train,
-                'valid' : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'train',
-                              one_hot: 1,
-                              start: 50000,
-                              stop:  60000
+                'valid' : !obj:noisy_encoder.scripts.icml2014_1.tfd.MyTFD {
+                              which_set: 'valid',
+                              one_hot: 1
                           },
-                'test'  : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'test',
-                              one_hot: 1,
-                          }
             },
-        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+        cost: !obj:noisy_encoder.scripts.icml2014_1.dropout.Dropout {
             input_include_probs: { 'h0' : .8 },
             input_scales: { 'h0': 1. }
         },

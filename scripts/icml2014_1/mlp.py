@@ -151,8 +151,9 @@ class MLP(Layer):
 
     def get_output_space(self):
         rval = []
-        for item
-        return self.layers[-1].get_output_space()
+        for item in self.layers[-1]:
+            rval.append(item.get_output_space())
+        return rval
 
     def _update_layer_input_spaces(self):
         """
@@ -191,12 +192,25 @@ class MLP(Layer):
         """
         data is a flat tuple, and can contain features, targets, or both
         """
-        X, Y = data
+        X, Y, Y_ = data
         state = X
         rval = OrderedDict()
 
-        # TODO FIXME
         for layer in self.layers[:-2]:
+            ch = layer.get_monitoring_channels()
+            for key in ch:
+                rval[layer.layer_name+'_'+key] = ch[key]
+            state = layer.fprop(state)
+            args = [state]
+            if layer is self.layers[-1]:
+                args.append(Y)
+            ch = layer.get_monitoring_channels_from_state(*args)
+            if not isinstance(ch, OrderedDict):
+                raise TypeError(str((type(ch), layer.layer_name)))
+            for key in ch:
+                rval[layer.layer_name+'_'+key]  = ch[key]
+
+        for layer in self.layers[-1]:
             ch = layer.get_monitoring_channels()
             for key in ch:
                 rval[layer.layer_name+'_'+key] = ch[key]
@@ -218,10 +232,12 @@ class MLP(Layer):
 
         In this case, we want the inputs and targets.
         """
-        space = CompositeSpace((self.get_input_space(),
-                                self.get_output_space()))
-        source = (self.get_input_source(), self.get_target_source())
+        space = [self.get_input_space()]
+        space += self.get_output_space()
+        space = CompositeSpace(space)
+        source = (self.get_input_source(), self.get_target_source(), 'second_targets')
         return (space, source)
+
 
     def get_params(self):
 
@@ -261,7 +277,9 @@ class MLP(Layer):
 
 
     def censor_updates(self, updates):
-        for layer in self.layers:
+        for layer in self.layers[:-2]:
+            layer.censor_updates(updates)
+        for layer in self.layers[-1]:
             layer.censor_updates(updates)
 
     def get_lr_scalers(self):
@@ -269,7 +287,7 @@ class MLP(Layer):
 
         params = self.get_params()
 
-        for layer in self.layers:
+        for layer in self.layers[:-2]:
             contrib = layer.get_lr_scalers()
 
             assert isinstance(contrib, OrderedDict)
@@ -279,6 +297,18 @@ class MLP(Layer):
             assert all([key in params for key in contrib])
 
             rval.update(contrib)
+
+        for layer in self.layers[:-1]:
+            contrib = layer.get_lr_scalers()
+
+            assert isinstance(contrib, OrderedDict)
+            # No two layers can contend to scale a parameter
+            assert not any([key in rval for key in contrib])
+            # Don't try to scale anything that's not a parameter
+            assert all([key in params for key in contrib])
+
+            rval.update(contrib)
+
         assert all([isinstance(val, float) for val in rval.values()])
 
         return rval
@@ -333,7 +363,7 @@ class MLP(Layer):
 
         theano_rng = MRG_RandomStreams(self.rng.randint(2 ** 15))
 
-        for layer in self.layers:
+        for layer in self.layers[:-2]:
             layer_name = layer.layer_name
 
             if layer_name in input_include_probs:
@@ -357,7 +387,33 @@ class MLP(Layer):
             )
             state_below = layer.fprop(state_below)
 
-        return state_below
+        rvals = []
+        clean_state_below = state_below
+        for layer in self.layers[-1]:
+            layer_name = layer.layer_name
+
+            if layer_name in input_include_probs:
+                include_prob = input_include_probs[layer_name]
+            else:
+                include_prob = default_input_include_prob
+
+            if layer_name in input_scales:
+                scale = input_scales[layer_name]
+            else:
+                scale = default_input_scale
+
+            state_below = self.apply_dropout(
+                state=clean_state_below,
+                include_prob=include_prob,
+                theano_rng=theano_rng,
+                scale=scale,
+                mask_value=layer.dropout_input_mask_value,
+                input_space=layer.get_input_space(),
+                per_example=per_example
+            )
+            rvals.append(layer.fprop(state_below))
+
+        return rvals
 
     def _validate_layer_names(self, layers):
         if any(layer not in self.layer_names for layer in layers):
@@ -436,14 +492,15 @@ class MLP(Layer):
             return T.switch(mask, state * scale, mask_value)
 
     def cost(self, Ys, Y_hats):
-        assert isinstance(Y_hats, tuple)
-        assert isinstance(Ys, tuple)
+        assert isinstance(Y_hats, list)
+        assert isinstance(Ys, list)
         assert len(Ys) == len(Y_hats)
         assert len(self.layers[-1]) == len(Ys)
 
-        sum = 0
+        total_cost = 0
         for i in xrange(len(Ys)):
-            sum += self.layers[-1][i].cost(Ys[i], Y_hat[i])
+            total_cost += self.layers[-1][i].cost(Ys[i], Y_hats[i])
+        return total_cost
 
     def cost_matrix(self, Y, Y_hat):
         return self.layers[-1].cost_matrix(Y, Y_hat)
@@ -468,9 +525,10 @@ class MLP(Layer):
 
         This is useful if cost_from_X is used in a MethodCost.
         """
-        space = CompositeSpace((self.get_input_space(),
-                                self.get_output_space()))
-        source = (self.get_input_source(), self.get_target_source())
+        space = [self.get_input_space()]
+        space.append(selg.get_output_space())
+        space = CompositeSpace(sapce)
+        source = (self.get_input_source(), self.get_target_source(), 'second_targets')
         return (space, source)
 
 
