@@ -106,7 +106,7 @@ class MLP(Layer):
         self.setup_rng()
 
         assert isinstance(layers, list)
-        assert all(isinstance(layer, Layer) for layer in layers[:-2])
+        assert all(isinstance(layer, Layer) for layer in layers[:-1])
         assert isinstance(layers[-1], list)
         assert len(layers) >= 1
         self.layer_names = set()
@@ -169,6 +169,7 @@ class MLP(Layer):
         for layer, output_space in zip(layers[-1], maxout2_outputspace):
             layer.set_input_space(output_space)
 
+
     def add_layers(self, layers):
         """
             Add new layers on top of the existing hidden layers
@@ -196,7 +197,7 @@ class MLP(Layer):
         state = X
         rval = OrderedDict()
 
-        for layer in self.layers[:-2]:
+        for layer in self.layers[:-1]:
             ch = layer.get_monitoring_channels()
             for key in ch:
                 rval[layer.layer_name+'_'+key] = ch[key]
@@ -210,14 +211,16 @@ class MLP(Layer):
             for key in ch:
                 rval[layer.layer_name+'_'+key]  = ch[key]
 
-        for layer in self.layers[-1]:
+        for layer, state in zip(self.layers[-1], state):
             ch = layer.get_monitoring_channels()
             for key in ch:
                 rval[layer.layer_name+'_'+key] = ch[key]
             state = layer.fprop(state)
             args = [state]
-            if layer is self.layers[-1]:
+            if layer is self.layers[-1][0]:
                 args.append(Y)
+            else:
+                args.append(Y_)
             ch = layer.get_monitoring_channels_from_state(*args)
             if not isinstance(ch, OrderedDict):
                 raise TypeError(str((type(ch), layer.layer_name)))
@@ -242,7 +245,7 @@ class MLP(Layer):
     def get_params(self):
 
         rval = []
-        for layer in self.layers[:-2]:
+        for layer in self.layers[:-1]:
             for param in layer.get_params():
                 if param.name is None:
                     print type(layer)
@@ -277,7 +280,7 @@ class MLP(Layer):
 
 
     def censor_updates(self, updates):
-        for layer in self.layers[:-2]:
+        for layer in self.layers[:-1]:
             layer.censor_updates(updates)
         for layer in self.layers[-1]:
             layer.censor_updates(updates)
@@ -287,7 +290,7 @@ class MLP(Layer):
 
         params = self.get_params()
 
-        for layer in self.layers[:-2]:
+        for layer in self.layers[:-1]:
             contrib = layer.get_lr_scalers()
 
             assert isinstance(contrib, OrderedDict)
@@ -298,7 +301,7 @@ class MLP(Layer):
 
             rval.update(contrib)
 
-        for layer in self.layers[:-1]:
+        for layer in self.layers[-1]:
             contrib = layer.get_lr_scalers()
 
             assert isinstance(contrib, OrderedDict)
@@ -363,7 +366,7 @@ class MLP(Layer):
 
         theano_rng = MRG_RandomStreams(self.rng.randint(2 ** 15))
 
-        for layer in self.layers[:-2]:
+        for layer in self.layers[:-1]:
             layer_name = layer.layer_name
 
             if layer_name in input_include_probs:
@@ -388,8 +391,7 @@ class MLP(Layer):
             state_below = layer.fprop(state_below)
 
         rvals = []
-        clean_state_below = state_below
-        for layer in self.layers[-1]:
+        for layer, state in zip(self.layers[-1], state_below):
             layer_name = layer.layer_name
 
             if layer_name in input_include_probs:
@@ -403,7 +405,7 @@ class MLP(Layer):
                 scale = default_input_scale
 
             state_below = self.apply_dropout(
-                state=clean_state_below,
+                state=state,
                 include_prob=include_prob,
                 theano_rng=theano_rng,
                 scale=scale,
@@ -440,7 +442,7 @@ class MLP(Layer):
         rval = self.layers[0].fprop(state_below)
 
 
-        for layer in self.layers[1:-2]:
+        for layer in self.layers[1:-1]:
             rval = layer.fprop(rval)
 
         assert isinstance(self.layers[-1], tuple)
@@ -505,8 +507,8 @@ class MLP(Layer):
     def cost_matrix(self, Y, Y_hat):
         return self.layers[-1].cost_matrix(Y, Y_hat)
 
-    def cost_from_cost_matrix(self, cost_matrix):
-        return self.layers[-1].cost_from_cost_matrix(cost_matrix)
+    def cost_from_cost_matrix(self, cost_matrix, cost_matrix_):
+        return self.layers[-1][0].cost_from_cost_matrix(cost_matrix) + self.layers[-1][1].cost_from_cost_matrix(cost_matrix)
 
     def cost_from_X(self, data):
         """
@@ -532,6 +534,7 @@ class MLP(Layer):
         return (space, source)
 
 
+# This sigmoid support tagging option which the original pylearn2 repo doesn't
 class Sigmoid(Linear):
     """
     Implementation of the sigmoid nonlinearity for MLP.

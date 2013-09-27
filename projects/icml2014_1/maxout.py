@@ -49,15 +49,49 @@ from pylearn2.models.maxout import Maxout
 
 
 class Maxout2(Maxout):
+    def __init__(self,
+                 layer_name,
+                 num_units,
+                 num_pieces,
+                 pool_group_size,
+                 pool_stride = None,
+                 randomize_pools = False,
+                 irange = None,
+                 sparse_init = None,
+                 sparse_stdev = 1.,
+                 include_prob = 1.0,
+                 init_bias = 0.,
+                 W_lr_scale = None,
+                 b_lr_scale = None,
+                 max_col_norm = None,
+                 max_row_norm = None,
+                 mask_weights = None,
+                 min_zero = False
+        ):
 
-    def __init__(self, *args, **kwargs, pool_group_size):
-        super(self, Maxout2).__init__(*args, **kwargs)
+        super(Maxout2, self).__init__(layer_name = layer_name,
+                 num_units = num_units,
+                 num_pieces = num_pieces,
+                 pool_stride = pool_stride,
+                 randomize_pools = randomize_pools,
+                 irange = irange,
+                 sparse_init = sparse_init,
+                 sparse_stdev = sparse_stdev,
+                 include_prob = include_prob,
+                 init_bias = init_bias,
+                 W_lr_scale = W_lr_scale,
+                 b_lr_scale = b_lr_scale,
+                 max_col_norm = max_col_norm,
+                 max_row_norm = max_row_norm,
+                 mask_weights = mask_weights,
+                 min_zero = min_zero)
+
         self.pool_group_size = pool_group_size
 
     def set_input_space(self, space):
 
         super(Maxout2, self).set_input_space(space)
-        self.output_space = (VectorSpace(self.pool_layer_dim / 2), VectorSpace((self.pool_layer_dim -1)/ 2))
+        self.output_space = (VectorSpace(self.pool_layer_dim), VectorSpace(self.pool_layer_dim))
 
         rng = self.mlp.rng
         if self.irange is not None:
@@ -88,7 +122,6 @@ class Maxout2(Maxout):
 
         self.transformer = MatrixMul(W)
 
-
     def fprop(self, state_below):
 
         self.input_space.validate(state_below)
@@ -96,9 +129,17 @@ class Maxout2(Maxout):
         if self.requires_reformat:
             if not isinstance(state_below, tuple):
                 for sb in get_debug_values(state_below):
-                    if sb.shape[0] != self.dbm.batch_size:
-                        raise ValueError("self.dbm.batch_size is %d but got shape of %d" % (self.dbm.batch_size, sb.shape[0]))
-                    assert reduce(lambda x,y: x * y, sb.shape[1:]) == self.input_dim
+                    if hasattr(self.input_space, 'axes'):
+                        axis_index = self.input_space.axes.index('b')
+                    else:
+                        axis_index = 0
+                    if sb.shape[axis_index] != self.mlp.batch_size:
+                        raise ValueError("self.mlp.batch_size is %d but got shape of %d" % (self.mlp.batch_size, sb.shape[0]))
+                    if hasattr(self.input_space, 'axes'):
+                        axis_index = [self.input_space.axes.index(item) for item in self.input_space.axes if item != 'b']
+                        assert np.prod(np.array(sb.shape)[axis_index]) == self.input_dim
+                    else:
+                        assert reduce(lambda x,y: x * y, sb.shape[1:]) == self.input_dim
 
             state_below = self.input_space.format_as(state_below, self.desired_space)
 
@@ -143,7 +184,47 @@ class Maxout2(Maxout):
         p_2.name = self.layer_name + '_p_2_'
 
 
-
         return p_1, p_2
 
+    def get_monitoring_channels_from_state(self, state):
+
+        #P = state
+
+        rval = OrderedDict()
+
+        for i, P in enumerate(state):
+            if self.pool_size == 1:
+                vars_and_prefixes = [ (P,'1') ]
+            else:
+                vars_and_prefixes = [ (P, 'p2_') ]
+
+            for var, prefix in vars_and_prefixes:
+                v_max = var.max(axis=0)
+                v_min = var.min(axis=0)
+                v_mean = var.mean(axis=0)
+                v_range = v_max - v_min
+
+                # max_x.mean_u is "the mean over *u*nits of the max over e*x*amples"
+                # The x and u are included in the name because otherwise its hard
+                # to remember which axis is which when reading the monitor
+                # I use inner.outer rather than outer_of_inner or something like that
+                # because I want mean_x.* to appear next to each other in the alphabetical
+                # list, as these are commonly plotted together
+                for key, val in [
+                                 ('max_x.max_u', v_max.max()),
+                                 ('max_x.mean_u', v_max.mean()),
+                                 ('max_x.min_u', v_max.min()),
+                                 ('min_x.max_u', v_min.max()),
+                                 ('min_x.mean_u', v_min.mean()),
+                                 ('min_x.min_u', v_min.min()),
+                                 ('range_x.max_u', v_range.max()),
+                                 ('range_x.mean_u', v_range.mean()),
+                                 ('range_x.min_u', v_range.min()),
+                                 ('mean_x.max_u', v_mean.max()),
+                                 ('mean_x.mean_u', v_mean.mean()),
+                                 ('mean_x.min_u', v_mean.min())
+                                 ]:
+                    rval[prefix+key] = val
+
+            return rval
 
