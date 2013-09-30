@@ -174,8 +174,9 @@ class Maxout2(Maxout):
 
         p_1.name = self.layer_name + '_p_1_'
 
-        for i in xrange(0,self.pool_size, self.pool_group_size):
-            cur = z[:,i:last_start+i+1:self.pool_stride]
+        for i in xrange(0,self.pool_size):
+            for j in xrange(0, self.pool_size):
+                T.set_subtensor(cur[:,j:-1:self.pool_size], z[:,i * self.pool_group_size:last_start+i+1:self.pool_group_size*2])
             if p is None:
                 p_2 = cur
             else:
