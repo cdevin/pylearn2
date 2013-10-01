@@ -13,11 +13,13 @@ def pool2(submit = False):
     with open('exp/pool.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'mnist'
+    state.db = 'gfd'
     state.h0_channels = 48
-    state.h0_pieces = 3
-    state.h1_units = 400
+    state.h0_pieces = 2
+    state.h1_units = 480
     state.h1_pieces = 4
+    state.h2_units = 480
+    state.h2_pieces = 3
     state.lr = 0.1
     state.lr_decay = 0.001
     state.final_momentum = 0.7
@@ -25,11 +27,11 @@ def pool2(submit = False):
     #state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/maxout2/")
 
     ind = 0
-    TABLE_NAME = "mx_2"
+    TABLE_NAME = "mx_2_1"
     db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1., 0.1, 0.5]:
+    for lr in [1., 0.5, 0.1, 2.]:
         for lr_decay in [0.01, 0.001]:
-            state.lr = 0.1
+            state.lr = lr
             state.lr_decay = lr_decay
             if submit:
                 sql.insert_job(experiment, flatten(state), db)

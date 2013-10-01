@@ -17,7 +17,11 @@ def experiment(state, channel):
 
     print "Saving results at: {}".format(state.save_path)
     # load and save yaml
-    yaml_string = state.yaml_string % (state)
+    try:
+        yaml_string = state.yaml_string % (state)
+    except ValueError:
+        import ipdb
+        ipdb.set_trace()
     with open(state.save_path + 'model.yaml', 'w') as fp:
         fp.write(yaml_string)
 
