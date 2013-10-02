@@ -212,20 +212,28 @@ class BranchMLP(Layer):
                 rval[layer.layer_name+'_'+key]  = ch[key]
 
         for layer, state in zip(self.layers[-1], state):
-            ch = layer.get_monitoring_channels()
-            for key in ch:
-                rval[layer.layer_name+'_'+key] = ch[key]
-            state = layer.fprop(state)
-            args = [state]
-            if layer is self.layers[-1][0]:
-                args.append(Y)
+            if isinstance(layer, NestedMLP):
+                if layer is self.layers[-1][0]:
+                    ch = layer.get_monitoring_channels((state, Y))
+                else:
+                    ch = layer.get_monitoring_channels((state, Y_))
+                for key in ch:
+                    rval[layer.layer_name+'_'+key] = ch[key]
             else:
-                args.append(Y_)
-            ch = layer.get_monitoring_channels_from_state(*args)
-            if not isinstance(ch, OrderedDict):
-                raise TypeError(str((type(ch), layer.layer_name)))
-            for key in ch:
-                rval[layer.layer_name+'_'+key]  = ch[key]
+                ch = layer.get_monitoring_channels()
+                for key in ch:
+                    rval[layer.layer_name+'_'+key] = ch[key]
+                state = layer.fprop(state)
+                args = [state]
+                if layer is self.layers[-1][0]:
+                    args.append(Y)
+                else:
+                    args.append(Y_)
+                ch = layer.get_monitoring_channels_from_state(*args)
+                if not isinstance(ch, OrderedDict):
+                    raise TypeError(str((type(ch), layer.layer_name)))
+                for key in ch:
+                    rval[layer.layer_name+'_'+key]  = ch[key]
 
         return rval
 
@@ -561,7 +569,7 @@ class NestedMLP(MLP):
         self.layer_name = layer_name
 
 
-    def set_input_space(self):
+    def set_input_space(self, space):
         pass
 
  # This sigmoid support tagging option which the original pylearn2 repo doesn't
