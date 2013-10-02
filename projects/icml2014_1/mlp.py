@@ -37,7 +37,7 @@ from pylearn2.utils import py_integer_types
 from pylearn2.utils import safe_union
 from pylearn2.utils import safe_zip
 from pylearn2.utils import sharedX
-from pylearn2.models.mlp import Layer, Linear
+from pylearn2.models.mlp import Layer, Linear, MLP
 
 warnings.warn("MLP changing the recursion limit.")
 # We need this to be high enough that the big theano graphs we make
@@ -56,7 +56,7 @@ warnings.warn("MLP changing the recursion limit.")
 sys.setrecursionlimit(40000)
 
 
-class MLP(Layer):
+class BranchMLP(Layer):
     """
     A multilayer perceptron.
     Note that it's possible for an entire MLP to be a single
@@ -531,10 +531,40 @@ class MLP(Layer):
         space.append(selg.get_output_space())
         space = CompositeSpace(sapce)
         source = (self.get_input_source(), self.get_target_source(), 'second_targets')
-        return (space, source)
+        return (space , source)
 
 
-# This sigmoid support tagging option which the original pylearn2 repo doesn't
+class NestedMLP(MLP):
+    def __init__(self,
+            layers,
+            layer_name,
+            batch_size=None,
+            input_space=None,
+            nvis=None,
+            seed=None,
+            dropout_include_probs = None,
+            dropout_scales = None,
+            dropout_input_include_prob = None,
+            dropout_input_scale = None,
+            ):
+
+        super(NestedMLP, self).__init__(layers = layers,
+            batch_size= batch_size,
+            input_space= input_space,
+            nvis=nvis,
+            seed=seed,
+            dropout_include_probs = dropout_include_probs,
+            dropout_scales = dropout_scales,
+            dropout_input_include_prob = dropout_input_include_prob,
+            dropout_input_scale = dropout_input_scale)
+
+        self.layer_name = layer_name
+
+
+    def set_input_space(self):
+        pass
+
+ # This sigmoid support tagging option which the original pylearn2 repo doesn't
 class Sigmoid(Linear):
     """
     Implementation of the sigmoid nonlinearity for MLP.

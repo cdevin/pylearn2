@@ -2,7 +2,7 @@
     dataset: &train !obj:noisylearn.projects.icml2014_1.gfd.GFD2 {
         which_set: 'train',
         axes: ['c', 0, 1, 'b'],
-        path: '${PYLEARN2_DATA_CUSTOM}/gfd/'
+        path: '${PYLEARN2_DATA_CUSTOM}/gfd/standard/'
     },
     model: !obj:noisylearn.projects.icml2014_1.mlp.MLP {
         batch_size: 128,
@@ -67,7 +67,7 @@
                 'valid' : !obj:noisylearn.projects.icml2014_1.gfd.GFD2 {
                               axes: ['c', 0, 1, 'b'],
                               which_set: 'valid',
-                              path: '${PYLEARN2_DATA_CUSTOM}/gfd/'
+                              path: '${PYLEARN2_DATA_CUSTOM}/gfd/standard/'
                           },
             },
         cost: !obj:noisylearn.projects.icml2014_1.missing_target_cost.MissingTargetCost {
