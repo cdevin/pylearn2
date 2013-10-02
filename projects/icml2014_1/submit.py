@@ -24,13 +24,13 @@ def pool2(submit = False):
     state.lr_decay = 0.001
     state.final_momentum = 0.7
     if submit:
+        TABLE_NAME = "mx_2_p"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/maxout2/")
 
     ind = 0
-    TABLE_NAME = "mx_2_p"
-    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     for lr in [1., 0.5, 0.2, 1.5]:
         for lr_decay in [0.1, 0.01, 0.001]:
             state.lr = lr
@@ -50,28 +50,28 @@ def pool_2l(submit = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'gfd'
-    state.h0_channels = 16
+    state.h0_channels = 48
     state.h0_pieces = 2
     state.h1_units = 100
     state.h1_pieces = 4
-    state.h2_units = 100
+    state.h2_units = 480
     state.h2_pieces = 3
     state.yh0_units = 100
-    state.yh0_pieces = 2
+    state.yh0_pieces = 3
     state.y2h0_units = 100
-    state.y2h0_pieces = 2
+    state.y2h0_pieces = 3
     state.lr = 0.1
     state.lr_decay = 0.001
-    state.final_momentum = 0.7
+    state.final_momentum = 0.69
     if submit:
         state.save_path = './'
+        TABLE_NAME = "mx_2l_p"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/maxout2/")
 
     ind = 0
-    TABLE_NAME = "mx_2l_p"
-    db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
-    for lr in [1., 0.5, 0.2, 1.5]:
+    for lr in [1., 0.5, 0.2]:
         for lr_decay in [0.1, 0.01, 0.001]:
             state.lr = lr
             state.lr_decay = lr_decay
