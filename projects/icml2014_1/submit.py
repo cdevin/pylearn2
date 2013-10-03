@@ -65,7 +65,7 @@ def pool_2l(submit = False):
     state.final_momentum = 0.69
     if submit:
         state.save_path = './'
-        TABLE_NAME = "mx_2l_p"
+        TABLE_NAME = "mx_2l_p_b"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/maxout2/")
