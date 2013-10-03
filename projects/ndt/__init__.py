@@ -50,6 +50,7 @@ class TreeSoftmax(Softmax):
 
     def get_monitoring_channels_from_state(self, state, target=None):
         rval =  OrderedDict([])
+
         rval['misclass'] = 0.
         return rval
 
