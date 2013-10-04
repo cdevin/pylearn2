@@ -34,15 +34,54 @@ def branch_data(brancher, data, batch_size = 100):
     return pos, neg
 
 
+def get_branches(node_id):
+
+    model_path = "{}/{}_{}.pkl".format(MODEL_PATH, MODEL_PREFIX, node_id)
+    model, ds = load_model(model_path)
+    brancher = branch_funbc(model)
+    right, left = branch_data(brancher, ds.X)
+    right_name = "{}-R".format(node_id)
+    left_name = "{}-L".format(node_id)
+    numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, right_name), right)
+    numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, left_name), left)
+    return right_name, left_name
+
+
+def read_indexes(node_id):
+
+    right_name = "{}-R".format(node_id)
+    left_name = "{}-L".format(node_id)
+
+    right = "{}/indexes_{}.npy".format(INDEX_PATH, right_name)
+    left = "{}/indexes_{}.npy".format(INDEX_PATH, left_name)
+    return right, left
+
+
+def get_yaml(node_id, right, left):
+    if node_id == '0':
+        return ROOT_YAML
+
+def make_tree(node_id):
+
+        if len(node_id) > 20:
+            return
+
+        if node_id == '0':
+            right = None
+            left = None
+        else:
+            right, left = read_indexes(node_id)
+
+        yaml_file = get_yaml(node_id, right, left)
+        subprocess.popen([sys.executable, 'script.py {}'.format(yaml_file)],
+                            creationflags = subprocess.CREATE_NEW_CONSOLE)
+
+        # after it's done:
+        right, left = get_branches(node_id)
+        make_tree(right)
+        make_tree(left)
 
 if __name__ == "__main__":
 
-    model_path = 'exp/mnist.pkl'
-    model, ds = load_model(model_path)
-    brancher = branch_funbc(model)
-    pos, neg = branch_data(brancher, ds.X)
-    import ipdb
-    ipdb.set_trace()
+    make_tree('0')
 
-
-# have custom dataset that accept index

@@ -34,6 +34,8 @@ class TreeSoftmax(Softmax):
 
         #p(s) log p(s)
         ps = xlogx(Y_hat.mean(axis=0))
+        ps = T.switch(T.isnan(ps), 0, ps)
+        ps = T.switch(T.isinf(ps), 10000, ps)
 
         # this works only in binary case
         Y_hat_ = T.argmax(Y_hat, axis=1).reshape((Y_hat.shape[0], 1))
@@ -42,6 +44,8 @@ class TreeSoftmax(Softmax):
 
         # \sum_s p(c,s) * log p(c,s)
         pcs = xlogx(pc0) + xlogx(pc1)
+        pcs = T.switch(T.isnan(pcs), 0, pcs)
+        pcs = T.switch(T.isinf(pcs), 10000, pcs)
 
         cost = ps.sum() - pcs.sum()
 
