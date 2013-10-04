@@ -30,28 +30,35 @@ class TreeSoftmax(Softmax):
 
     def cost(self, Y, Y_hat):
         """
-        Y must be one-hot binary. Y_hat is a softmax estimate.
-        of Y. Returns negative log probability of Y under the Y_hat
-        distribution.
-        """
+        Y must be one-hot binary. """
 
-        #import ipdb
-        #ipdb.set_trace()
-        ps = xlogx(Y_hat.mean(axis=0)).sum()
+        #p(s) log p(s)
+        ps = xlogx(Y_hat.mean(axis=0))
 
         # this works only in binary case
         Y_hat_ = T.argmax(Y_hat, axis=1).reshape((Y_hat.shape[0], 1))
-        pc0 = (Y * Y_hat_).mean(axis=0) * Y_hat[:,0].mean(axis=0)  # p(c|0)
-        pc1 = (Y * T.neq(Y_hat_, 1)).mean(axis=0) * Y_hat[:,1].mean(axis=0)  # p(c|1)
-        pcs = xlogx(pc0 + pc1).sum()
+        pc0 = (Y * Y_hat_).mean(axis=0) * Y_hat[:,0].mean(axis=0)  # p(c|0) * p(s=0)
+        pc1 = (Y * T.neq(Y_hat_, 1)).mean(axis=0) * Y_hat[:,1].mean(axis=0)  # p(c|1) * p(s=1)
 
-        return (ps - pcs).astype(config.floatX)
+        # \sum_s p(c,s) * log p(c,s)
+        pcs = xlogx(pc0) + xlogx(pc1)
+
+        cost = ps.sum() - pcs.sum()
+
+        return cost.astype(config.floatX)
 
 
     def get_monitoring_channels_from_state(self, state, target=None):
         rval =  OrderedDict([])
 
+        Y = state
+        Y_hat = target
+        Y_hat_ = T.argmax(Y_hat, axis=1).reshape((Y_hat.shape[0], 1))
         rval['misclass'] = 0.
+        pc0 = (Y * Y_hat_).mean(axis=0) * Y_hat[:,0].mean(axis=0)  # p(c|0) * p(s=0)
+        pc1 = (Y * T.neq(Y_hat_, 1)).mean(axis=0) * Y_hat[:,1].mean(axis=0)  # p(c|1) * p(s=1)
+        rval['pc0'] = pc0.sum().astype(config.floatX)
+        rval['pc1'] = pc1.sum().astype(config.floatX)
         return rval
 
 
