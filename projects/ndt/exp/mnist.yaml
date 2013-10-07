@@ -11,28 +11,29 @@
                      layer_name: 'h0',
                      num_units: 240,
                      num_pieces: 5,
-                     irange: .005,
+                     irange: .05,
                      max_col_norm: 1.9365,
                  },
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h1',
                      num_units: 240,
                      num_pieces: 5,
-                     irange: .005,
+                     irange: .05,
                      max_col_norm: 1.9365,
                  },
                  !obj:noisylearn.projects.ndt.TreeSoftmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y',
                      n_classes: 2,
-                     irange: .005
+                     sparse_init: 15
+                     #irange: .05
                  }
                 ],
         nvis: 784,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 20000,
-        learning_rate: .00001,
+        batch_size: 100,
+        learning_rate: .001,
         init_momentum: .5,
         monitoring_dataset:
             {
@@ -58,7 +59,7 @@
             #N: 100
         #},
         termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
-            max_epochs: 3
+            max_epochs: 50
         },
         update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
             decay_factor: 1.000004,
