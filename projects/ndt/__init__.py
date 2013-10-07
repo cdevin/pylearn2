@@ -1,4 +1,5 @@
 from pylearn2.models.mlp import Softmax
+from pylearn2.models.mlp import Layer
 from pylearn2.space import VectorSpace
 from theano import config
 from theano import tensor as T
@@ -18,7 +19,7 @@ class TreeSoftmax(Softmax):
                  b_lr_scale = None, max_row_norm = None,
                  no_affine = False,
                  max_col_norm = None, init_bias_target_marginals= None,
-                 stochastic = True):
+                 stochastic = False):
 
 
         super(TreeSoftmax, self).__init__(n_classes = n_classes,
@@ -51,13 +52,14 @@ class TreeSoftmax(Softmax):
 
         # this works only in binary case
         if not self.stochastic:
-            Y_hat_ = T.argmax(Y_hat_, axis=1, keepdims=True)
+            Y_hat_ = T.argmax(Y_hat, axis=1, keepdims=True)
             pc0 = (Y * Y_hat_).sum(axis=0) * ps[0]  # p(c|0) * p(s=0)
             pc1 = (Y * T.neq(Y_hat_, 1)).sum(axis=0) * ps[1]  # p(c|1) * p(s=1)
         else:
             Y_hat_ = self.theano_rng.multinomial(pvals = Y_hat)
-            pc0 = (Y * Y_hat_[:,0].reshape((Y_hat_.shape[0], 1))).sum(axis=0) * ps[0]  # p(c|0) * p(s=0)
-            pc1 = (Y * Y_hat_[:,1].reshape((Y_hat_.shape[0], 1))).sum(axis=0) * ps[1]  # p(c|0) * p(s=0)
+            pc0 = (Y * Y_hat_[:,0].reshape((Y_hat_.shape[0], 1))).sum(axis=0) * ps[0]
+            pc1 = (Y * Y_hat_[:,1].reshape((Y_hat_.shape[0], 1))).sum(axis=0) * ps[1]
+
         pc0 = pc0 / Y_hat.shape[0]
         pc1 = pc1 / Y_hat.shape[0]
 
@@ -69,9 +71,6 @@ class TreeSoftmax(Softmax):
 
         cost = pslog.sum() - pcs.sum()
 
-        #import ipdb
-        #ipdb.set_trace()
-
         return cost.astype(config.floatX)
 
 
@@ -80,8 +79,6 @@ class TreeSoftmax(Softmax):
 
         Y = target
         Y_hat = state
-        rval['misclass'] = 0.
-
 
         ps = Y_hat.sum(axis=0)/Y_hat.shape[0]
         Y_hat_ = T.argmax(Y_hat, axis=1, keepdims=True).astype(config.floatX)
@@ -90,5 +87,48 @@ class TreeSoftmax(Softmax):
         rval['y_hat_std'] = Y_hat_.std().astype(config.floatX)
 
         return rval
+
+
+    #def prop(self, state_below):
+        #state = super(TreeSoftmax, self).fprop(state_below)
+        #return self.theano_rng.multinomial(pvals = state)
+
+
+
+class PretrainedMLPLayer(Layer):
+    """
+    A layer whose weights are initialized, and optionally fixed,
+    based on prior training.
+    """
+
+    def __init__(self, layer_name, layer_content, layer_num, freeze_params=False):
+        """
+        layer_content: A Model that implements "upward_pass", such as an
+            RBM or an Autoencoder
+        freeze_params: If True, regard layer_conent's parameters as fixed
+            If False, they become parameters of this layer and can be
+            fine-tuned to optimize the MLP's cost function.
+        """
+        self.__dict__.update(locals())
+        self.layer_content = layer_content.layers[layer_num]
+        del self.self
+
+    def set_input_space(self, space):
+        assert self.get_input_space() == space
+
+    def get_params(self):
+        if self.freeze_params:
+            return []
+        return self.layer_content.get_params()
+
+    def get_input_space(self):
+        return self.layer_content.get_input_space()
+
+    def get_output_space(self):
+        return self.layer_content.get_output_space()
+
+    def fprop(self, state_below):
+        return self.layer_content.fprop(state_below)
+
 
 

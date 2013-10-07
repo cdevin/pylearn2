@@ -90,7 +90,7 @@ def make_tree(node_id):
 
 def tmp_test():
 
-    model_path = 'exp/mnist.pkl'
+    model_path = 'exp/mnist_pre.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     right, left = branch_data(brancher, ds.X)
