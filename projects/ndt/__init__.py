@@ -1,4 +1,4 @@
-from pylearn2.models.mlp import Softmax
+from pylearn2.models.mlp import Softmax, Sigmoid
 from pylearn2.models.mlp import Layer
 from pylearn2.space import VectorSpace
 from theano import config
@@ -10,6 +10,61 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 INF = 1000000
 INF = 0
+
+
+class TreeSigmoid(Sigmoid):
+
+    def __init__(self, **kwargs):
+
+        super(TreeSigmoid, self).__init__(**kwargs)
+
+    def set_input_space(self, space):
+        super(TreeSigmoid, self).set_input_space(space)
+        self.output_space = VectorSpace(10)
+
+    def cost(self, Y, Y_hat):
+        """
+        Y must be one-hot binary.
+        returns: \sum_s p(s)logp(s) - \sum_s \sum_c p(c|s)p(s)logp(c|s)p(s)
+        """
+
+        ps = Y_hat.mean()
+
+        ps1 = T.gt(Y_hat, 0.5)
+        ps1 = T.addbroadcast(ps1, 1)
+        ps0 = T.le(Y_hat, 0.5)
+        ps0 = T.addbroadcast(ps0, 1)
+        pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
+        pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
+        pcs1log = T.log(pcs1)
+        pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
+        pcs0log = T.log(pcs0)
+        pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
+
+        cost = pcs1 * ps * pcs1log
+        cost += pcs0 * (1-ps) * pcs0log
+
+        return - cost.sum().astype(config.floatX)
+
+
+    def get_monitoring_channels_from_state(self, state, target=None):
+        rval =  OrderedDict([])
+
+        #Y = target
+        #Y_hat = state
+
+        #ps = Y_hat.sum(axis=0)/Y_hat.shape[0]
+        #Y_hat_ = T.argmax(Y_hat, axis=1, keepdims=True).astype(config.floatX)
+        #rval['ps_l'] = ps[0].astype(config.floatX)
+        #rval['ps_r'] = ps[1].astype(config.floatX)
+        #rval['y_hat_std'] = Y_hat_.std().astype(config.floatX)
+
+        return rval
+
+
+
+
+
 
 class TreeSoftmax(Softmax):
 
@@ -36,6 +91,7 @@ class TreeSoftmax(Softmax):
         self.output_space = VectorSpace(10)
         self.theano_rng = MRG_RandomStreams(2 ** 15)
         self.stochastic = stochastic
+
 
     def cost(self, Y, Y_hat):
         """
