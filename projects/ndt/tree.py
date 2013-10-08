@@ -17,11 +17,10 @@ def load_model(model_path):
 
     return model, ds
 
-
 def branch_funbc(model):
     X = model.get_input_space().make_batch_theano()
     y = model.fprop(X)
-    y = y.argmax(axis=1)
+    y = T.gt(y, 0.5)
     return function([X], y)
 
 def branch_data(brancher, data, batch_size = 100):
@@ -39,7 +38,6 @@ def branch_data(brancher, data, batch_size = 100):
     neg = np.where(res == 0)
     return pos[0], neg[0]
 
-
 def get_branches(node_id):
 
     model_path = "{}/{}_{}.pkl".format(MODEL_PATH, MODEL_PREFIX, node_id)
@@ -52,7 +50,6 @@ def get_branches(node_id):
     numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, left_name), left)
     return right_name, left_name
 
-
 def read_indexes(node_id):
 
     right_id = node_id * 2 + 1
@@ -61,7 +58,6 @@ def read_indexes(node_id):
     right = "{}/indexes_{}.npy".format(INDEX_PATH, right_name)
     left = "{}/indexes_{}.npy".format(INDEX_PATH, left_name)
     return right, left
-
 
 def get_yaml(node_id, right, left):
     if node_id == '0':
@@ -90,7 +86,7 @@ def make_tree(node_id):
 
 def tmp_test():
 
-    model_path = 'exp/mnist_pre.pkl'
+    model_path = 'exp/mnist_sigmoid.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     right, left = branch_data(brancher, ds.X)
