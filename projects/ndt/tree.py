@@ -1,6 +1,7 @@
 from pylearn2.utils import serial
 from pylearn2.config import yaml_parse
 from theano import function
+from theano import tensor as T
 import numpy as np
 import subprocess
 

@@ -36,35 +36,59 @@ class TreeSigmoid(Sigmoid):
         ps0 = T.addbroadcast(ps0, 1)
         pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
         pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
-        pcs1log = T.log(pcs1)
+        pcs1log = T.log(pcs1 * ps)
         pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
-        pcs0log = T.log(pcs0)
+        pcs0log = T.log(pcs0 * (1-ps))
         pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
 
-        cost = pcs1 * ps * pcs1log
-        cost += pcs0 * (1-ps) * pcs0log
+        pslog1 = T.log(ps)
+        pslog1 = T.switch(T.isinf(pslog1), 0, pslog1)
+        pslog1 = pslog1 * ps
+        pslog0 = T.log(1-ps)
+        pslog0 = T.switch(T.isinf(pslog0), 0, pslog0)
+        pslog0 = pslog0 * (1-ps)
+
+        cost = (pslog0 + pslog1).sum()
+        cost += (pcs0log + pcs1log).sum()
 
         return - cost.sum().astype(config.floatX)
-
 
     def get_monitoring_channels_from_state(self, state, target=None):
         rval =  OrderedDict([])
 
-        #Y = target
-        #Y_hat = state
+        Y = target
+        Y_hat = state
 
-        #ps = Y_hat.sum(axis=0)/Y_hat.shape[0]
-        #Y_hat_ = T.argmax(Y_hat, axis=1, keepdims=True).astype(config.floatX)
-        #rval['ps_l'] = ps[0].astype(config.floatX)
-        #rval['ps_r'] = ps[1].astype(config.floatX)
-        #rval['y_hat_std'] = Y_hat_.std().astype(config.floatX)
+        ps = Y_hat.mean()
+        right = T.gt(Y_hat, 0.5).sum()
+        left = T.le(Y_hat, 0.5).sum()
+
+
+        ps1 = T.gt(Y_hat, 0.5)
+        ps1 = T.addbroadcast(ps1, 1)
+        ps0 = T.le(Y_hat, 0.5)
+        ps0 = T.addbroadcast(ps0, 1)
+        pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
+        pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
+        pcs1log = T.log(pcs1)
+        pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
+        pcs0log = T.log(pcs0)
+        pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
+        cost_r = pcs1 * ps * pcs1log
+        cost_l = pcs0 * (1-ps) * pcs0log
+
+
+
+
+        rval['right'] = right.astype(config.floatX)
+        rval['left'] = left.astype(config.floatX)
+        rval['cost_r'] = cost_r.sum().astype(config.floatX)
+        rval['cost_l'] = cost_l.sum().astype(config.floatX)
+        rval['ps'] = ps.astype(config.floatX)
+        rval['ps_max'] = Y_hat.max().astype(config.floatX)
+        rval['ps_min'] = Y_hat.min().astype(config.floatX)
 
         return rval
-
-
-
-
-
 
 class TreeSoftmax(Softmax):
 
@@ -148,8 +172,6 @@ class TreeSoftmax(Softmax):
     #def prop(self, state_below):
         #state = super(TreeSoftmax, self).fprop(state_below)
         #return self.theano_rng.multinomial(pvals = state)
-
-
 
 class PretrainedMLPLayer(Layer):
     """

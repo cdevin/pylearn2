@@ -18,7 +18,7 @@
                     layer_num: 1,
                 },
                  !obj:noisylearn.projects.ndt.TreeSoftmax {
-                     max_col_norm: 1.9365,
+                     max_col_norm: 1.,
                      layer_name: 'y',
                      n_classes: 2,
                      #sparse_init: 15,
