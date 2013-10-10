@@ -22,36 +22,74 @@ class TreeSigmoid(Sigmoid):
         super(TreeSigmoid, self).set_input_space(space)
         self.output_space = VectorSpace(10)
 
+
     def cost(self, Y, Y_hat):
-        """
-        Y must be one-hot binary.
-        returns: \sum_s p(s)logp(s) - \sum_s \sum_c p(c|s)p(s)logp(c|s)p(s)
-        """
 
-        ps = Y_hat.mean()
 
-        ps1 = T.gt(Y_hat, 0.5)
-        ps1 = T.addbroadcast(ps1, 1)
-        ps0 = T.le(Y_hat, 0.5)
-        ps0 = T.addbroadcast(ps0, 1)
-        pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
-        pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
-        pcs1log = T.log(pcs1 * ps)
-        pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
-        pcs0log = T.log(pcs0 * (1-ps))
-        pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
+        #ps = Y_hat.mean(axis=0)
+        log_ps = T.log(Y_hat)
+        log_ps = T.switch(T.isinf(log_ps), 0., log_ps)
+        log_1_ps = T.log(1-Y_hat)
+        log_1_ps = T.switch(T.isinf(log_1_ps), 0., log_1_ps)
+        s_ps = Y_hat * log_ps + (1-Y_hat) * log_1_ps
 
-        pslog1 = T.log(ps)
-        pslog1 = T.switch(T.isinf(pslog1), 0, pslog1)
-        pslog1 = pslog1 * ps
-        pslog0 = T.log(1-ps)
-        pslog0 = T.switch(T.isinf(pslog0), 0, pslog0)
-        pslog0 = pslog0 * (1-ps)
+        pcs = Y * T.addbroadcast(Y_hat,1)
+        log_pcs = T.log(pcs)
+        log_pcs = T.switch(T.isinf(log_pcs), 0., log_pcs)
+        pcs_1 = Y * T.addbroadcast(1-Y_hat, 1)
+        log_1_pcs = T.log(pcs_1)
+        log_1_pcs = T.switch(T.isinf(log_1_pcs), 0., log_1_pcs)
+        s_pcs = pcs * log_pcs + pcs_1 * log_1_pcs
 
-        cost = (pslog0 + pslog1).sum()
-        cost += (pcs0log + pcs1log).sum()
 
-        return - cost.sum().astype(config.floatX)
+        #ps = Y_hat.mean(axis=0)
+        #log_ps = T.log(ps)
+        #log_ps = T.switch(T.isinf(log_ps), 0., log_ps)
+        #log_1_ps = T.log(1-ps)
+        #log_1_ps = T.switch(T.isinf(log_1_ps), 0., log_1_ps)
+        #s_ps = ps * log_ps + (1-ps) * log_1_ps
+
+        #pcs = (Y_hat * Y).sum(axis=0)
+        #log_pcs = T.log(pcs)
+        #log_pcs = T.switch(T.isinf(log_pcs), 0., log_pcs)
+        #log_1_pcs = T.log(1-pcs)
+        #log_1_pcs = T.switch(T.isinf(log_1_pcs), 0., log_1_pcs)
+        #s_pcs = pcs * log_pcs + (1-pcs) * log_1_pcs
+
+        return s_ps.sum() - s_pcs.sum()
+
+
+
+    #def cost(self, Y, Y_hat):
+        #"""
+        #Y must be one-hot binary.
+        #returns: \sum_s p(s)logp(s) - \sum_s \sum_c p(c|s)p(s)logp(c|s)p(s)
+        #"""
+
+        #ps = Y_hat.mean()
+
+        #ps1 = T.gt(Y_hat, 0.5)
+        #ps1 = T.addbroadcast(ps1, 1)
+        #ps0 = T.le(Y_hat, 0.5)
+        #ps0 = T.addbroadcast(ps0, 1)
+        #pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
+        #pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
+        #pcs1log = T.log(pcs1 * ps)
+        #pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
+        #pcs0log = T.log(pcs0 * (1-ps))
+        #pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
+
+        #pslog1 = T.log(ps)
+        #pslog1 = T.switch(T.isinf(pslog1), 0, pslog1)
+        #pslog1 = pslog1 * ps
+        #pslog0 = T.log(1-ps)
+        #pslog0 = T.switch(T.isinf(pslog0), 0, pslog0)
+        #pslog0 = pslog0 * (1-ps)
+
+        #cost = (pslog0 + pslog1).sum()
+        #cost += (pcs0log + pcs1log).sum()
+
+        #return - cost.sum().astype(config.floatX)
 
     def get_monitoring_channels_from_state(self, state, target=None):
         rval =  OrderedDict([])
@@ -59,34 +97,54 @@ class TreeSigmoid(Sigmoid):
         Y = target
         Y_hat = state
 
-        ps = Y_hat.mean()
+        #ps = Y_hat.mean()
         right = T.gt(Y_hat, 0.5).sum()
         left = T.le(Y_hat, 0.5).sum()
 
-
-        ps1 = T.gt(Y_hat, 0.5)
-        ps1 = T.addbroadcast(ps1, 1)
-        ps0 = T.le(Y_hat, 0.5)
-        ps0 = T.addbroadcast(ps0, 1)
-        pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
-        pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
-        pcs1log = T.log(pcs1)
-        pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
-        pcs0log = T.log(pcs0)
-        pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
-        cost_r = pcs1 * ps * pcs1log
-        cost_l = pcs0 * (1-ps) * pcs0log
-
+        right_class = Y * T.addbroadcast(T.gt(Y_hat, 0.5),1)
+        left_class = Y * T.addbroadcast(T.le(Y_hat, 0.5),1)
+        #ps1 = T.gt(Y_hat, 0.5)
+        #ps1 = T.addbroadcast(ps1, 1)
+        #ps0 = T.le(Y_hat, 0.5)
+        #ps0 = T.addbroadcast(ps0, 1)
+        #pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
+        #pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
+        #pcs1log = T.log(pcs1)
+        #pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
+        #pcs0log = T.log(pcs0)
+        #pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
+        #cost_r = pcs1 * ps * pcs1log
+        #cost_l = pcs0 * (1-ps) * pcs0log
 
 
 
         rval['right'] = right.astype(config.floatX)
         rval['left'] = left.astype(config.floatX)
-        rval['cost_r'] = cost_r.sum().astype(config.floatX)
-        rval['cost_l'] = cost_l.sum().astype(config.floatX)
-        rval['ps'] = ps.astype(config.floatX)
+        #rval['cost_r'] = cost_r.sum().astype(config.floatX)
+        #rval['cost_l'] = cost_l.sum().astype(config.floatX)
+        rval['ps'] = Y_hat.mean().astype(config.floatX)
         rval['ps_max'] = Y_hat.max().astype(config.floatX)
         rval['ps_min'] = Y_hat.min().astype(config.floatX)
+        rval['r_0'] = right_class[:,0].sum().astype(config.floatX)
+        rval['l_0'] = left_class[:,0].sum().astype(config.floatX)
+        rval['r_1'] = right_class[:,1].sum().astype(config.floatX)
+        rval['l_1'] = left_class[:,1].sum().astype(config.floatX)
+        rval['r_2'] = right_class[:,2].sum().astype(config.floatX)
+        rval['l_2'] = left_class[:,2].sum().astype(config.floatX)
+        rval['r_3'] = right_class[:,3].sum().astype(config.floatX)
+        rval['l_3'] = left_class[:,3].sum().astype(config.floatX)
+        rval['r_4'] = right_class[:,4].sum().astype(config.floatX)
+        rval['l_4'] = left_class[:,4].sum().astype(config.floatX)
+        rval['r_5'] = right_class[:,5].sum().astype(config.floatX)
+        rval['l_5'] = left_class[:,5].sum().astype(config.floatX)
+        rval['r_6'] = right_class[:,6].sum().astype(config.floatX)
+        rval['l_6'] = left_class[:,6].sum().astype(config.floatX)
+        rval['r_7'] = right_class[:,7].sum().astype(config.floatX)
+        rval['l_7'] = left_class[:,7].sum().astype(config.floatX)
+        rval['r_8'] = right_class[:,8].sum().astype(config.floatX)
+        rval['l_8'] = left_class[:,8].sum().astype(config.floatX)
+        rval['r_9'] = right_class[:,9].sum().astype(config.floatX)
+        rval['l_9'] = left_class[:,9].sum().astype(config.floatX)
 
         return rval
 

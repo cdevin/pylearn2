@@ -37,7 +37,7 @@ def branch_data(brancher, data, batch_size = 100):
     res = np.concatenate(res)
     pos = np.nonzero(res)
     neg = np.where(res == 0)
-    return pos[0], neg[0]
+    return pos[0], neg[0], res
 
 def get_branches(node_id):
 
@@ -87,13 +87,16 @@ def make_tree(node_id):
 
 def tmp_test():
 
-    model_path = 'exp/mnist_sigmoid.pkl'
+    model_path = 'exp/mnist_sigmoid_single.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
-    right, left = branch_data(brancher, ds.X)
+    right, left, res = branch_data(brancher, ds.X)
     #import ipdb
     #ipdb.set_trace()
     print len(right), len(left)
+    import ipdb
+    ipdb.set_trace()
+
 
 if __name__ == "__main__":
 
