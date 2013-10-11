@@ -1,4 +1,4 @@
-
+from pylearn2.datasets.mnist import MNIST
 
 
 class IndexedMNIST(MNIST):
@@ -9,7 +9,7 @@ class IndexedMNIST(MNIST):
             fit_preprocessor = False,
             fit_test_preprocessor = False):
 
-    super(IndexedMNIST, self).__init__(which_set = which_set,
+        super(IndexedMNIST, self).__init__(which_set = which_set,
                                         center = center,
                                         shuffle = shuffle,
                                         one_hot = one_hot,
@@ -21,5 +21,5 @@ class IndexedMNIST(MNIST):
                                         fit_preprocessor = fit_preprocessor,
                                         fit_test_preprocessor = fit_test_preprocessor)
 
-    self.X = self.X[indexes]
-    self.y = self.y[indexes]
+        self.X = self.X[indexes]
+        self.y = self.y[indexes]

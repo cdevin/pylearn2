@@ -31,7 +31,7 @@ def branch_data(brancher, data, batch_size = 100):
         res.append(brancher(data[i * batch_size : (i+1) * batch_size, :]))
     rem = np.mod(data.shape[0], batch_size)
     if rem != 0:
-        res.append(brancher(data[data.shape[0] - rem, :]))
+        res.append(brancher(data[data.shape[0] - rem:, :]))
 
 
     res = np.concatenate(res)
@@ -87,15 +87,21 @@ def make_tree(node_id):
 
 def tmp_test():
 
-    model_path = 'exp/mnist_sigmoid_single.pkl'
+    #model_path = 'exp/mnist_sigmoid_single.pkl'
+    model_path = 'exp/sig_single_child.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     right, left, res = branch_data(brancher, ds.X)
     #import ipdb
     #ipdb.set_trace()
     print len(right), len(left)
-    import ipdb
-    ipdb.set_trace()
+    r_ = (res * ds.y).sum(axis=0)
+    l_ = ((np.negative(res) + 1) * ds.y).sum(axis=0)
+    print np.argmax(np.vstack((r_, l_)), 0)
+    #serial.save('exp/right.pkl', right)
+    #serial.save('exp/left.pkl', right)
+    #import ipdb
+    #ipdb.set_trace()
 
 
 if __name__ == "__main__":

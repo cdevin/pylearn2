@@ -1,39 +1,26 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.mnist.MNIST {
+    dataset: &train !obj:noisylearn.projects.ndt.mnist.IndexedMNIST {
         which_set: 'train',
+        indexes: !pkl: "exp/right.pkl",
         one_hot: 1,
         start: 0,
-        stop: 50000
+        stop: 50000,
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
-                 !obj:pylearn2.models.maxout.Maxout {
-                     layer_name: 'h0',
-                     num_units: 240,
-                     num_pieces: 5,
-                     irange: .05,
-                     max_col_norm: 1.9365,
-                 },
-                 #!obj:pylearn2.models.maxout.Maxout {
-                     #layer_name: 'h1',
-                     #num_units: 240,
-                     #num_pieces: 5,
-                     #irange: .005,
-                     #max_col_norm: 1.9365,
-                 #},
-                 !obj:noisylearn.projects.ndt.TreeSigmoid {
+                !obj:noisylearn.projects.ndt.TreeSigmoid {
                      max_col_norm: 1.9365,
                      layer_name: 'y',
                      dim: 1,
                      sparse_init: 15,
-                     #irange: .05
+                     #irange: .005
                  }
                 ],
         nvis: 784,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 200,
-        learning_rate: .00001,
+        learning_rate: .000001,
         init_momentum: .5,
         monitoring_dataset:
             {
@@ -50,8 +37,8 @@
                           #}
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            input_include_probs: { 'h0' : .8 },
-            input_scales: { 'h0': 1. }
+            input_include_probs: { 'y' : .8 },
+            input_scales: { 'y': 1. }
         },
         #termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             #channel_name: "valid_objective",
