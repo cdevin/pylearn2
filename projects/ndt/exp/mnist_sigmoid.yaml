@@ -11,8 +11,9 @@
                      layer_name: 'h0',
                      num_units: 240,
                      num_pieces: 5,
-                     irange: .05,
-                     max_col_norm: 1.9365,
+                     #irange: .005,
+                     sparse_init: 15,
+                     max_col_norm: 1.,
                  },
                  #!obj:pylearn2.models.maxout.Maxout {
                      #layer_name: 'h1',
@@ -22,7 +23,7 @@
                      #max_col_norm: 1.9365,
                  #},
                  !obj:noisylearn.projects.ndt.TreeSigmoid {
-                     max_col_norm: 1.9365,
+                     max_col_norm: 1.,
                      layer_name: 'y',
                      dim: 1,
                      sparse_init: 15,
@@ -32,8 +33,8 @@
         nvis: 784,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 200,
-        learning_rate: .00001,
+        batch_size: 1000,
+        learning_rate: .001,
         init_momentum: .5,
         monitoring_dataset:
             {

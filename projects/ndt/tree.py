@@ -87,8 +87,10 @@ def make_tree(node_id):
 
 def tmp_test():
 
+    #model_path = 'exp/mnist_sigmoid.pkl'
     #model_path = 'exp/mnist_sigmoid_single.pkl'
-    model_path = 'exp/sig_single_child.pkl'
+    model_path = 'exp/mnist_sigmoid_child.pkl'
+    #model_path = 'exp/sig_single_child.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     right, left, res = branch_data(brancher, ds.X)
@@ -98,8 +100,10 @@ def tmp_test():
     r_ = (res * ds.y).sum(axis=0)
     l_ = ((np.negative(res) + 1) * ds.y).sum(axis=0)
     print np.argmax(np.vstack((r_, l_)), 0)
+    print r_
+    print l_
     #serial.save('exp/right.pkl', right)
-    #serial.save('exp/left.pkl', right)
+    #serial.save('exp/left.pkl', left)
     #import ipdb
     #ipdb.set_trace()
 

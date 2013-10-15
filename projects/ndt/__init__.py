@@ -26,70 +26,28 @@ class TreeSigmoid(Sigmoid):
     def cost(self, Y, Y_hat):
 
 
-        #ps = Y_hat.mean(axis=0)
-        log_ps = T.log(Y_hat)
+        ps = Y_hat.mean(axis=0)
+        ps_1 = (1-Y_hat).mean(axis=0)
+        log_ps = T.log(ps)
+        log_ps_1 = T.log(ps_1)
+
         log_ps = T.switch(T.isinf(log_ps), 0., log_ps)
-        log_1_ps = T.log(1-Y_hat)
-        log_1_ps = T.switch(T.isinf(log_1_ps), 0., log_1_ps)
-        s_ps = Y_hat * log_ps + (1-Y_hat) * log_1_ps
+        log_ps_1 = T.switch(T.isinf(log_ps_1), 0., log_ps_1)
+        s_ps =  ps * log_ps + ps_1 * log_ps_1
 
-        pcs = Y * T.addbroadcast(Y_hat,1)
+        pcs = (Y * T.addbroadcast(Y_hat,1)).mean(axis=0)
+        pcs_1 = (Y * T.addbroadcast(1-Y_hat,1)).mean(axis=0)
+
         log_pcs = T.log(pcs)
+        log_pcs_1 = T.log(pcs_1)
+
         log_pcs = T.switch(T.isinf(log_pcs), 0., log_pcs)
-        pcs_1 = Y * T.addbroadcast(1-Y_hat, 1)
-        log_1_pcs = T.log(pcs_1)
-        log_1_pcs = T.switch(T.isinf(log_1_pcs), 0., log_1_pcs)
-        s_pcs = pcs * log_pcs + pcs_1 * log_1_pcs
+        log_pcs_1 = T.switch(T.isinf(log_pcs_1), 0., log_pcs_1)
 
-
-        #ps = Y_hat.mean(axis=0)
-        #log_ps = T.log(ps)
-        #log_ps = T.switch(T.isinf(log_ps), 0., log_ps)
-        #log_1_ps = T.log(1-ps)
-        #log_1_ps = T.switch(T.isinf(log_1_ps), 0., log_1_ps)
-        #s_ps = ps * log_ps + (1-ps) * log_1_ps
-
-        #pcs = (Y_hat * Y).sum(axis=0)
-        #log_pcs = T.log(pcs)
-        #log_pcs = T.switch(T.isinf(log_pcs), 0., log_pcs)
-        #log_1_pcs = T.log(1-pcs)
-        #log_1_pcs = T.switch(T.isinf(log_1_pcs), 0., log_1_pcs)
-        #s_pcs = pcs * log_pcs + (1-pcs) * log_1_pcs
+        s_pcs = pcs * log_pcs + pcs_1 * log_pcs_1
 
         return s_ps.sum() - s_pcs.sum()
 
-
-
-    #def cost(self, Y, Y_hat):
-        #"""
-        #Y must be one-hot binary.
-        #returns: \sum_s p(s)logp(s) - \sum_s \sum_c p(c|s)p(s)logp(c|s)p(s)
-        #"""
-
-        #ps = Y_hat.mean()
-
-        #ps1 = T.gt(Y_hat, 0.5)
-        #ps1 = T.addbroadcast(ps1, 1)
-        #ps0 = T.le(Y_hat, 0.5)
-        #ps0 = T.addbroadcast(ps0, 1)
-        #pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
-        #pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
-        #pcs1log = T.log(pcs1 * ps)
-        #pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
-        #pcs0log = T.log(pcs0 * (1-ps))
-        #pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
-
-        #pslog1 = T.log(ps)
-        #pslog1 = T.switch(T.isinf(pslog1), 0, pslog1)
-        #pslog1 = pslog1 * ps
-        #pslog0 = T.log(1-ps)
-        #pslog0 = T.switch(T.isinf(pslog0), 0, pslog0)
-        #pslog0 = pslog0 * (1-ps)
-
-        #cost = (pslog0 + pslog1).sum()
-        #cost += (pcs0log + pcs1log).sum()
-
-        #return - cost.sum().astype(config.floatX)
 
     def get_monitoring_channels_from_state(self, state, target=None):
         rval =  OrderedDict([])
@@ -103,19 +61,30 @@ class TreeSigmoid(Sigmoid):
 
         right_class = Y * T.addbroadcast(T.gt(Y_hat, 0.5),1)
         left_class = Y * T.addbroadcast(T.le(Y_hat, 0.5),1)
-        #ps1 = T.gt(Y_hat, 0.5)
-        #ps1 = T.addbroadcast(ps1, 1)
-        #ps0 = T.le(Y_hat, 0.5)
-        #ps0 = T.addbroadcast(ps0, 1)
-        #pcs1 = (Y * ps1).sum(axis=0) / Y_hat.shape[0]
-        #pcs0 = (Y * ps0).sum(axis=0) / Y_hat.shape[0]
-        #pcs1log = T.log(pcs1)
-        #pcs1log = T.switch(T.isinf(pcs1log), 0, pcs1log)
-        #pcs0log = T.log(pcs0)
-        #pcs0log = T.switch(T.isinf(pcs0log), 0, pcs0log)
-        #cost_r = pcs1 * ps * pcs1log
-        #cost_l = pcs0 * (1-ps) * pcs0log
 
+        ps = Y_hat.mean(axis=0)
+        ps_1 = (1-Y_hat).mean(axis=0)
+        log_ps = T.log(ps)
+        log_ps_1 = T.log(ps_1)
+
+        log_ps = T.switch(T.isinf(log_ps), 0., log_ps)
+        log_ps_1 = T.switch(T.isinf(log_ps_1), 0., log_ps_1)
+        s_ps =  ps * log_ps + ps_1 * log_ps_1
+
+        pcs = (Y * T.addbroadcast(Y_hat,1)).mean(axis=0)
+        pcs_1 = (Y * T.addbroadcast(1-Y_hat,1)).mean(axis=0)
+
+        log_pcs = T.log(pcs)
+        log_pcs_1 = T.log(pcs_1)
+
+        log_pcs = T.switch(T.isinf(log_pcs), 0., log_pcs)
+        log_pcs_1 = T.switch(T.isinf(log_pcs_1), 0., log_pcs_1)
+
+        s_pcs = pcs * log_pcs + pcs_1 * log_pcs_1
+
+
+        rval['cost_ps'] = s_ps.sum()
+        rval['cost_pcs'] = s_pcs.sum()
 
 
         rval['right'] = right.astype(config.floatX)
@@ -145,6 +114,10 @@ class TreeSigmoid(Sigmoid):
         #rval['l_8'] = left_class[:,8].sum().astype(config.floatX)
         #rval['r_9'] = right_class[:,9].sum().astype(config.floatX)
         #rval['l_9'] = left_class[:,9].sum().astype(config.floatX)
+
+
+
+
 
         return rval
 
