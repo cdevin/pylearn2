@@ -18,7 +18,7 @@ def pool2(submit = False):
     state.h0_pieces = 2
     state.h1_units = 480
     state.h1_pieces = 4
-    state.h2_units = 480
+    state.h2_units = 481
     state.h2_pieces = 3
     state.lr = 0.1
     state.lr_decay = 0.001
@@ -36,7 +36,9 @@ def pool2(submit = False):
             state.lr = lr
             state.lr_decay = lr_decay
             if submit:
-                sql.insert_job(experiment, flatten(state), db)
+                hapoo = sql.insert_job(experiment, flatten(state), db)
+                import ipdb
+                ipdb.set_trace()
             else:
                 experiment(state, None)
             ind += 1

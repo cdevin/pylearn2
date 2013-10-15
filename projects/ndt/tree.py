@@ -1,13 +1,22 @@
 from pylearn2.utils import serial
 from pylearn2.config import yaml_parse
+from pylearn2.utils.string_utils import preprocess
 from theano import function
 from theano import tensor as T
 import numpy as np
-import subprocess
+import argparse
 
+
+"""
+You have to run this with id of one of the left or right node id you want
+to produce. Then run both manually
+"""
 
 ROOT_YAML = 'exp/root.yaml'
-INDEX_PATH = 'exp/'
+CHILD_YAML = 'exp/child.yaml'
+YAML_PATH = "${PYLEARN2_EXP_RESULTS}/tree/1"
+MODEL_PATH = "${PYLEARN2_EXP_RESULTS}/tree/1"
+INDEX_PATH = "${PYLEARN2_EXP_RESULTS}/tree/1"
 
 
 def load_model(model_path):
@@ -25,7 +34,6 @@ def branch_funbc(model):
     return function([X], y)
 
 def branch_data(brancher, data, batch_size = 100):
-
     res = []
     for i in xrange(data.shape[0] / batch_size):
         res.append(brancher(data[i * batch_size : (i+1) * batch_size, :]))
@@ -33,83 +41,58 @@ def branch_data(brancher, data, batch_size = 100):
     if rem != 0:
         res.append(brancher(data[data.shape[0] - rem:, :]))
 
-
     res = np.concatenate(res)
     pos = np.nonzero(res)
     neg = np.where(res == 0)
-    return pos[0], neg[0], res
+    return pos[0], neg[0]
 
 def get_branches(node_id):
-
-    model_path = "{}/{}_{}.pkl".format(MODEL_PATH, MODEL_PREFIX, node_id)
+    model_path = "{}/{}_best.pkl".format(MODEL_PATH, node_id)
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     right, left = branch_data(brancher, ds.X)
-    right_name = "{}-R".format(node_id)
-    left_name = "{}-L".format(node_id)
-    numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, right_name), right)
-    numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, left_name), left)
+
+    right_name = "{}/{}_indexes.npy".format(INDEX_PATH, node_id * 2 + 1)
+    left_name = "{}/{}_indexes.npy".format(INDEX_PATH, node_id * 2)
+    serial.save(right_name, right)
+    serial.save(left_name, left)
     return right_name, left_name
 
-def read_indexes(node_id):
+def get_yaml(node_id, index):
+    args = {'save_path' : "{}/{}_best.pkl".format(MODEL_PATH, node_id)}
+    args['index'] = index
+    if node_id == 1:
+        yaml_f = ROOT_YAML
+    else:
+        yaml_f = CHILD_YAML
 
-    right_id = node_id * 2 + 1
-    left_if = node_id * 2
+    with open(yaml_f, 'r') as f:
+        yaml = f.read()
+    return yaml % (args)
 
-    right = "{}/indexes_{}.npy".format(INDEX_PATH, right_name)
-    left = "{}/indexes_{}.npy".format(INDEX_PATH, left_name)
-    return right, left
-
-def get_yaml(node_id, right, left):
-    if node_id == '0':
-        return ROOT_YAML
+def write_job(node_id,yaml_file):
+    with open(preprocess("{}/{}.yaml".format(YAML_PATH, node_id)), 'w') as f:
+        f.write(yaml_file)
 
 def make_tree(node_id):
-
-        if node_id > 20:
+        if node_id > 500:
             return
 
-        if node_id == 0:
-            right = None
-            left = None
+        if node_id == 1:
+            yaml_file = get_yaml(node_id, None)
+            write_job(node_id,yaml_file)
         else:
-            right, left = read_indexes(node_id)
+            parent_id = int(np.floor(node_id/2.))
+            right, left = get_branches(parent_id)
 
-        yaml_file = get_yaml(node_id, right, left)
-        subprocess.Popen([sys.executable, 'script.py {}'.format(yaml_file)],
-                            creationflags = subprocess.CREATE_NEW_CONSOLE)
-
-        # after it's done:
-        right, left = get_branches(node_id)
-        make_tree(right)
-        make_tree(left)
-
-
-def tmp_test():
-
-    #model_path = 'exp/mnist_sigmoid.pkl'
-    #model_path = 'exp/mnist_sigmoid_single.pkl'
-    model_path = 'exp/mnist_sigmoid_child.pkl'
-    #model_path = 'exp/sig_single_child.pkl'
-    model, ds = load_model(model_path)
-    brancher = branch_funbc(model)
-    right, left, res = branch_data(brancher, ds.X)
-    #import ipdb
-    #ipdb.set_trace()
-    print len(right), len(left)
-    r_ = (res * ds.y).sum(axis=0)
-    l_ = ((np.negative(res) + 1) * ds.y).sum(axis=0)
-    print np.argmax(np.vstack((r_, l_)), 0)
-    print r_
-    print l_
-    #serial.save('exp/right.pkl', right)
-    #serial.save('exp/left.pkl', left)
-    #import ipdb
-    #ipdb.set_trace()
-
+            yaml_file = get_yaml(parent_id * 2 + 1, right)
+            write_job(parent_id * 2 + 1, yaml_file)
+            yaml_file = get_yaml(parent_id * 2, left)
+            write_job(parent_id * 2, yaml_file)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description = 'nntree trainer')
+    parser.add_argument('-i', '--id', type = int, required = True, help = 'Node id')
+    args = parser.parse_args()
 
-    tmp_test()
-    #make_tree(0)
-
+    make_tree(args.id)
