@@ -1,6 +1,7 @@
 from pylearn2.utils import serial
 from pylearn2.config import yaml_parse
 from pylearn2.utils.string_utils import preprocess
+from noisylearn.projects.ndt.utils import LeafNode
 from theano import function
 from theano import tensor as T
 import numpy as np
@@ -49,6 +50,9 @@ def branch_data(brancher, data, batch_size = 100):
 def get_branches(node_id):
     model_path = "{}/{}_best.pkl".format(MODEL_PATH, node_id)
     model, ds = load_model(model_path)
+    if ds.X.shape[0] == 0:
+        raise LeafNode(node_id)
+
     brancher = branch_funbc(model)
     right, left = branch_data(brancher, ds.X)
 
