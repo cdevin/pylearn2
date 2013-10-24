@@ -7,8 +7,16 @@
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
-                !obj:noisylearn.projects.ndt.TreeSigmoid {
-                     max_col_norm: 1.9365,
+                 !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h0',
+                     num_units: 2,
+                     num_pieces: 2,
+                     #irange: .005,
+                     sparse_init: 15,
+                     max_col_norm: 1.,
+                 },
+                 !obj:noisylearn.projects.ndt.TreeSigmoid {
+                     max_col_norm: 1.,
                      layer_name: 'y',
                      dim: 1,
                      sparse_init: 15,
@@ -18,34 +26,36 @@
         nvis: 784,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 200,
+        batch_size: 1000,
         learning_rate: .001,
-        init_momentum: .5,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5
+        },
         monitoring_dataset:
             {
-                'train' : *train,
+                #'train' : *train,
                 'valid' : !obj:pylearn2.datasets.mnist.MNIST {
                               which_set: 'train',
                               one_hot: 1,
                               start: 50000,
                               stop:  60000
                           },
-                'test'  : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'test',
-                              one_hot: 1,
-                          }
+                #'test'  : !obj:pylearn2.datasets.mnist.MNIST {
+                              #which_set: 'test',
+                              #one_hot: 1,
+                          #}
             },
-        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            #input_include_probs: { 'h0' : .8 },
-            #input_scales: { 'h0': 1. }
-        #},
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             channel_name: "valid_objective",
-            prop_decrease: 0.,
+            prop_decrease: 0.01,
             N: 50
         },
         #termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
-            #max_epochs: 50
+            #max_epochs: 10
         #},
         update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
             decay_factor: 1.000004,
@@ -53,16 +63,16 @@
         }
     },
     extensions: [
-        #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             #channel_name: 'valid_objective',
-             #save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
-        #},
-        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_objective',
+             save_path: "test_5_best.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
             saturate: 250,
             final_momentum: .7
         }
     ],
-    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_path: "test_5_last.pkl",
     save_freq: 1
 }

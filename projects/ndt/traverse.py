@@ -15,9 +15,11 @@ MAX_NODES = 200
 
 RUN_LIST = []
 
+LEAF_LABELS = {}
+
 def check_node(node_id):
     print node_id
-    if node_id > 200:
+    if node_id > MAX_NODES:
         return
 
     if os.path.isfile(preprocess("{}/{}.yaml".format(YAML_PATH,node_id))):
@@ -40,8 +42,6 @@ def traverse():
     print "Run list", RUN_LIST
     np.savetxt('runlist.txt', RUN_LIST)
 
-
-
 def run_node():
     RUN_LIST = np.loadtxt('runlist.txt').astype(int)
     try:
@@ -59,6 +59,18 @@ def run_node():
         RUN_LIST.append(node_id)
         np.savetxt('runlist.txt', RUN_LIST)
         print "Failed {}".format(node_id)
+
+def assign_tree(node_id = 1):
+
+    if node_id * 2 MAX_NODES:
+        # it's a leaf
+    else:
+        try:
+            make_tree(node_id)
+        except LeafNode as e:
+            # it's a leaf0
+
+
 
 if __name__ == "__main__":
 
