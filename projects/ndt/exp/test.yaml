@@ -12,23 +12,23 @@
                      num_units: 10,
                      num_pieces: 1,
                      min_zero: 1,
-                     irange: .05,
-                     #sparse_init: 15,
+                     #irange: .05,
+                     sparse_init: 3,
                      max_col_norm: 1.,
-                 },
+                 #},
                  !obj:noisylearn.projects.ndt.TreeSigmoid {
                      max_col_norm: 3.,
                      layer_name: 'y',
                      dim: 1,
-                     #sparse_init: 15,
-                     irange: .05
+                     sparse_init: 3,
+                     #irange: .05
                  }
                 ],
         nvis: 784,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 1000,
-        learning_rate: .001,
+        learning_rate: .1,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5
         },
@@ -46,22 +46,22 @@
                               #one_hot: 1,
                           #}
             },
-        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            #input_include_probs: { 'h0' : .8 },
-            #input_scales: { 'h0': 1. }
-        #},
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             channel_name: "valid_objective",
             prop_decrease: 0.00,
             N: 100
         },
-        #termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
-            #max_epochs: 10
-        #},
-        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: 1.000004,
-            min_lr: .000001
-        }
+        termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs: 1000
+        },
+        #update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            #decay_factor: 1.000004,
+            #min_lr: .000001
+        #}
     },
     extensions: [
         #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
@@ -74,6 +74,6 @@
             final_momentum: .7
         }
     ],
-    save_path: "test_10_last.pkl",
+    save_path: "test_1_last.pkl",
     save_freq: 1
 }
