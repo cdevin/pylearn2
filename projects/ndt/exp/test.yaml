@@ -9,18 +9,18 @@
         layers: [
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h0',
-                     num_units: 10,
+                     num_units: 1000,
                      num_pieces: 1,
                      min_zero: 1,
                      #irange: .05,
-                     sparse_init: 3,
-                     max_col_norm: 1.,
-                 #},
+                     sparse_init: 150,
+                     max_col_norm: 3.,
+                 },
                  !obj:noisylearn.projects.ndt.TreeSigmoid {
                      max_col_norm: 3.,
                      layer_name: 'y',
                      dim: 1,
-                     sparse_init: 3,
+                     sparse_init: 150,
                      #irange: .05
                  }
                 ],
@@ -28,7 +28,7 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 1000,
-        learning_rate: .1,
+        learning_rate: 1.,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5
         },
@@ -52,16 +52,16 @@
         },
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             channel_name: "valid_objective",
-            prop_decrease: 0.00,
+            prop_decrease: 0.01,
             N: 100
         },
         termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
             max_epochs: 1000
         },
-        #update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            #decay_factor: 1.000004,
-            #min_lr: .000001
-        #}
+        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            decay_factor: 1.00004,
+            min_lr: .000001
+        }
     },
     extensions: [
         #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {

@@ -1,10 +1,5 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.mnist.MNIST {
-        which_set: 'train',
-        one_hot: 1,
-        start: 0,
-        stop: 50000
-    },
+    dataset: &train !pkl: "results/maxout/train_6.pkl",
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
                  !obj:pylearn2.models.maxout.Maxout {
@@ -39,16 +34,8 @@
         monitoring_dataset:
             {
                 'train' : *train,
-                'valid' : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'train',
-                              one_hot: 1,
-                              start: 50000,
-                              stop:  60000
-                          },
-                'test'  : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'test',
-                              one_hot: 1,
-                          }
+                'valid' : !pkl: "results/maxout/valid_6.pkl",
+                'test'  : !pkl: "results/maxout/test_6.pkl",
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
             input_include_probs: { 'h0' : .8 },

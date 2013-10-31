@@ -1,0 +1,88 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
+            preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+            preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+            start: 0,
+            stop: 40000,
+            axes: ['c', 0, 1, 'b']
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                     layer_name: 'h0',
+                     pad: 4,
+                     tied_b: 1,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: 96,
+                     num_pieces: 2,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: .9,
+                     partial_sum: 33,
+                 },
+
+                 !obj:noisylearn.projects.ndt.TreeSigmoid {
+                     max_col_norm: 3.,
+                     layer_name: 'y',
+                     dim: 1,
+                     sparse_init: 15,
+                     #irange: .05
+                 }
+                ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: &window_shape [32, 32],
+            num_channels: 3,
+            axes: ['c', 0, 1, 'b'],
+        }
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 1000,
+        learning_rate: 1.,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5
+        },
+        monitoring_dataset:
+            {
+            'valid' : &valid !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
+        preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+        preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+        start: 40000,
+        stop: 50000,
+        axes: ['c', 0, 1, 'b']
+                          },
+            },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_objective",
+            prop_decrease: 0.01,
+            N: 100
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs: 1000
+        },
+    },
+    extensions: [
+        #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             #channel_name: 'valid_objective',
+             #save_path: "test_1_best.pkl"
+        #},
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: .6
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 500,
+            decay_factor: .01
+        },
+    ],
+    save_path: "test_1_last.pkl",
+    save_freq: 1
+}

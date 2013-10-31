@@ -89,7 +89,8 @@ def tmp_test():
 
     #model_path = 'exp/mnist_sigmoid.pkl'
     #model_path = 'exp/mnist_sigmoid_single.pkl'
-    model_path = 'test_1_last.pkl'
+    #model_path = 'test_1_last.pkl'
+    model_path = 'right_last.pkl'
     #model_path = 'exp/sig_single_child.pkl'
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)

@@ -28,7 +28,7 @@ def load_model(model_path):
 
     return model, ds
 
-def branch_funbc(model):
+def branch_func(model):
     X = model.get_input_space().make_batch_theano()
     y = model.fprop(X)
     y = T.gt(y, 0.5)
@@ -53,7 +53,7 @@ def get_branches(node_id):
     if ds.X.shape[0] == 0:
         raise LeafNode(node_id)
 
-    brancher = branch_funbc(model)
+    brancher = branch_func(model)
     right, left = branch_data(brancher, ds.X)
 
     right_name = "{}/{}_indexes.npy".format(INDEX_PATH, node_id * 2 + 1)

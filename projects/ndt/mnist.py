@@ -21,5 +21,6 @@ class IndexedMNIST(MNIST):
                                         fit_preprocessor = fit_preprocessor,
                                         fit_test_preprocessor = fit_test_preprocessor)
 
-        self.X = self.X[indexes]
-        self.y = self.y[indexes]
+        if self.X is not None:
+            self.X = self.X[indexes]
+            self.y = self.y[indexes]
