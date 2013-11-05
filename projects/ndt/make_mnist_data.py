@@ -70,7 +70,6 @@ def class_balanced2(ds, num = 4):
     return rval
 
 
-
 def data_balanced(ds, num=4):
 
     index = range(ds.y.shape[0])

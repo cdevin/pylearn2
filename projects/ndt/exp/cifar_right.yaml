@@ -1,11 +1,5 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
-            preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
-            preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
-            start: 0,
-            stop: 40000,
-            axes: ['c', 0, 1, 'b']
-    },
+    dataset: &train !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/maxout0/train_2.pkl",
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
                  !obj:pylearn2.models.maxout.MaxoutConvC01B {
@@ -46,13 +40,7 @@
         },
         monitoring_dataset:
             {
-            'valid' : &valid !obj:pylearn2.datasets.zca_dataset.ZCA_Dataset {
-        preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
-        preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
-        start: 40000,
-        stop: 50000,
-        axes: ['c', 0, 1, 'b']
-                          },
+            'valid' : &valid !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/maxout0/valid_2.pkl" 
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
             input_include_probs: { 'h0' : .8 },
@@ -68,10 +56,10 @@
         },
     },
     extensions: [
-        #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             #channel_name: 'valid_objective',
-             #save_path: "test_1_best.pkl"
-        #},
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_objective',
+             save_path: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/right_best.pkl",
+        },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
             saturate: 250,
@@ -83,6 +71,6 @@
             decay_factor: .01
         },
     ],
-    save_path: "test_1_last.pkl",
+    save_path: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/right_last.pkl",
     save_freq: 1
 }

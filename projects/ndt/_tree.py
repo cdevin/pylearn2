@@ -19,6 +19,7 @@ def load_model(model_path):
     return model, ds
 
 def branch_funbc(model):
+
     X = model.get_input_space().make_batch_theano()
     y = model.fprop(X)
     y = T.gt(y, 0.5)
@@ -39,12 +40,30 @@ def branch_data(brancher, data, batch_size = 100):
     neg = np.where(res == 0)
     return pos[0], neg[0], res
 
+def branch_datac01b(brancher, data, batch_size = 100):
+
+    res = []
+    for i in xrange(data.shape[3] / batch_size):
+        res.append(brancher(data[:,:,:,i * batch_size : (i+1) * batch_size]))
+    rem = np.mod(data.shape[3], batch_size)
+    if rem != 0:
+        res.append(brancher(data[:,:,:,data.shape[3] - rem:]))
+
+
+    res = np.concatenate(res)
+    pos = np.nonzero(res)
+    neg = np.where(res == 0)
+    return pos[0], neg[0], res
+
+
+
+
 def get_branches(node_id):
 
     model_path = "{}/{}_{}.pkl".format(MODEL_PATH, MODEL_PREFIX, node_id)
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
-    right, left = branch_data(brancher, ds.X)
+    right, left = branch_data(brancher, ds.X.astype('float32'))
     right_name = "{}-R".format(node_id)
     left_name = "{}-L".format(node_id)
     numpy.save("{}/indexes_{}.npy".format(INDEX_PATH, right_name), right)
@@ -90,11 +109,13 @@ def tmp_test():
     #model_path = 'exp/mnist_sigmoid.pkl'
     #model_path = 'exp/mnist_sigmoid_single.pkl'
     #model_path = 'test_1_last.pkl'
-    model_path = 'right_last.pkl'
+    #model_path = 'right_last.pkl'
     #model_path = 'exp/sig_single_child.pkl'
+    model_path = "/RQexec/mirzameh/results/tree/cifar10/root_last.pkl"
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
-    right, left, res = branch_data(brancher, ds.X)
+    #right, left, res = branch_data(brancher, ds.X.astype('float32'))
+    right, left, res = branch_datac01b(brancher, ds.get_topological_view().astype('float32'))
     #import ipdb
     #ipdb.set_trace()
     print len(right), len(left)
@@ -105,6 +126,8 @@ def tmp_test():
     print l_
     #serial.save('exp/right.pkl', right)
     #serial.save('exp/left.pkl', left)
+    serial.save("/RQexec/mirzameh/results/tree/cifar10/right.pkl", right)
+    serial.save("/RQexec/mirzameh/results/tree/cifar10/left.pkl", left)
     #import ipdb
     #ipdb.set_trace()
 
