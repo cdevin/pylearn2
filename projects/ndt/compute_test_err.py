@@ -5,6 +5,8 @@ from pylearn2.utils import py_integer_types
 from pylearn2.utils import serial
 from pylearn2.config import yaml_parse
 import sys
+from sklearn.metrics import confusion_matrix
+import pylab as pl
 
 #DATA_PATH = "results/maxout/"
 #DATA_PATH = "results/maxout_data/"
@@ -74,6 +76,28 @@ def do_cifar():
         labels.append(y)
         pred.append(y_)
 
+    cm = confusion_matrix(labels[0], pred[0])
+    print cm
+    #pl.matshow(cm)
+    #pl.title('Confusion matrix')
+    #pl.colorbar()
+    #pl.ylabel('True label')
+    #pl.xlabel('Predicted label')
+    #pl.savefig('cm1.png')
+    #pl.close()
+
+
+    cm = confusion_matrix(labels[1], pred[1])
+    print cm
+    #pl.matshow(cm)
+    #pl.title('Confusion matrix')
+    #pl.colorbar()
+    #pl.ylabel('True label')
+    #pl.xlabel('Predicted label')
+    #pl.savefig('cm2.png')
+    #pl.close()
+
+
 
     labels = np.concatenate(labels)
     pred = np.concatenate(pred)
@@ -82,9 +106,16 @@ def do_cifar():
 
     errors = (pred != labels).sum()
     print errors, labels.shape[0], pred.shape[0]
-    print errors / float(labels.shape[0]) * 100
+    print errors / float(labels.shape[0]) *  100
+    cm = confusion_matrix(labels, pred)
+    print cm
 
-
+    #pl.matshow(cm)
+    #pl.title('Confusion matrix')
+    #pl.colorbar()
+    #pl.ylabel('True label')
+    #pl.xlabel('Predicted label')
+    #pl.savefig('cm.png')
 
 
 if __name__ == "__main__":

@@ -19,7 +19,6 @@ def splitter(model_path):
     y = T.gt(y, 0.5)
     return function([X], y)
 
-
 def branch_data(brancher, data, batch_size = 100):
 
     res = []
@@ -34,7 +33,6 @@ def branch_data(brancher, data, batch_size = 100):
     pos = np.nonzero(res)
     neg = np.where(res == 0)
     return pos[0], neg[0]
-
 
 def branch_datac01b(brancher, data, batch_size = 100):
 
@@ -51,11 +49,7 @@ def branch_datac01b(brancher, data, batch_size = 100):
     res = np.concatenate(res)
     pos = np.nonzero(res)
     neg = np.where(res == 0)
-    return pos[0], neg[0]
-
-
-
-
+    return pos[0], neg[0], res
 
 def get_data(which_set, start = None, stop = None):
     return MNIST(which_set, start=start, stop=stop, one_hot=True)
@@ -80,11 +74,16 @@ def tree(data_path, data, which_set, index = 1, topo = False):
     model = "{}{}.pkl".format(data_path, index)
     sp = splitter(model)
     if topo:
-        right, left = branch_datac01b(sp, data.get_topological_view())
+        right, left, res = branch_datac01b(sp, data.get_topological_view())
     else:
         right, left = branch_data(sp, data.X)
 
     print right.shape, left.shape, which_set
+    r_ = (res * data.y).sum(axis=0)
+    l_ = ((np.negative(res) + 1) * data.y).sum(axis=0)
+    print np.argmax(np.vstack((r_, l_)), 0)
+    print r_
+    print l_
     return
 
     if index == 1:
