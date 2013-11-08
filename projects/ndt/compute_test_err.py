@@ -89,6 +89,8 @@ def do_cifar():
 
     cm = confusion_matrix(labels[1], pred[1])
     print cm
+    import ipdb
+    ipdb.set_trace()
     #pl.matshow(cm)
     #pl.title('Confusion matrix')
     #pl.colorbar()
