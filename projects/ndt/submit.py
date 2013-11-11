@@ -21,7 +21,7 @@ def cifar(submit = False):
         TABLE_NAME = "tree_cifar_aug"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_aug")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_aug/")
 
     ind = 0
     for lr in [1., 0.5, 0.2]:

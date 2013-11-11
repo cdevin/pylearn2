@@ -111,7 +111,8 @@ def tmp_test():
     #model_path = 'test_1_last.pkl'
     #model_path = 'right_last.pkl'
     #model_path = 'exp/sig_single_child.pkl'
-    model_path = "/RQexec/mirzameh/results/tree/cifar10/root_last.pkl"
+    #model_path = "/RQexec/mirzameh/results/tree/cifar10/root_last.pkl"
+    model_path = "/data/lisatmp/mirzamom/results/tree/cifar10_aug/gkvOLyo__last.pkl"
     model, ds = load_model(model_path)
     brancher = branch_funbc(model)
     #right, left, res = branch_data(brancher, ds.X.astype('float32'))
