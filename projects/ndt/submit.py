@@ -18,7 +18,7 @@ def cifar(submit = False):
     state.lr_decay = 0.001
     if submit:
         state.save_path = './'
-        TABLE_NAME = "tree_cifar_aug"
+        TABLE_NAME = "tree_cifar_aug_bri"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_aug/")
@@ -50,10 +50,10 @@ def cifar_bin(submit = False):
         TABLE_NAME = "tree_cifar_bin"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_aug/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_bin/")
 
     ind = 0
-    for lr in [1., 0.5, 0.2]:
+    for lr in [.2, 0.1, 0.01]:
         for lr_decay in [0.1, 0.01, 0.001]:
             state.lr = lr
             state.lr_decay = lr_decay
