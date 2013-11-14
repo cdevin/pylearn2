@@ -12,6 +12,7 @@ import pylab as pl
 #DATA_PATH = "results/maxout_data/"
 DATA_PATH = "results/maxout_class2/"
 DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
+DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
 
 def get_func(model_path):
     model = serial.load(model_path)
@@ -44,6 +45,8 @@ def predict_c01b(model, data, batch_size = 500):
         y_.append(func(x[:,:,:,x.shape[3] - rem:]))
 
     y_ = np.concatenate(y_)
+    import ipdb
+    ipdb.set_trace()
     return np.argmax(ds.y, axis=1), y_
 
 

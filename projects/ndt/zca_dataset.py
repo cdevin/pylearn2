@@ -47,3 +47,6 @@ class ZCA_Dataset_BIN(ZCA_Dataset):
                 new_y[i, labels[np.argmax(self.y[i])]] = 1
 
             self.y = new_y
+
+        self.compress = False
+        self.design_loc = None

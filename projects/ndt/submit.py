@@ -16,6 +16,9 @@ def cifar(submit = False):
     state.db = 'cifar'
     state.learning_rate = 0.1
     state.lr_decay = 0.001
+    state.num_channels = 96
+    state.batch_size = 1000
+
     if submit:
         state.save_path = './'
         TABLE_NAME = "tree_cifar_aug_bri"
