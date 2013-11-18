@@ -10,7 +10,8 @@ from noisylearn.projects.ndt.zca_dataset import ZCA_Dataset_BIN
 
 #DATA_PATH = "results/maxout/"
 #DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
-DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
+#DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
+DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/"
 
 def splitter(model_path):
 
@@ -70,9 +71,6 @@ def branch_datac01b_bin(brancher, data, batch_size = 100):
     neg = np.nonzero(np.argmin(res,1))
     return pos[0], neg[0], res
 
-
-
-
 def get_data(which_set, start = None, stop = None):
     return MNIST(which_set, start=start, stop=stop, one_hot=True)
 
@@ -94,8 +92,6 @@ def get_cifar_bin(which_set, start = None, stop = None):
                 start=start,
                 stop=stop,
                 axes=['c', 0, 1, 'b'])
-
-
 
 def save_ds(ds, index, which_set):
     serial.save("{}{}_{}.pkl".format(DATA_PATH, which_set, index), ds)
@@ -125,18 +121,19 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
     #ipdb.set_trace()
     #return
 
+    print "Index is: {}".format(index)
     if index == 1:
         ds = copy.deepcopy(data)
         ds.X = ds.X[right]
         ds.y = ds.y[right]
-        #tree(data_path, ds, which_set, 3)
         save_ds(ds, index * 2 + 1, which_set)
+        tree(data_path, ds, which_set, 3, dstype = dstype)
 
         ds = copy.deepcopy(data)
         ds.X = ds.X[left]
         ds.y = ds.y[left]
-        #tree(data_path, ds, which_set, 2)
         save_ds(ds, index * 2, which_set)
+        tree(data_path, ds, which_set, 2, dstype = dstype)
 
 
     else:
@@ -149,8 +146,6 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         ds.X = ds.X[left]
         ds.y = ds.y[left]
         save_ds(ds, index * 2, which_set)
-
-
 
 def do_mnist():
 
@@ -172,7 +167,7 @@ def do_cifar():
     tree(DATA_PATH, ds, 'valid', dstype='topo')
 
     ds = get_cifar('test')
-    tree(DATA_PATH, ds, 'test', dstype='topo')
+    tree(DATA_PATH, ds, 'test',  dstype='topo')
 
 def do_cifar_bin():
 
@@ -186,8 +181,6 @@ def do_cifar_bin():
     tree(DATA_PATH, ds, 'test', dstype='topobin')
 
 
-
-
 if __name__ == "__main__":
-    #do_cifar()
-    do_cifar_bin()
+    do_cifar()
+    #do_cifar_bin()
