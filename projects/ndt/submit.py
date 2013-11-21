@@ -85,7 +85,7 @@ def cifar_child(submit = False):
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10/")
 
     ind = 0
-    for index in [4,5,6,7]:
+    for index in [7]:
         for lr in [.2, 0.1, 0.01]:
             for lr_decay in [0.01, 0.001]:
                 state.tree_index = index

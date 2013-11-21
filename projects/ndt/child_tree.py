@@ -12,6 +12,7 @@ from noisylearn.projects.ndt.zca_dataset import ZCA_Dataset_BIN
 #DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
 #DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
 DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/"
+DATA_PATH = "/data/lisatmp2/mirzamom/results/tree/cifar10/"
 
 def splitter(model_path):
 
@@ -98,7 +99,14 @@ def save_ds(ds, index, which_set):
 
 def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
 
-
+    import ipdb
+    ipdb.set_trace()
+    print "Index is: {}".format(index)
+    # TODO temp hack remove me
+    if index == 1:
+        dstype = 'topobin'
+    else:
+        dstype = 'topo'
     #while index < 100:
     model = "{}{}.pkl".format(data_path, index)
     sp = splitter(model)
@@ -112,27 +120,32 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         raise NameError("Bad dstype: {}".format(dstype))
 
     print right.shape, left.shape, which_set
-    #r_ = (res * data.y).sum(axis=0)
-    #l_ = ((np.negative(res) + 1) * data.y).sum(axis=0)
-    #print np.argmax(np.vstack((r_, l_)), 0)
-    #print r_
-    #print l_
+    if dstype == 'topobin':
+        r_ = (np.argmax(res,1).reshape((res.shape[0],1)) * data.y).sum(axis=0)
+        l_ = (np.argmin(res,1).reshape((res.shape[0],1)) * data.y).sum(axis=0)
+    else:
+        r_ = (res * data.y).sum(axis=0)
+        l_ = ((np.negative(res) + 1) * data.y).sum(axis=0)
+
+    print np.argmax(np.vstack((r_, l_)), 0)
+    print r_
+    print l_
     #import ipdb
     #ipdb.set_trace()
     #return
 
-    print "Index is: {}".format(index)
+
     if index == 1:
         ds = copy.deepcopy(data)
         ds.X = ds.X[right]
         ds.y = ds.y[right]
-        save_ds(ds, index * 2 + 1, which_set)
+        #save_ds(ds, index * 2 + 1, which_set)
         tree(data_path, ds, which_set, 3, dstype = dstype)
 
         ds = copy.deepcopy(data)
         ds.X = ds.X[left]
         ds.y = ds.y[left]
-        save_ds(ds, index * 2, which_set)
+        #save_ds(ds, index * 2, which_set)
         tree(data_path, ds, which_set, 2, dstype = dstype)
 
 
@@ -140,12 +153,12 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         ds = copy.deepcopy(data)
         ds.X = ds.X[right]
         ds.y = ds.y[right]
-        save_ds(ds, index * 2 + 1, which_set)
+        #save_ds(ds, index * 2 + 1, which_set)
 
         ds = copy.deepcopy(data)
         ds.X = ds.X[left]
         ds.y = ds.y[left]
-        save_ds(ds, index * 2, which_set)
+        #save_ds(ds, index * 2, which_set)
 
 def do_mnist():
 
