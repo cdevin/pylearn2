@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import copy
 from theano import function
@@ -7,6 +8,7 @@ from pylearn2.datasets.mnist import MNIST
 from pylearn2.datasets.zca_dataset import ZCA_Dataset
 from pylearn2.utils.string_utils import preprocess
 from noisylearn.projects.ndt.zca_dataset import ZCA_Dataset_BIN
+from noisylearn.projects.ndt.zca_dataset import Indexed_ZCA_Dataset
 
 #DATA_PATH = "results/maxout/"
 #DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
@@ -97,10 +99,11 @@ def get_cifar_bin(which_set, start = None, stop = None):
 def save_ds(ds, index, which_set):
     serial.save("{}{}_{}.pkl".format(DATA_PATH, which_set, index), ds)
 
+def save_indexes(indexes, path, which_set, nodeindex):
+    serial.save("{}{}_{}.npy".format(path, which_set, nodeindex), indexes)
+
 def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
 
-    import ipdb
-    ipdb.set_trace()
     print "Index is: {}".format(index)
     # TODO temp hack remove me
     if index == 1:
@@ -109,56 +112,67 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         dstype = 'topo'
     #while index < 100:
     model = "{}{}.pkl".format(data_path, index)
+    if not os.path.isfile(model):
+        print "No -{}- node found".format(index)
+        return
+
     sp = splitter(model)
+    if hasattr(data, 'indexes'):
+        x = data.X[data.indexes]
+        y = data.y[data.indexes]
+    else:
+        x = data.X
+        y = data.y
     if dstype == 'topo':
-        right, left, res = branch_datac01b(sp, data.get_topological_view())
+        right, left, res = branch_datac01b(sp, data.get_topological_view(x))
     elif dstype == 'vector':
-        right, left = branch_data(sp, data.X)
+        right, left = branch_data(sp, x)
     elif dstype == 'topobin':
-        right, left, res = branch_datac01b_bin(sp, data.get_topological_view())
+        right, left, res = branch_datac01b_bin(sp, data.get_topological_view(x))
     else:
         raise NameError("Bad dstype: {}".format(dstype))
 
     print right.shape, left.shape, which_set
     if dstype == 'topobin':
-        r_ = (np.argmax(res,1).reshape((res.shape[0],1)) * data.y).sum(axis=0)
-        l_ = (np.argmin(res,1).reshape((res.shape[0],1)) * data.y).sum(axis=0)
+        r_ = (np.argmax(res,1).reshape((res.shape[0],1)) * y).sum(axis=0)
+        l_ = (np.argmin(res,1).reshape((res.shape[0],1)) * y).sum(axis=0)
     else:
-        r_ = (res * data.y).sum(axis=0)
-        l_ = ((np.negative(res) + 1) * data.y).sum(axis=0)
+        r_ = (res * y).sum(axis=0)
+        l_ = ((np.negative(res) + 1) * y).sum(axis=0)
 
     print np.argmax(np.vstack((r_, l_)), 0)
     print r_
     print l_
-    #import ipdb
-    #ipdb.set_trace()
-    #return
 
 
     if index == 1:
-        ds = copy.deepcopy(data)
-        ds.X = ds.X[right]
-        ds.y = ds.y[right]
-        #save_ds(ds, index * 2 + 1, which_set)
-        tree(data_path, ds, which_set, 3, dstype = dstype)
+        save_indexes(data_path, left, which_set, index * 2)
+        save_indexes(data_path, right, which_set, index * 2 + 1)
 
-        ds = copy.deepcopy(data)
-        ds.X = ds.X[left]
-        ds.y = ds.y[left]
-        #save_ds(ds, index * 2, which_set)
-        tree(data_path, ds, which_set, 2, dstype = dstype)
-
+        data.indexes = left
+        tree(data_path, data, which_set, 2, dstype = dstype)
+        data.indexes = right
+        tree(data_path, data, which_set, 3, dstype = dstype)
 
     else:
-        ds = copy.deepcopy(data)
-        ds.X = ds.X[right]
-        ds.y = ds.y[right]
-        #save_ds(ds, index * 2 + 1, which_set)
+        left = orig_index(data, left)
+        right = orig_index(data, right)
 
-        ds = copy.deepcopy(data)
-        ds.X = ds.X[left]
-        ds.y = ds.y[left]
-        #save_ds(ds, index * 2, which_set)
+        save_indexes(data_path, left, which_set, index * 2)
+        save_indexes(data_path, right, which_set, index * 2 + 1)
+
+        data.indexes = left
+        tree(data_path, data, which_set, index * 2, dstype = dstype)
+        data.indexes = right
+        tree(data_path, data, which_set, index * 2 + 1, dstype = dstype)
+
+
+
+def orig_index(dataset, indexes):
+
+    if not hasattr(dataset, 'indexes'):
+        raise TypeError("Dataset should be indexed")
+    return dataset.indexes[indexes]
 
 def do_mnist():
 
