@@ -17,7 +17,7 @@ def cifar(submit = False):
     state.learning_rate = 0.1
     state.lr_decay = 0.001
     state.num_channels = 96
-    state.batch_size = 1000
+    state.batch_size = 500
 
     if submit:
         state.save_path = './'
@@ -27,15 +27,18 @@ def cifar(submit = False):
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10_aug/")
 
     ind = 0
-    for lr in [1., 0.5, 0.2]:
-        for lr_decay in [0.1, 0.01, 0.001]:
-            state.lr = lr
-            state.lr_decay = lr_decay
-            if submit:
-                sql.insert_job(experiment, flatten(state), db)
-            else:
-                experiment(state, None)
-            ind += 1
+    for ch, bs in zip([64, 96, 128], [512, 256, 124]):
+        for lr in [1., 0.5, 0.01]:
+            for lr_decay in [0.01, 0.001]:
+                state.lr = lr
+                state.lr_decay = lr_decay
+                state.num_channels = ch
+                state.batch_size = bs
+                if submit:
+                    sql.insert_job(experiment, flatten(state), db)
+                else:
+                    experiment(state, None)
+                ind += 1
 
     db.createView(TABLE_NAME + '_view')
     print "{} jobs submitted".format(ind)
@@ -85,7 +88,7 @@ def cifar_child(submit = False):
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10/")
 
     ind = 0
-    for index in [7]:
+    for index in [4,5,6,7]:
         for lr in [.2, 0.1, 0.01]:
             for lr_decay in [0.01, 0.001]:
                 state.tree_index = index

@@ -14,7 +14,7 @@
                      tied_b: 1,
                      W_lr_scale: .05,
                      b_lr_scale: .05,
-                     num_channels: 64,
+                     num_channels: %(num_channels)i,
                      num_pieces: 2,
                      kernel_shape: [8, 8],
                      pool_shape: [4, 4],
@@ -23,7 +23,6 @@
                      max_kernel_norm: .9,
                      partial_sum: 33,
                  },
-
                  !obj:noisylearn.projects.ndt.TreeSigmoid {
                      max_col_norm: 3.,
                      layer_name: 'y',
@@ -39,7 +38,7 @@
         }
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 500,
+        batch_size: %(batch_size)i,
         learning_rate: %(learning_rate)f,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5
@@ -70,7 +69,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_objective',
-             save_path: "%(save_path)s_best.pkl"
+             save_path: "%(save_path)sbest.pkl"
         },
         !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
             start: 1,
@@ -87,6 +86,6 @@
             center: [ *valid ]
         }          
     ],
-    save_path: "%(save_path)s_last.pkl",
+    save_path: "%(save_path)slast.pkl",
     save_freq: 1
 }

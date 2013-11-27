@@ -1,5 +1,12 @@
 !obj:pylearn2.train.Train {
-    dataset: !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/train_%(tree_index)s.pkl",
+    dataset: &train !obj:noisylearn.projects.ndt.zca_dataset.Indexed_ZCA_Dataset {
+            preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+            preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+            indexes: !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/train_%(tree_index)s.npy",
+            start: 0,
+            stop: 40000,
+            axes: ['c', 0, 1, 'b']
+    },
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
         layers: [
@@ -72,7 +79,15 @@
         init_momentum: .5,
         monitoring_dataset:
             {
-                'valid' : !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/valid_%(tree_index)s.pkl"
+        'valid' : &valid !obj:noisylearn.projects.ndt.zca_dataset.Indexed_ZCA_Dataset {
+        preprocessed_dataset: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/train.pkl",
+        preprocessor: !pkl: "${PYLEARN2_DATA_PATH}/cifar10/pylearn2_gcn_whitened/preprocessor.pkl",
+        indexes: !pkl: "${PYLEARN2_EXP_RESULTS}/tree/cifar10/valid_%(tree_index)s.npy",
+        start: 40000,
+        stop: 50000,
+        axes: ['c', 0, 1, 'b']
+                          },
+
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
             input_include_probs: { 'h0' : .8 },

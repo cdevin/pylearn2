@@ -10,11 +10,7 @@ from pylearn2.utils.string_utils import preprocess
 from noisylearn.projects.ndt.zca_dataset import ZCA_Dataset_BIN
 from noisylearn.projects.ndt.zca_dataset import Indexed_ZCA_Dataset
 
-#DATA_PATH = "results/maxout/"
-#DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
-#DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
-DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/"
-DATA_PATH = "/data/lisatmp2/mirzamom/results/tree/cifar10/"
+DATA_PATH = preprocess("${PYLEARN2_EXP_RESULTS}/tree/cifar10/")
 
 def splitter(model_path):
 
@@ -96,10 +92,8 @@ def get_cifar_bin(which_set, start = None, stop = None):
                 stop=stop,
                 axes=['c', 0, 1, 'b'])
 
-def save_ds(ds, index, which_set):
-    serial.save("{}{}_{}.pkl".format(DATA_PATH, which_set, index), ds)
-
-def save_indexes(indexes, path, which_set, nodeindex):
+def save_indexes(path, indexes, which_set, nodeindex):
+    print "{}{}_{}.npy".format(path, which_set, nodeindex)
     serial.save("{}{}_{}.npy".format(path, which_set, nodeindex), indexes)
 
 def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
@@ -166,8 +160,6 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         data.indexes = right
         tree(data_path, data, which_set, index * 2 + 1, dstype = dstype)
 
-
-
 def orig_index(dataset, indexes):
 
     if not hasattr(dataset, 'indexes'):
@@ -187,7 +179,7 @@ def do_mnist():
 
 def do_cifar():
 
-    ds = get_cifar('train', 0, 50000)
+    ds = get_cifar('train', 0, 40000)
     tree(DATA_PATH, ds, 'train', dstype='topo')
 
     ds = get_cifar('train', 40000, 50000)
@@ -206,7 +198,6 @@ def do_cifar_bin():
 
     ds = get_cifar('test')
     tree(DATA_PATH, ds, 'test', dstype='topobin')
-
 
 if __name__ == "__main__":
     do_cifar()
