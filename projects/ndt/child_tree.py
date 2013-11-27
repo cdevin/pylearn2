@@ -21,6 +21,30 @@ def splitter(model_path):
     y = T.gt(y, 0.5)
     return function([X], y)
 
+
+def model_output(model_path):
+
+    model = serial.load(model_path)
+    X = model.get_input_space().make_batch_theano()
+    y = model.fprop(X)
+
+    return function([X], y)
+
+def get_confidence_c01b(brancher, data, batch_size = 100):
+
+    res = []
+    print data.shape
+    data = data.astype('float32')
+    for i in xrange(data.shape[3] / batch_size):
+        res.append(brancher(data[:,:,:,i * batch_size : (i+1) * batch_size]))
+    rem = np.mod(data.shape[3], batch_size)
+    if rem != 0:
+        res.append(brancher(data[:,:,:,data.shape[3] - rem:]))
+
+    res = np.concatenate(res)
+    return  res
+
+
 def branch_data(brancher, data, batch_size = 100):
 
     res = []
@@ -104,13 +128,14 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         dstype = 'topobin'
     else:
         dstype = 'topo'
-    #while index < 100:
+
     model = "{}{}.pkl".format(data_path, index)
     if not os.path.isfile(model):
         print "No -{}- node found".format(index)
         return
 
     sp = splitter(model)
+    #sp = model_output(model)
     if hasattr(data, 'indexes'):
         x = data.X[data.indexes]
         y = data.y[data.indexes]
@@ -119,12 +144,21 @@ def tree(data_path, data, which_set, index = 1, dstype = 'vector'):
         y = data.y
     if dstype == 'topo':
         right, left, res = branch_datac01b(sp, data.get_topological_view(x))
+        #res = get_confidence_c01b(sp, data.get_topological_view(x))
+        print 'hiii'
     elif dstype == 'vector':
         right, left = branch_data(sp, x)
     elif dstype == 'topobin':
         right, left, res = branch_datac01b_bin(sp, data.get_topological_view(x))
     else:
         raise NameError("Bad dstype: {}".format(dstype))
+
+
+    ### Temp for saving results
+    np.save("res_out.npy", res)
+    return
+    ####
+
 
     print right.shape, left.shape, which_set
     if dstype == 'topobin':
@@ -179,11 +213,11 @@ def do_mnist():
 
 def do_cifar():
 
-    ds = get_cifar('train', 0, 40000)
-    tree(DATA_PATH, ds, 'train', dstype='topo')
-
-    ds = get_cifar('train', 40000, 50000)
-    tree(DATA_PATH, ds, 'valid', dstype='topo')
+    #ds = get_cifar('train', 0, 40000)
+    #tree(DATA_PATH, ds, 'train', dstype='topo')
+#
+    #ds = get_cifar('train', 40000, 50000)
+    #tree(DATA_PATH, ds, 'valid', dstype='topo')
 
     ds = get_cifar('test')
     tree(DATA_PATH, ds, 'test',  dstype='topo')

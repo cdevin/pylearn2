@@ -16,7 +16,8 @@ DATA_PATH = "results/maxout_class2/"
 DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/maxout0/"
 DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_bin/"
 DATA_PATH = "/data/lisatmp2/mirzamom/results/tree/cifar10/"
-DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_job/"
+DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10/"
+#DATA_PATH = "/RQexec/mirzameh/results/tree/cifar10_job/"
 
 def get_func(model_path):
     model = serial.load(model_path)
@@ -55,8 +56,6 @@ def predict_c01b(model, data, batch_size = 500):
     else:
         ds = load_cifar(data)
 
-    #import ipdb
-    #ipdb.set_trace()
     x = ds.get_topological_view().astype('float32')
     y_ = []
     for i in xrange(x.shape[3] / batch_size):
@@ -89,7 +88,7 @@ def do_mnist():
     print (pred != labels).sum()
 
 def do_cifar():
-    items = [4,5,6,7]
+    items = [2,3]
     labels = []
     pred = []
     for item in items:
