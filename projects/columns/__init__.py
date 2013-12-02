@@ -1,6 +1,7 @@
 import theano.tensor as T
 from pylearn2.models.mlp import Layer
 from pylearn2.utils import serial
+from pylearn2.space import VectorSpace
 import ipdb
 
 
@@ -15,6 +16,7 @@ class Columns(Layer):
         self.main_column = main_column
         self.instantiate_columns(small_column, num_columns)
         self.layer_name = layer_name
+        self.output_space = VectorSpace(self.columns[0].layers[-1].output_space.dim * num_columns)
 
     def instantiate_columns(self, column, num_columns):
         self.columns = []
@@ -33,9 +35,6 @@ class Columns(Layer):
     def get_input_space(self):
         return self.main_column.get_input_space()
 
-    def get_output_space(self):
-        return self.main_column.get_output_space()
-
     def fprop(self, state):
 
         # get the gaters
@@ -49,10 +48,7 @@ class Columns(Layer):
         for i in xrange(len(self.columns)):
             col_z.append(self.columns[i].fprop(state) * z[:,i].dimshuffle(0, 'x'))
 
-        col_z = T.concatenate(col_z, 1)
-        z = T.concatenate([z, col_z], 1)
-        print z.tag.test_value.shape
-
+        z = T.concatenate(col_z, 1)
 
         return z
 
