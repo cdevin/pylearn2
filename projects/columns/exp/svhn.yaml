@@ -7,62 +7,20 @@
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
         layers: [
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
-                     layer_name: 'h0',
-                     pad: 4,
-                     tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
-                     num_channels: 32,
-                     num_pieces: 2,
-                     kernel_shape: [5, 5],
-                     pool_shape: [3, 3],
-                     pool_stride: [2, 2],
-                     irange: 0.005000,
-                     max_kernel_norm: .9,
-                 },
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
-                     layer_name: 'h1',
-                     pad: 3,
-                     tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
-                     num_channels: 64,
-                     num_pieces: 2,
-                     kernel_shape: [5, 5],
-                     pool_shape: [3, 3],
-                     pool_stride: [2, 2],
-                     irange: 0.005000,
-                     max_kernel_norm: 1.9365,
-                 },
-                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
-                     pad: 3,
-                     layer_name: 'h2',
-                     tied_b: 1,
-                     W_lr_scale: .05,
-                     b_lr_scale: .05,
-                     num_channels: 64,
-                     num_pieces: 2,
-                     kernel_shape: [5, 5],
-                     pool_shape: [3, 3],
-                     pool_stride: [2, 2],
-                     irange: 0.005000,
-                     max_kernel_norm: 1.9365,
-                 },
-                 !obj:pylearn2.models.mlp.RectifiedLinear {
-                    layer_name: 'h3',
-                    irange: .005,
-                    dim: 50,
-                    max_col_norm: 1.9
-                 },
-                 !obj:pylearn2.models.mlp.Softmax {
-                     max_col_norm: 1.9365,
-                     layer_name: 'y',
-                     n_classes: 10,
-                     irange: 0.005000
-                 }
-                ],
-        input_space: !obj:pylearn2.space.Conv2DSpace {
+            !obj:noisylearn.projects.columns.Columns {
+                layer_name: 'columns',
+                main_column: !pkl: "${PYLEARN2_EXP_RESULTS}svhn_best.joblib",
+                small_column: 'exp/svhn_small.yaml',
+                num_columns: 50,
+            },
+        !obj:pylearn2.models.mlp.Softmax {
+                         max_col_norm: 1.9365,
+                         layer_name: 'y',
+                         n_classes: 10,
+                         irange: .005
+                     },
+        ],
+    input_space: !obj:pylearn2.space.Conv2DSpace {
             shape: [32, 32],
             num_channels: 3,
             axes: ['c', 0, 1, 'b'],
@@ -70,6 +28,7 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         train_iteration_mode: 'batchwise_shuffled_sequential',
+        #monitor_iteration_mode: 'batchwise_shuffled_sequential',
         learning_rate: 0.200000,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: 0.5,
@@ -88,10 +47,10 @@
                               axes: ['c', 0, 1, 'b'],
                           }
             },
-        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            input_include_probs: { 'h0' : .8 },
-            input_scales: { 'h0': 1. }
-        },
+        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            #input_include_probs: { 'h0' : .8 },
+            #input_scales: { 'h0': 1. }
+        #},
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             channel_name: "valid_y_misclass",
             prop_decrease: 0.,
@@ -103,7 +62,7 @@
              channel_name: 'valid_y_misclass',
              # we save in joblib format becasue of large size of models
              # could cause pickle to crash
-             save_path: "${PYLEARN2_EXP_RESULTS}svhn_best.joblib",
+             save_path: "${PYLEARN2_EXP_RESULTS}svhn_col_best.joblib",
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
@@ -117,3 +76,7 @@
         },
     ],
 }
+
+
+
+
