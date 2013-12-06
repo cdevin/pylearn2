@@ -13,7 +13,7 @@
                      tied_b: 1,
                      W_lr_scale: .05,
                      b_lr_scale: .05,
-                     num_channels: 32,
+                     num_channels: 16,
                      num_pieces: 2,
                      kernel_shape: [5, 5],
                      pool_shape: [3, 3],
@@ -27,7 +27,7 @@
                      tied_b: 1,
                      W_lr_scale: .05,
                      b_lr_scale: .05,
-                     num_channels: 64,
+                     num_channels: 32,
                      num_pieces: 2,
                      kernel_shape: [5, 5],
                      pool_shape: [3, 3],
@@ -41,7 +41,7 @@
                      tied_b: 1,
                      W_lr_scale: .05,
                      b_lr_scale: .05,
-                     num_channels: 64,
+                     num_channels: 32,
                      num_pieces: 2,
                      kernel_shape: [5, 5],
                      pool_shape: [3, 3],
@@ -52,7 +52,7 @@
                  !obj:pylearn2.models.mlp.RectifiedLinear {
                     layer_name: 'h3',
                     irange: .005,
-                    dim: 50,
+                    dim: 30,
                     max_col_norm: 1.9
                  },
                  !obj:pylearn2.models.mlp.Softmax {
@@ -101,9 +101,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             # we save in joblib format becasue of large size of models
-             # could cause pickle to crash
-             save_path: "${PYLEARN2_EXP_RESULTS}svhn_best.joblib",
+             save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/maincol_best.pkl",
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
@@ -116,4 +114,6 @@
             decay_factor: 0.001000
         },
     ],
+    save_freq: 1,
+    save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/maincol.pkl"
 }

@@ -7,11 +7,11 @@
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
         layers: [
-            !obj:noisylearn.projects.columns.Columns {
+            !obj:noisylearn.projects.columns.Columns_Connected {
                 layer_name: 'columns',
-                main_column: !pkl: "${PYLEARN2_EXP_RESULTS}svhn_best.joblib",
+                main_column: !pkl: "${PYLEARN2_EXP_RESULTS}/columns/svhn/maincol.pkl",
                 small_column: 'exp/svhn_small.yaml',
-                num_columns: 50,
+                num_columns: 30,
             },
         !obj:pylearn2.models.mlp.Softmax {
                          max_col_norm: 1.9365,
@@ -60,9 +60,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_misclass',
-             # we save in joblib format becasue of large size of models
-             # could cause pickle to crash
-             save_path: "${PYLEARN2_EXP_RESULTS}svhn_col_best.joblib",
+             save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/best.pkl",
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
@@ -75,6 +73,8 @@
             decay_factor: 0.001000
         },
     ],
+    save_freq: 1,
+    save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/last.pkl"
 }
 
 
