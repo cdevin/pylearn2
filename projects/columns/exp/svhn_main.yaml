@@ -13,7 +13,7 @@
                      tied_b: 1,
                      W_lr_scale: .05,
                      b_lr_scale: .05,
-                     num_channels: 16,
+                     num_channels: 64,
                      num_pieces: 2,
                      kernel_shape: [5, 5],
                      pool_shape: [3, 3],
@@ -70,7 +70,7 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         train_iteration_mode: 'batchwise_shuffled_sequential',
-        learning_rate: 0.200000,
+        learning_rate: .2,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: 0.5,
         },

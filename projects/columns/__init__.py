@@ -1,4 +1,6 @@
 import theano.tensor as T
+#from theano.config import floatX
+import theano
 from pylearn2.models.mlp import Layer
 from pylearn2.utils import serial
 from pylearn2.space import VectorSpace, Conv2DSpace
@@ -52,6 +54,28 @@ class Columns(Layer):
 
         return z
 
+class ColumnsOneBatch(Columns):
+    """ The case when mini-batch size is one.
+        It will fail with batch size larger than one.
+    """
+
+    def fprop(self, state):
+
+        z = state
+        for i in xrange(len(self.main_column.layers) - 1):
+            z = self.main_column.layers[i].fprop(z)
+
+        z = T.switch(T.gt(z,0),1.,0.)
+        zeros = T.alloc(0.0, 1, self.columns[i].get_output_space().dim).astype(theano.config.floatX)
+        zeros.name = 'zeros place holder'
+        col_z = []
+        for i in xrange(len(self.columns)):
+            col_z.append(T.switch(T.eq(z[0,i], 0), zeros, self.columns[i].fprop(state)))
+
+        z = T.concatenate(col_z, 1).astype(theano.config.floatX)
+        return z
+
+
 class Columns_Connected(Layer):
 
     def __init__(self,
@@ -78,8 +102,6 @@ class Columns_Connected(Layer):
             # adjust the input_space
             #for j in xrange(1, len(self.columns[-1].layers)):
                 #sp = self.columns[-1].layers[j].output_space
-
-
 
     def get_params(self):
         params = []
