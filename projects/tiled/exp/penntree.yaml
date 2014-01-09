@@ -1,0 +1,75 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
+        which_set: 'train',
+        seq_len: &seq_len 5
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: 100,
+                    layer_name: 'h0',
+                    dict_dim: 10000,
+                    irange: .005,
+                    max_col_norm: 1.9365,
+                    },
+                 #!obj:noisylearn.projects.tiled.LocalLinear {
+                     #dim: 240,
+                     #kernel_shape: [10, 10],
+                     #layer_name: 'h0',
+                     #irange: .005,
+                     #max_col_norm: 1.9365,
+                 #},
+                 !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h1',
+                     num_units: 240,
+                     num_pieces: 5,
+                     irange: .005,
+                     max_col_norm: 1.9365,
+                 },
+                 !obj:noisylearn.projects.tiled.CompactSoftmax {
+                     max_col_norm: 1.9365,
+                     layer_name: 'y',
+                     n_classes: 10000,
+                     irange: .005
+                 }
+                ],
+        nvis: *seq_len,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 512,
+        learning_rate: .1,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                'train' : *train,
+            }, 
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
+        #termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            #channel_name: "valid_y_misclass",
+            #prop_decrease: 0.,
+            #N: 100
+        #},
+        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            decay_factor: 1.000004,
+            min_lr: .000001
+        }
+    },
+    extensions: [
+        #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             #channel_name: 'valid_y_misclass',
+             #save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+        #},
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: .7
+        }
+    ],
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_freq: 1
+}
