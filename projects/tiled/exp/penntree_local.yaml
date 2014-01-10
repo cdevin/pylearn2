@@ -1,18 +1,31 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.datasets.mnist.MNIST {
+    dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
         which_set: 'train',
-        one_hot: 1,
-        start: 0,
-        stop: 50000
+        seq_len: &seq_len 5
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
-                 !obj:noisylearn.projects.tiled.LocalLinear {
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: 500,
+                    layer_name: 'h0',
+                    dict_dim: 10000,
+                    irange: .005,
+                    max_col_norm: 1.9365,
+                    },
+                 !obj:pylearn2.models.mlp.SpaceConverter {
+                    layer_name: 'converter',
+                    output_space: !obj:pylearn2.space.Conv2DSpace {
+                        shape: [50, 50],
+                        num_channels: 1,
+                        axes: ['c', 0, 1, 'b'],
+                    },
+                 },
+                 !obj:noisylearn.projects.tiled.LocalRectified {
                      output_channels: 1,
                      kernel_shape: [10, 10],
                      pool_shape: [1, 1],
                      pool_stride: [1, 1],
-                     layer_name: 'h0',
+                     layer_name: 'h1',
                      irange: .005,
                      max_kernel_norm: 1.9365,
                  },
@@ -23,17 +36,17 @@
                      #irange: .005,
                      #max_col_norm: 1.9365,
                  #},
-                 !obj:pylearn2.models.mlp.Softmax {
+                 !obj:noisylearn.projects.tiled.CompactSoftmax {
                      max_col_norm: 1.9365,
                      layer_name: 'y',
-                     n_classes: 10,
+                     n_classes: 10000,
                      irange: .005
                  }
                 ],
-        nvis: 784,
+        nvis: *seq_len,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 100,
+        batch_size: 512,
         learning_rate: .1,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5,
@@ -41,24 +54,22 @@
         monitoring_dataset:
             {
                 'train' : *train,
-                'valid' : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'train',
-                              one_hot: 1,
-                              start: 50000,
-                              stop:  60000
-                          },
-                'test'  : !obj:pylearn2.datasets.mnist.MNIST {
-                              which_set: 'test',
-                              one_hot: 1,
-                          }
+                'valid' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'valid',
+                    seq_len: *seq_len,
+                },
+                'test' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'test',
+                    seq_len: *seq_len,
+                },
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
             input_include_probs: { 'h0' : .8 },
             input_scales: { 'h0': 1. }
         },
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
-            channel_name: "valid_y_misclass",
-            prop_decrease: 0.,
+            channel_name: "valid_y_perplexity",
+            prop_decrease: 0,
             N: 100
         },
         update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
@@ -68,7 +79,7 @@
     },
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
-             channel_name: 'valid_y_misclass',
+             channel_name: 'valid_y_perplexity',
              save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
