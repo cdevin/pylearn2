@@ -9,8 +9,8 @@
                     dim: %(embed_dim)i,
                     layer_name: 'h0',
                     dict_dim: 10000,
-                    irange: .005,
-                    max_col_norm: 1.9365,
+                    %(h0_init)s,
+                    max_col_norm: %(h0_col_norm)f,
                  },
                  !obj:pylearn2.models.mlp.SpaceConverter {
                     layer_name: 'converter',
@@ -25,27 +25,27 @@
                      num_pieces: %(l1_num_pieces)i,
                      kernel_shape: [%(kernel_shape)i, %(kernel_shape)i],
                      layer_name: 'h1',
-                     irange: .005,
-                     max_filter_norm: 1.9365,
+                     %(h1_init)s,
+                     max_filter_norm: %(h1_col_norm)f,
                  },
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h2',
                      num_units: %(l2_units)i,
                      num_pieces: %(l2_pieces)i,
-                     irange: .005,
+                     %(h2_init)s,
                      max_col_norm: 1.9365,
-                 #},
+                 },
                  !obj:noisylearn.projects.tiled.CompactSoftmax {
-                     max_col_norm: 1.9365,
+                     max_col_norm: %(y_col_norm)f,
                      layer_name: 'y',
                      n_classes: 10000,
-                     irange: .005
+                     %(y_init)s,
                  }
                 ],
         nvis: *seq_len,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
-        batch_size: 256,
+        batch_size: %(batch_size)i,
         learning_rate: %(learning_rate)f,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5,
@@ -71,22 +71,23 @@
             prop_decrease: 0,
             N: 100
         },
-        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
-            decay_factor: 1.000004,
-            min_lr: .000001
-        }
     },
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_y_perplexity',
-             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+             save_path: "%(save_path)sbest.pkl"
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
-            saturate: 250,
-            final_momentum: .7
-        }
+            saturate: %(m_stat)i,
+            final_momentum: %(final_momentum)f
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: %(lr_sat)i,
+            decay_factor: %(decay)f
+        },
     ],
-    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_path: "%(save_path)slast.pkl",
     save_freq: 1
 }
