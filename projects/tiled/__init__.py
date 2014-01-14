@@ -291,10 +291,7 @@ class EmbeddingLinear(Linear):
                 raise ValueError("Expected mask with shape "+str(expected_shape)+" but got "+str(self.mask_weights.shape))
             self.mask = sharedX(self.mask_weights)
 
-
-
     def _linear_part(self, state_below):
-
 
         self.input_space.validate(state_below)
         if self.requires_reformat:
@@ -304,6 +301,113 @@ class EmbeddingLinear(Linear):
         z = []
         z = W[state_below.flatten().astype('int8')] + self.b
         z = z.reshape((state_below.shape[0], self.input_dim * self.dim))
+
+        return z
+
+class EmbeddingLinearConv(Linear):
+    """
+    The difference with EmbeddingLinear is that
+    it return Conv2DSpace and put each word as a
+    channel
+    """
+
+    def __init__(self, dict_dim = 1000,
+                    image_shape = None,
+                    **kwargs):
+
+        """
+        num_channels should be same as seq_len
+        """
+
+        self.dim = np.prod(image_shape)
+        kwargs['dim'] = self.dim
+        super(EmbeddingLinearConv, self).__init__(**kwargs)
+        self.dict_dim = dict_dim
+        if image_shape is None:
+            raise ValueError("image_shape and num_channels is required")
+        self.image_shape = image_shape
+
+    def set_input_space(self, space):
+        """
+        .. todo::
+
+            WRITEME
+
+        Notes
+        -----
+        This resets parameters!
+        """
+
+        self.input_space = space
+
+        if isinstance(space, VectorSpace):
+            self.requires_reformat = False
+            self.input_dim = space.dim
+        else:
+            self.requires_reformat = True
+            self.input_dim = space.get_total_dimension()
+            self.desired_space = VectorSpace(self.input_dim)
+
+        self.num_channels = self.input_dim
+        self.output_space = Conv2DSpace(shape = self.image_shape,
+                                        num_channels = self.num_channels,
+                                        axes = ('b', 'c', 0, 1))
+
+        rng = self.mlp.rng
+        if self.irange is not None:
+            assert self.istdev is None
+            assert self.sparse_init is None
+            W = rng.uniform(-self.irange,
+                            self.irange,
+                            (self.dict_dim, self.dim)) * \
+                (rng.uniform(0.,1., (self.dict_dim, self.dim))
+                 < self.include_prob)
+        elif self.istdev is not None:
+            assert self.sparse_init is None
+            W = rng.randn(self.dict_dim, self.dim) * self.istdev
+        else:
+            assert self.sparse_init is not None
+            W = np.zeros((self.dict_dim, self.dim))
+            def mask_rejects(idx, i):
+                if self.mask_weights is None:
+                    return False
+                return self.mask_weights[idx, i] == 0.
+            for i in xrange(self.dim):
+                assert self.sparse_init <= self.dict_dim
+                for j in xrange(self.sparse_init):
+                    idx = rng.randint(0, self.dict_dim)
+                    while W[idx, i] != 0 or mask_rejects(idx, i):
+                        idx = rng.randint(0, self.dict_dim)
+                    W[idx, i] = rng.randn()
+            W *= self.sparse_stdev
+
+        W = sharedX(W)
+        W.name = self.layer_name + '_W'
+
+        self.transformer = MatrixMul(W)
+
+        W ,= self.transformer.get_params()
+        assert W.name is not None
+
+        if self.mask_weights is not None:
+            expected_shape =  (self.dict_dim, self.dim)
+            if expected_shape != self.mask_weights.shape:
+                raise ValueError("Expected mask with shape "+str(expected_shape)+" but got "+str(self.mask_weights.shape))
+            self.mask = sharedX(self.mask_weights)
+
+    def _linear_part(self, state_below):
+
+        self.input_space.validate(state_below)
+        if self.requires_reformat:
+            state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        W, = self.transformer.get_params()
+        z = []
+        z = W[state_below.flatten().astype('int8')] + self.b
+        z = z.reshape((state_below.shape[0],
+                        self.num_channels,
+                        self.image_shape[0],
+                        self.image_shape[1]))
 
         return z
 
