@@ -100,10 +100,11 @@ def channel(submit = False, make = False):
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_channel/")
         PATH = state.save_path
 
-    rng = np.random.RandomState([2014, 1, 10])
+    rng = np.random.RandomState([2014, 1, 15])
 
 
     for i in xrange(num_exp):
+        state.img_shape = rng.randint(10, 50)
         state.h0_col_norm = rng.uniform(1., 3.)
         state.h1_col_norm = rng.uniform(1., 2.)
         state.h2_col_norm = rng.uniform(2., 5.)
@@ -133,14 +134,14 @@ def channel(submit = False, make = False):
         else:
             state.y_init = random_init_string()
 
-    if make:
+        if make:
             state.save_path = os.path.join(PATH, str(i))
-        if not os.path.isdir(state.save_path):
+            if not os.path.isdir(state.save_path):
                 os.mkdir(state.save_path)
             yaml = state.yaml_string % (state)
             with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
-               fp.write(yaml)
-    else:
+                fp.write(yaml)
+        else:
             if submit:
                 sql.insert_job(experiment, flatten(state), db)
             else:
