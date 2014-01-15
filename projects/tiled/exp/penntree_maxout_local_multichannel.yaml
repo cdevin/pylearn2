@@ -16,6 +16,7 @@
                      num_channels: 16,
                      num_pieces: %(l1_num_pieces)i,
                      kernel_shape: [%(kernel_shape)i, %(kernel_shape)i],
+                     kernel_stride: [%(kernel_stride)i, %(kernel_stride)i],
                      layer_name: 'h1',
                      %(h1_init)s,
                      max_filter_norm: %(h1_col_norm)f,

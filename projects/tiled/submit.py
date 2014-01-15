@@ -73,7 +73,7 @@ def sparse(submit = False):
 
     db.createView(TABLE_NAME + '_view')
 
-def channel(submit = False):
+def channel(submit = False, make = False):
     state = DD()
     with open('exp/penntree_maxout_local_multichannel.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
@@ -91,13 +91,14 @@ def channel(submit = False):
     state.final_momentum = 0.7
     state.lr_sat = 100
     state.decay = 0.1
-    num_exp = 10
+    num_exp = 25
     if submit:
         TABLE_NAME = "pentree_sparse"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_channel/")
+	PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 10])
 
@@ -110,6 +111,8 @@ def channel(submit = False):
 
         state.l1_num_pieces = rng.randint(2, 5)
         state.kernel_shape = rng.randint(2, 6)
+        #state.kernel_stride = min(state.kernel_shape - 1, rng.randint(2, 6))
+        state.kernel_stride = 1
         state.l2_units = rng.randint(50, 300)
         state.l2_pieces = rng.randint(2, 5)
         state.learning_rate = 10. ** rng.uniform(0., -.4)
@@ -130,24 +133,34 @@ def channel(submit = False):
         else:
             state.y_init = random_init_string()
 
-        if submit:
-            sql.insert_job(experiment, flatten(state), db)
-        else:
-            experiment(state, None)
+	if make:
+            state.save_path = os.path.join(PATH, str(i))
+	    if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+               fp.write(yaml)
+	else:
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
 
-    db.createView(TABLE_NAME + '_view')
+    if not make:
+        db.createView(TABLE_NAME + '_view')
 
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
     parser.add_argument('-t', '--task', choices = ['sparse', 'channel'])
     parser.add_argument('-s', '--submit', default = False, action='store_true')
+    parser.add_argument('-m', '--make', default = False, action='store_true')
     args = parser.parse_args()
 
     if args.task == 'sparse':
         sparse(args.submit)
     elif args.task == 'channel':
-        channel(args.submit)
+        channel(args.submit, args.make)
     else:
         raise ValueErr or("Wrong task optipns {}".fromat(args.task))
 
