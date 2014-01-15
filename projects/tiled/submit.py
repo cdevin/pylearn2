@@ -93,32 +93,32 @@ def channel(submit = False, make = False):
     state.decay = 0.1
     num_exp = 25
     if submit:
-        TABLE_NAME = "pentree_sparse"
+        TABLE_NAME = "pentree_sparse_bri"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_channel/")
-	PATH = state.save_path
+        PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 10])
 
 
     for i in xrange(num_exp):
-        state.h0_col_norm = rng.uniform(1., 5.)
-        state.h1_col_norm = rng.uniform(1., 5.)
-        state.h2_col_norm = rng.uniform(1., 5.)
-        state.y_col_norm = rng.uniform(1., 5.)
+        state.h0_col_norm = rng.uniform(1., 3.)
+        state.h1_col_norm = rng.uniform(1., 2.)
+        state.h2_col_norm = rng.uniform(2., 5.)
+        state.y_col_norm = rng.uniform(3., 10.)
 
         state.l1_num_pieces = rng.randint(2, 5)
-        state.kernel_shape = rng.randint(2, 6)
+        state.kernel_shape = rng.randint(2, 4)
         #state.kernel_stride = min(state.kernel_shape - 1, rng.randint(2, 6))
         state.kernel_stride = 1
-        state.l2_units = rng.randint(50, 300)
+        state.l2_units = rng.randint(50, 200)
         state.l2_pieces = rng.randint(2, 5)
-        state.learning_rate = 10. ** rng.uniform(0., -.4)
+        state.learning_rate = 10. ** rng.uniform(0., -.2)
         state.m_sat = rng.randint(2, 500)
-        state.final_momentum = rng.uniform(.5, .9)
-        state.lr_sat =rng.randint(150, 500)
+        state.final_momentum = rng.uniform(.5, .7)
+        state.lr_sat =rng.randint(50, 200)
         state.decay = 10. ** rng.uniform(-3, -1)
 
         def random_init_string():
@@ -133,14 +133,14 @@ def channel(submit = False, make = False):
         else:
             state.y_init = random_init_string()
 
-	if make:
+    if make:
             state.save_path = os.path.join(PATH, str(i))
-	    if not os.path.isdir(state.save_path):
+        if not os.path.isdir(state.save_path):
                 os.mkdir(state.save_path)
             yaml = state.yaml_string % (state)
             with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
                fp.write(yaml)
-	else:
+    else:
             if submit:
                 sql.insert_job(experiment, flatten(state), db)
             else:
