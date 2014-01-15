@@ -1,0 +1,99 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
+        which_set: 'train',
+        seq_len: &seq_len %(seq_len)i
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: %(embed_dim)i,
+                    layer_name: 'h0',
+                    dict_dim: 10000,
+                    %(h0_init)s,
+                    max_col_norm: %(h0_col_norm)f,
+                 },
+                !obj:pylearn2.models.mlp.Linear {
+                    dim: %(linear_dim)i,
+                    layer_name: 'h1',
+                    %(h1_init)s,
+                    max_col_norm: %(h1_col_norm)f,
+                },
+                !obj:pylearn2.models.mlp.SpaceConverter {
+                    layer_name: 'converter',
+                    output_space: !obj:pylearn2.space.Conv2DSpace {
+                        shape: [%(img_shape)i, %(img_shape)i],
+                        num_channels: 1,
+                        axes: ['c', 0, 1, 'b'],
+                    },
+                 },
+                 !obj:pylearn2.models.maxout.MaxoutLocalC01B {
+                     num_channels: 16,
+                     num_pieces: %(l2_num_pieces)i,
+                     kernel_shape: [%(kernel_shape)i, %(kernel_shape)i],
+                     layer_name: 'h2',
+                     %(h2_init)s,
+                     max_filter_norm: %(h2_col_norm)f,
+                 },
+                 !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h3',
+                     num_units: %(l3_units)i,
+                     num_pieces: %(l3_pieces)i,
+                     %(h3_init)s,
+                     max_col_norm: 1.9365,
+                 },
+                 !obj:noisylearn.projects.tiled.CompactSoftmax {
+                     max_col_norm: %(y_col_norm)f,
+                     layer_name: 'y',
+                     n_classes: 10000,
+                     %(y_init)s,
+                 }
+                ],
+        nvis: *seq_len,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: %(batch_size)i,
+        learning_rate: %(learning_rate)f,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                'train' : *train,
+                'valid' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'valid',
+                    seq_len: *seq_len,
+                },
+                'test' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'test',
+                    seq_len: *seq_len,
+                },
+            },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_perplexity",
+            prop_decrease: 0,
+            N: 100
+        },
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_perplexity',
+             save_path: "%(save_path)sbest.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: %(m_stat)i,
+            final_momentum: %(final_momentum)f
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: %(lr_sat)i,
+            decay_factor: %(decay)f
+        },
+    ],
+    save_path: "%(save_path)slast.pkl",
+    save_freq: 1
+}
