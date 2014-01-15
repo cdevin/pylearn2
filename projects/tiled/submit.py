@@ -99,6 +99,7 @@ def sparse_linear(submit = False):
         state.save_path = './'
     else:
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse_local/")
+        PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 15])
 
@@ -134,12 +135,23 @@ def sparse_linear(submit = False):
         else:
             state.y_init = random_init_string()
 
-        if submit:
-            sql.insert_job(experiment, flatten(state), db)
+        if make:
+            state.save_path = os.path.join(PATH, str(i))
+            if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+                fp.write(yaml)
         else:
-            experiment(state, None)
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
 
-    db.createView(TABLE_NAME + '_view')
+    if not make:
+        db.createView(TABLE_NAME + '_view')
+
+
 
 def channel(submit = False, make = False):
     state = DD()
