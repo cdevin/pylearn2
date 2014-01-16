@@ -52,7 +52,6 @@ def extract_local(path, save_name):
 
     serial.save("{}.pkl".format(save_name), data)
 
-
 def extract_local_linear(path, save_name):
 
     data = {'valid' : [], 'test' : [], 'train' : [],
@@ -93,8 +92,6 @@ def extract_local_linear(path, save_name):
         data['id'].append(int(f))
 
     serial.save("{}.pkl".format(save_name), data)
-
-
 
 def sort_index(my_list):
     return [i[0] for i in sorted(enumerate(my_list), key=lambda x:x[1])]
@@ -159,9 +156,9 @@ def plot(path):
     plt.clf()
 
     # momentum saturate
-    ind = sort_index(data['l2_params'])
-    plt.plot(np.asarray(data['l2_params'])[ind], np.clip(data['test'], 0, 150)[ind])
-    plt.xlabel('l2_params')
+    ind = sort_index(data['l1_params'])
+    plt.plot(np.asarray(data['l1_params'])[ind], np.clip(data['test'], 0, 150)[ind])
+    plt.xlabel('l1_params')
     plt.ylabel('preplexity')
     plt.savefig('l2_params.png')
     plt.clf()
@@ -183,17 +180,16 @@ def plot(path):
     plt.clf()
 
     # momentum saturate
-    plt.scatter(data['l2_kernel'], np.clip(data['test'], 0, 150))
-    plt.xlabel('l2_kernel')
+    plt.scatter(data['l3_kernel'], np.clip(data['test'], 0, 150))
+    plt.xlabel('l3_kernel')
     plt.ylabel('preplexity')
-    plt.savefig('l2_kernel.png')
+    plt.savefig('l3_kernel.png')
     plt.clf()
 
     best_test = data['id'][np.argmin(data['test'])]
-    print "Best test error job id: {}, with valu {}".format(best_test, np.mean(data['test']))
+    print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
 
     #plt.show()
-#
 
 if __name__ == "__main__":
 
