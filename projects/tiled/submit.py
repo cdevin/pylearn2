@@ -156,7 +156,7 @@ def sparse_linear2(submit = False, make = False):
     2 sparse linear layer
     """
     state = DD()
-    with open('exp/penntree_maxout_local_linear.yaml') as ymtmp:
+    with open('exp/penntree_maxout_local_linear2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
@@ -169,7 +169,7 @@ def sparse_linear2(submit = False, make = False):
     state.final_momentum = 0.7
     state.lr_sat = 100
     state.decay = 0.1
-    num_exp = 25
+    num_exp = 30
     if submit:
         TABLE_NAME = "pentree_sparse_local_linear2"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
@@ -181,12 +181,16 @@ def sparse_linear2(submit = False, make = False):
     rng = np.random.RandomState([2014, 1, 15])
 
     for i in xrange(num_exp):
-        state.h0_col_norm = rng.uniform(1., 3.)
-        state.h1_col_norm = rng.uniform(1., 3.)
-        state.h2_col_norm = rng.uniform(1., 2.)
-        state.h3_col_norm = rng.uniform(1., 2.)
-        state.h4_col_norm = rng.uniform(2., 5.)
-        state.y_col_norm = rng.uniform(3., 10.)
+        state.h0_col_norm = rng.uniform(1., 2.)
+        state.h1_col_norm = rng.uniform(1., 2.)
+        state.h2_col_norm = rng.uniform(1., 4.)
+        state.h3_col_norm = rng.uniform(1., 4.)
+        state.h4_col_norm = rng.uniform(2., 4.)
+        state.y_col_norm = rng.uniform(3., 8.)
+
+        channel_options = [16, 32]
+        state.h2_channels = channel_options[rng.randint(len(channel_options))]
+        state.h3_channels = channel_options[rng.randint(len(channel_options))]
 
         state.img_shape = rng.randint(10, 30)
         state.linear_dim = state.img_shape ** 2
@@ -194,9 +198,9 @@ def sparse_linear2(submit = False, make = False):
         state.h2_kernel_shape = rng.randint(2, 6)
         state.h3_num_pieces = rng.randint(2, 5)
         state.h3_kernel_shape = rng.randint(2, 6)
-        state.l4_units = rng.randint(50, 200)
-        state.l4_pieces = rng.randint(2, 5)
-        state.learning_rate = 10. ** rng.uniform(1., -2)
+        state.h4_units = rng.randint(50, 200)
+        state.h4_pieces = rng.randint(2, 5)
+        state.learning_rate = 10. ** rng.uniform(1., -3)
         state.m_sat = rng.randint(2, 200)
         state.final_momentum = rng.uniform(.5, .7)
         state.lr_sat =rng.randint(50, 200)
@@ -212,7 +216,7 @@ def sparse_linear2(submit = False, make = False):
         state.h3_init = random_init_string()
         state.h4_init = random_init_string()
         if rng.randint(2):
-            state.y_init = "sparse_init: 0"
+            state.y_init = "sparse_init: {}".format([0, 10, 100][rng.randint(3)])
         else:
             state.y_init = random_init_string()
 
@@ -390,15 +394,15 @@ if __name__ == "__main__":
 
     if args.task == 'sparse':
         sparse(args.submit)
-    if args.task == 'linear':
+    elif args.task == 'linear':
         sparse_linear(args.submit, args.make)
-    if args.task == 'linear2':
-        sparse_linear(args.submit, args.make)
-    if args.task == 'dense':
+    elif args.task == 'linear2':
+        sparse_linear2(args.submit, args.make)
+    elif args.task == 'dense':
         dense(args.submit, args.make)
     elif args.task == 'channel':
         channel(args.submit, args.make)
     else:
-        raise ValueErr or("Wrong task optipns {}".fromat(args.task))
+        raise ValueError or("Wrong task optipns {}".fromat(args.task))
 
 

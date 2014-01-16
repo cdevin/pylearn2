@@ -44,8 +44,8 @@
                  },
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h4',
-                     num_units: %(l4_units)i,
-                     num_pieces: %(l4_pieces)i,
+                     num_units: %(h4_units)i,
+                     num_pieces: %(h4_pieces)i,
                      %(h4_init)s,
                      max_col_norm: 1.9365,
                  },
