@@ -13,7 +13,7 @@ def layer_num_params(layer):
     params = layer.get_params()
     return sum(map(lambda x: x.get_value().size, params))
 
-def extract(path, save_name):
+def extract_local(path, save_name):
 
     data = {'valid' : [], 'test' : [], 'train' : [],
             'epoch' : [], 'l0_params' : [], 'l2_params' : [],
@@ -51,6 +51,50 @@ def extract(path, save_name):
         data['id'].append(int(f))
 
     serial.save("{}.pkl".format(save_name), data)
+
+
+def extract_local_linear(path, save_name):
+
+    data = {'valid' : [], 'test' : [], 'train' : [],
+            'epoch' : [], 'l0_params' : [], 'l1_params' : [],
+            'l3_params' : [], 'l4_params' : [],
+            'l1_dim' : [], 'l3_pieces' : [], 'l3_kernel' : [],
+            'l4_pieces' : [], 'l4_units' : [],
+            'learning_rate' : [], 'momentum_saturate' : [],
+            'final_momentum' : [], 'decay_factor' :[],
+            'lr_saturate' : [], 'id' : []}
+    fs = os.listdir(path)
+    for f in fs:
+        print f
+        model = serial.load(os.path.join(path, f, 'best.pkl'))
+        data['valid'].append(float(model.monitor.channels['valid_y_perplexity'].val_record[-1]))
+        data['test'].append(float(model.monitor.channels['test_y_perplexity'].val_record[-1]))
+        data['train'].append(float(model.monitor.channels['train_y_perplexity'].val_record[-1]))
+        data['epoch'].append(model.monitor._epochs_seen)
+        data['l0_params'].append(layer_num_params(model.layers[0]))
+        data['l1_params'].append(layer_num_params(model.layers[1]))
+        data['l3_params'].append(layer_num_params(model.layers[3]))
+        data['l4_params'].append(layer_num_params(model.layers[4]))
+        #data['l5_params'].append(layer_num_params(model.layers[4]))
+        data['l1_dim'].append(model.layers[1].dim)
+        data['l3_pieces'].append(model.layers[3].num_pieces)
+        data['l3_kernel'].append(model.layers[3].kernel_shape[0])
+        data['l4_pieces'].append(model.layers[4].num_pieces)
+        data['l4_units'].append(model.layers[4].num_units)
+
+        gc.collect()
+
+        conf = yaml_parse.load(open(os.path.join(path, f, 'model.yaml'), 'r'))
+        data['learning_rate'].append(conf.algorithm.learning_rate.get_value())
+        data['momentum_saturate'].append(conf.extensions[1].saturate)
+        data['final_momentum'].append(conf.extensions[1].final_momentum)
+        data['lr_saturate'].append(conf.extensions[2].saturate)
+        data['decay_factor'].append(conf.extensions[2].decay_factor)
+        data['id'].append(int(f))
+
+    serial.save("{}.pkl".format(save_name), data)
+
+
 
 def sort_index(my_list):
     return [i[0] for i in sorted(enumerate(my_list), key=lambda x:x[1])]
@@ -146,7 +190,7 @@ def plot(path):
     plt.clf()
 
     best_test = data['id'][np.argmin(data['test'])]
-    print "Best test error job id: {}".format(best_test)
+    print "Best test error job id: {}, with valu {}".format(best_test, np.mean(data['test']))
 
     #plt.show()
 #
@@ -160,6 +204,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.extract:
-        extract(args.path, args.name)
+        #extract(args.path, args.name)
+        extract_local_linear(args.path, args.name)
     else:
         plot(args.name)
