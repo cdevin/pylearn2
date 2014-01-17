@@ -160,7 +160,7 @@ def sparse_linear2(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
-    state.seq_len = 6
+    state.seq_len = 5
     state.embed_dim = 96
     state.img_shape = 24
     state.batch_size = 128
@@ -188,22 +188,23 @@ def sparse_linear2(submit = False, make = False):
         state.h4_col_norm = rng.uniform(2., 4.)
         state.y_col_norm = rng.uniform(3., 8.)
 
-        channel_options = [16, 32]
+        channel_options = [16]
         state.h2_channels = channel_options[rng.randint(len(channel_options))]
         state.h3_channels = channel_options[rng.randint(len(channel_options))]
 
-        state.img_shape = rng.randint(10, 30)
+        state.embed_dim = rng.randint(20, 200)
+        state.img_shape = rng.randint(10, 50)
         state.linear_dim = state.img_shape ** 2
         state.h2_num_pieces = rng.randint(2, 5)
-        state.h2_kernel_shape = rng.randint(2, 6)
+        state.h2_kernel_shape = rng.randint(4, 10)
         state.h3_num_pieces = rng.randint(2, 5)
-        state.h3_kernel_shape = rng.randint(2, 6)
-        state.h4_units = rng.randint(50, 200)
+        state.h3_kernel_shape = rng.randint(4, 10)
+        state.h4_units = rng.randint(50, 300)
         state.h4_pieces = rng.randint(2, 5)
-        state.learning_rate = 10. ** rng.uniform(1., -3)
-        state.m_sat = rng.randint(2, 200)
+        state.learning_rate = 10. ** rng.uniform(1., -2)
+        state.m_sat = rng.randint(50, 250)
         state.final_momentum = rng.uniform(.5, .7)
-        state.lr_sat =rng.randint(50, 200)
+        state.lr_sat =rng.randint(50, 250)
         state.decay = 10. ** rng.uniform(-3, -1)
 
         def random_init_string():
