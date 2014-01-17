@@ -93,6 +93,55 @@ def extract_local_linear(path, save_name):
 
     serial.save("{}.pkl".format(save_name), data)
 
+def extract_local_linear2(path, save_name):
+
+    data = {'valid' : [], 'test' : [], 'train' : [],
+            'epoch' : [], 'l0_params' : [], 'l1_params' : [],
+            'l2_params' : [],
+            'l3_params' : [], 'l4_params' : [], 'l5_params' : [],
+            'l1_dim' : [], 'l3_pieces' : [], 'l3_kernel' : [],
+            'l4_pieces' : [], 'l4_kernel': [],
+            'l5_pieces' : [], 'l5_units' : [],
+            'learning_rate' : [], 'momentum_saturate' : [],
+            'final_momentum' : [], 'decay_factor' :[],
+            'lr_saturate' : [], 'id' : []}
+    fs = os.listdir(path)
+    for f in fs:
+        print f
+        try:
+            model = serial.load(os.path.join(path, f, 'best.pkl'))
+        except:
+            print "failed at {}".format(f)
+            continue
+        data['valid'].append(float(model.monitor.channels['valid_y_perplexity'].val_record[-1]))
+        data['test'].append(float(model.monitor.channels['test_y_perplexity'].val_record[-1]))
+        data['train'].append(float(model.monitor.channels['train_y_perplexity'].val_record[-1]))
+        data['epoch'].append(model.monitor._epochs_seen)
+        data['l0_params'].append(layer_num_params(model.layers[0]))
+        data['l2_params'].append(layer_num_params(model.layers[1]))
+        data['l3_params'].append(layer_num_params(model.layers[3]))
+        data['l4_params'].append(layer_num_params(model.layers[4]))
+        data['l5_params'].append(layer_num_params(model.layers[5]))
+        data['l1_dim'].append(model.layers[1].dim)
+        data['l3_pieces'].append(model.layers[3].num_pieces)
+        data['l3_kernel'].append(model.layers[3].kernel_shape[0])
+        data['l4_pieces'].append(model.layers[4].num_pieces)
+        data['l4_kernel'].append(model.layers[4].kernel_shape[0])
+        data['l5_pieces'].append(model.layers[5].num_pieces)
+        data['l5_units'].append(model.layers[5].num_units)
+
+        gc.collect()
+
+        conf = yaml_parse.load(open(os.path.join(path, f, 'model.yaml'), 'r'))
+        data['learning_rate'].append(conf.algorithm.learning_rate.get_value())
+        data['momentum_saturate'].append(conf.extensions[1].saturate)
+        data['final_momentum'].append(conf.extensions[1].final_momentum)
+        data['lr_saturate'].append(conf.extensions[2].saturate)
+        data['decay_factor'].append(conf.extensions[2].decay_factor)
+        data['id'].append(int(f))
+
+    serial.save("{}.pkl".format(save_name), data)
+
 def sort_index(my_list):
     return [i[0] for i in sorted(enumerate(my_list), key=lambda x:x[1])]
 
@@ -179,12 +228,31 @@ def plot(path):
     plt.savefig('l4_params.png')
     plt.clf()
 
+
+    # momentum saturate
+    ind = sort_index(data['l5_params'])
+    plt.plot(np.asarray(data['l5_params'])[ind], np.clip(data['test'], 0, 150)[ind])
+    plt.xlabel('l5_params')
+    plt.ylabel('preplexity')
+    plt.savefig('l5_params.png')
+    plt.clf()
+
+
     # momentum saturate
     plt.scatter(data['l3_kernel'], np.clip(data['test'], 0, 150))
     plt.xlabel('l3_kernel')
     plt.ylabel('preplexity')
     plt.savefig('l3_kernel.png')
     plt.clf()
+
+    # momentum saturate
+    plt.scatter(data['l4_kernel'], np.clip(data['test'], 0, 150))
+    plt.xlabel('l4_kernel')
+    plt.ylabel('preplexity')
+    plt.savefig('l4_kernel.png')
+    plt.clf()
+
+
 
     best_test = data['id'][np.argmin(data['test'])]
     print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
@@ -201,6 +269,7 @@ if __name__ == "__main__":
 
     if args.extract:
         #extract(args.path, args.name)
-        extract_local_linear(args.path, args.name)
+        #extract_local_linear(args.path, args.name)
+        extract_local_linear2(args.path, args.name)
     else:
         plot(args.name)
