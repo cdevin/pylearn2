@@ -65,6 +65,12 @@ def extract_local_linear(path, save_name):
     fs = os.listdir(path)
     for f in fs:
         print f
+        try:
+            model = serial.load(os.path.join(path, f, 'best.pkl'))
+        except:
+            print "failed at {}".format(f)
+            continue
+
         model = serial.load(os.path.join(path, f, 'best.pkl'))
         data['valid'].append(float(model.monitor.channels['valid_y_perplexity'].val_record[-1]))
         data['test'].append(float(model.monitor.channels['test_y_perplexity'].val_record[-1]))
@@ -75,7 +81,7 @@ def extract_local_linear(path, save_name):
         data['l3_params'].append(layer_num_params(model.layers[3]))
         data['l4_params'].append(layer_num_params(model.layers[4]))
         #data['l5_params'].append(layer_num_params(model.layers[4]))
-        data['l1_dim'].append(model.layers[1].dim)
+        #data['l1_dim'].append(model.layers[1].dim)
         data['l3_pieces'].append(model.layers[3].num_pieces)
         data['l3_kernel'].append(model.layers[3].kernel_shape[0])
         data['l4_pieces'].append(model.layers[4].num_pieces)
@@ -259,17 +265,28 @@ def plot(path):
 
     #plt.show()
 
+
+def get_result(path):
+    data = serial.load(path)
+    best_test = data['id'][np.argmin(data['test'])]
+    print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
+
+
+
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'Plot')
     parser.add_argument('-e', '--extract', default = False, action='store_true')
     parser.add_argument('-n', '--name', help = 'file name')
     parser.add_argument('-p', '--path')
+    parser.add_argument('-r', '--result', default = True, action = 'store_true')
     args = parser.parse_args()
 
     if args.extract:
         #extract(args.path, args.name)
-        #extract_local_linear(args.path, args.name)
-        extract_local_linear2(args.path, args.name)
+        extract_local_linear(args.path, args.name)
+        #extract_local_linear2(args.path, args.name)
+    elif args.result:
+        get_result(args.name)
     else:
         plot(args.name)

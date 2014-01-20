@@ -14,6 +14,7 @@ from pylearn2.space import VectorSpace
 from pylearn2.space import Conv2DSpace
 from pylearn2.utils import sharedX
 from pylearn2.format.target_format import OneHotFormatter
+from noisylearn.projects.tiled.special_dot import GroupDot
 
 class LocalLinearVector(Linear):
 
@@ -305,6 +306,7 @@ class EmbeddingLinear(Linear):
         return z
 
 class EmbeddingLinearConv(Linear):
+
     """
     The difference with EmbeddingLinear is that
     it return Conv2DSpace and put each word as a
@@ -456,6 +458,7 @@ class TransposeEmbeddingLinear(Linear):
             self.mask = sharedX(self.mask_weights)
 
 class CompactSoftmax(Softmax):
+
     """
         This difference with Softmax is:
             * get the data in 1-D on convert to One_hot on the fly
@@ -529,6 +532,327 @@ class CompactSoftmax(Softmax):
 
         return rval
 
+def FactorizedSoftmax(Layer):
+
+    def __init__(self, **kwargs):
+        super(CompactSoftmax, self).__init__(**kwargs)
+        self.num_targets = num_targets
+        self.b_target = sharedX( np.zeros((num_targets, n_classes)), name = 'softmax_b_targets')
+        if init_bias_target_marginals:
+            marginals = init_bias_target_marginals.y.mean(axis=0)
+            assert marginals.ndim == 1
+            b = pseudoinverse_softmax_numpy(marginals).astype(self.b_target.dtype)
+            assert b.ndim == 1
+            assert b.dtype == self.b.dtype
+            self.b_target.set_value(b)
+
+    @wraps(Layer.set_input_space)
+    def set_input_space(self, space):
+        self.input_space = space
+
+        if not isinstance(space, Space):
+            raise TypeError("Expected Space, got "+
+                    str(space)+" of type "+str(type(space)))
+
+        self.input_dim = space.get_total_dimension()
+        self.needs_reformat = not isinstance(space, VectorSpace)
+
+        if self.no_affine:
+            desired_dim = self.n_classes
+            assert self.input_dim == desired_dim
+        else:
+            desired_dim = self.input_dim
+        self.desired_space = VectorSpace(desired_dim)
+
+        if not self.needs_reformat:
+            assert self.desired_space == self.input_space
+
+        rng = self.mlp.rng
+
+        if self.no_affine:
+            self._params = []
+        else:
+            if self.irange is not None:
+                assert self.istdev is None
+                assert self.sparse_init is None
+                W_class = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
+                W_target = rng.uniform(-self.irange,self.irange, (self.num_targets, self.input_dim,self.n_classes))
+            elif self.istdev is not None:
+                assert self.sparse_init is None
+                W_class = rng.randn(self.input_dim, self.n_classes) * self.istdev
+                W_target = rng.randn(self.num_targets, self.input_dim, self.n_classes) * self.istdev
+            else:
+                raise NotImplementedError()
+
+            self.W_class = sharedX(W_class,  'softmax_W_class' )
+            self.W_target = sharedX(W_target,  'softmax_W_target' )
+
+            self._params = [ self.b, self.W_class ]
+
+    @wraps(Layer.get_weights)
+    def get_weights(self):
+        if not isinstance(self.input_space, VectorSpace):
+            raise NotImplementedError()
+
+        return self.W_class.get_value(), self. W_target.get_value()
+
+    def cost(self, Y, Y_hat):
+        """
+        Y must be one-hot binary. Y_hat is a softmax estimate.
+        of Y. Returns negative log probability of Y under the Y_hat
+        distribution.
+
+        Parameters
+        ----------
+        Y : WRITEME
+        Y_hat : WRITEME
+
+        Returns
+        -------
+        WRITEME
+        """
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+            assert len(owner.inputs) == 1
+            Y_hat, = owner.inputs
+            owner = Y_hat.owner
+            op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        z ,= owner.inputs
+        assert z.ndim == 2
+
+        z = z - z.max(axis=1).dimshuffle(0, 'x')
+        log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+        # we use sum and not mean because this is really one variable per row
+        Y = OneHotFormatter(self.n_classes).theano_expr(
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+        log_prob_of = (Y * log_prob).sum(axis=1)
+        assert log_prob_of.ndim == 1
+
+        rval = log_prob_of.mean()
+
+        return - rval
+
+    def get_monitoring_channels_from_state(self, state, target=None):
+        """
+        .. todo::
+
+            WRITEME
+        """
+
+        mx = state.max(axis=1)
+
+        rval =  OrderedDict([
+                ('mean_max_class' , mx.mean()),
+                ('max_max_class' , mx.max()),
+                ('min_max_class' , mx.min())
+        ])
+
+        if target is not None:
+            rval['nll'] = self.cost(Y_hat=state, Y=target)
+
+            target, cls = self.fprop(state, return_classes = True)
+            z = target * cls
+            z = z - z.max(axis=1).dimshuffle(0, 'x')
+            log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+            Y = target
+            Y = OneHotFormatter(self.n_classes).theano_expr(
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+            log_prob_of = (Y * log_prob).sum(axis=1)
+            assert log_prob_of.ndim == 1
+            nll = log_prob_of.mean()
+            rval['perplexity'] = 10 ** (nll / np.log(10).astype('float32'))
+
+        return rval
+
+    @wraps(Layer.fprop)
+    def fprop(self, state_below, return_classes = False):
+        self.input_space.validate(state_below)
+
+        if self.needs_reformat:
+            state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        for value in get_debug_values(state_below):
+            if self.mlp.batch_size is not None and value.shape[0] != self.mlp.batch_size:
+                raise ValueError("state_below should have batch size "+str(self.dbm.batch_size)+" but has "+str(value.shape[0]))
+
+        self.desired_space.validate(state_below)
+        assert state_below.ndim == 2
+
+        if not hasattr(self, 'no_affine'):
+            self.no_affine = False
+
+        if self.no_affine:
+            raise NotImplementedError()
+
+        assert self.W_class.ndim == 2
+        assert self.W_target.ndim == 3
+
+        cls = T.dot(state_below, self.W_class) + self.b
+        cls = T.nnet.softmax(cls)
+        Z = GroupDot(self.num_classes, gpu=1)(state_below, self.W_target, self.b_target, cls)
+        rval = T.nnet.softmax(cls)
+
+        rval = T.nnet.softmax(Z)
+
+        for value in get_debug_values(rval):
+            if self.mlp.batch_size is not None:
+                assert value.shape[0] == self.mlp.batch_size
+
+        if return_classes:
+            return rval, cls
+        else:
+            return rval
+
+class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
+
+     def fprop(self, state_below):
+        """
+        .. todo::
+
+            WRITEME
+        """
+
+        self.input_space.validate(state_below)
+
+        state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        if not hasattr(self, 'input_normalization'):
+            self.input_normalization = None
+
+        if self.input_normalization:
+            state_below = self.input_normalization(state_below)
+
+        # Alex's code requires # input channels to be <= 3 or a multiple of 4
+        # so we add dummy channels if necessary
+        if not hasattr(self, 'dummy_channels'):
+            self.dummy_channels = 0
+        if self.dummy_channels > 0:
+            state_below = T.concatenate((state_below,
+                                         T.zeros_like(state_below[0:self.dummy_channels, :, :, :])),
+                                        axis=0)
+
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle(0, 'x', 'x', 'x')
+        else:
+            b = self.b.dimshuffle(0, 1, 2, 'x')
+
+
+        z = z + b
+        if self.layer_name is not None:
+            z.name = self.layer_name + '_z'
+
+        self.detector_space.validate(z)
+
+        assert self.detector_space.num_channels % 16 == 0
+
+        if self.output_space.num_channels % 16 == 0:
+            # alex's max pool op only works when the number of channels
+            # is divisible by 16. we can only do the cross-channel pooling
+            # first if the cross-channel pooling preserves that property
+            if self.num_pieces != 1:
+                s = None
+                for i in xrange(self.num_pieces):
+                    t = z[i::self.num_pieces,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+
+            if self.detector_normalization:
+                z = self.detector_normalization(z)
+
+            if self.pool_shape is None:
+                p = z
+            else:
+                raise NotImplementedError()
+        else:
+
+            if self.detector_normalization is not None:
+                raise NotImplementedError("We can't normalize the detector "
+                        "layer because the detector layer never exists as a "
+                        "stage of processing in this implementation.")
+            if self.pool_shape is not None:
+                raise NotImplementedError()
+            if self.num_pieces != 1:
+                s = None
+                for i in xrange(self.num_pieces):
+                    t = z[i::self.num_pieces,:,:,:]
+                    if s is None:
+                        s = t
+                    else:
+                        s = T.maximum(s, t)
+                z = s
+            p = z
+
+
+        self.output_space.validate(p)
+
+        if hasattr(self, 'min_zero') and self.min_zero:
+            p = p * (p > 0.)
+
+        if not hasattr(self, 'output_normalization'):
+            self.output_normalization = None
+
+        if self.output_normalization:
+            p = self.output_normalization(p)
+
+        return p
+
+            rval['perplexity'] = 10 ** (rval['nll'] / np.log(10).astype('float32'))
+
+        return rval
+
+
+
+
+    @wraps(Layer.fprop)
+    def fprop(self, state_below, return_classes = False):
+
+        self.input_space.validate(state_below)
+
+        if self.needs_reformat:
+            state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        for value in get_debug_values(state_below):
+            if self.mlp.batch_size is not None and value.shape[0] != self.mlp.batch_size:
+                raise ValueError("state_below should have batch size "+str(self.dbm.batch_size)+" but has "+str(value.shape[0]))
+
+        self.desired_space.validate(state_below)
+        assert state_below.ndim == 2
+
+        if not hasattr(self, 'no_affine'):
+            self.no_affine = False
+
+        if self.no_affine:
+            raise NotImplementedError()
+
+        assert self.W_class.ndim == 2
+        assert self.W_target.ndim == 3
+
+        cls = T.dot(state_below, self.W_class) + self.b
+        cls = T.nnet.softmax(cls)
+        Z = GroupDot(self.num_classes, gpu=1)(state_below, self.W_target, self.b_target, cls)
+        rval = T.nnet.softmax(cls)
+
+        rval = T.nnet.softmax(Z)
+
+        for value in get_debug_values(rval):
+            if self.mlp.batch_size is not None:
+                assert value.shape[0] == self.mlp.batch_size
+
+        if return_classes:
+            return rval, cls
+        else:
+            return rval
 
 class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
 
