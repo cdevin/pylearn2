@@ -12,6 +12,7 @@ from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.linear import local_c01b
 from pylearn2.space import VectorSpace
 from pylearn2.space import Conv2DSpace
+from pylearn2.utils import function
 from pylearn2.utils import sharedX
 from pylearn2.format.target_format import OneHotFormatter
 from noisylearn.projects.tiled.special_dot import GroupDot
@@ -291,6 +292,14 @@ class EmbeddingLinear(Linear):
             if expected_shape != self.mask_weights.shape:
                 raise ValueError("Expected mask with shape "+str(expected_shape)+" but got "+str(self.mask_weights.shape))
             self.mask = sharedX(self.mask_weights)
+
+        # Apply constraints
+        updates = OrderedDict()
+        for param in self.get_params():
+            updates[param] = param
+        self.censor_updates(param)
+        f = function([], updates=updates)
+        f()
 
     def _linear_part(self, state_below):
 
