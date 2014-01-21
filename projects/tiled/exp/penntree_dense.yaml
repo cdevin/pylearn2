@@ -1,7 +1,7 @@
 !obj:pylearn2.train.Train {
     dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
         which_set: 'train',
-        seq_len: &seq_len %(seq_len)i
+        seq_len: &seq_len 5
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
@@ -11,43 +11,13 @@
                     dict_dim: 10000,
                     %(h0_init)s,
                     max_col_norm: %(h0_col_norm)f,
-                 },
-                !obj:pylearn2.models.mlp.Linear {
-                    dim: %(linear_dim)i,
-                    layer_name: 'h1',
-                    %(h1_init)s,
-                    max_col_norm: %(h1_col_norm)f,
-                },
-                !obj:pylearn2.models.mlp.SpaceConverter {
-                    layer_name: 'converter',
-                    output_space: !obj:pylearn2.space.Conv2DSpace {
-                        shape: [%(img_shape)i, %(img_shape)i],
-                        num_channels: 1,
-                        axes: ['c', 0, 1, 'b'],
                     },
-                 },
-                 !obj:pylearn2.models.maxout.MaxoutLocalC01B {
-                     num_channels: %(h2_channels)i,
-                     num_pieces: %(h2_num_pieces)i,
-                     kernel_shape: [%(h2_kernel_shape)i, %(h2_kernel_shape)i],
-                     layer_name: 'h2',
-                     %(h2_init)s,
-                     max_filter_norm: %(h2_col_norm)f,
-                 },
-                !obj:pylearn2.models.maxout.MaxoutLocalC01B {
-                     num_channels: %(h3_channels)i,
-                     num_pieces: %(h3_num_pieces)i,
-                     kernel_shape: [%(h3_kernel_shape)i, %(h3_kernel_shape)i],
-                     layer_name: 'h3',
-                     %(h3_init)s,
-                     max_filter_norm: %(h3_col_norm)f,
-                 },
                  !obj:pylearn2.models.maxout.Maxout {
-                     layer_name: 'h4',
-                     num_units: %(h4_units)i,
-                     num_pieces: %(h4_pieces)i,
-                     %(h4_init)s,
-                     max_col_norm: 1.9365,
+                     layer_name: 'h1',
+                     num_units: %(h1_num_units)i,
+                     num_pieces: %(h1_num_pieces)i,
+                     %(h1_init)s,
+                     max_col_norm: %(h1_col_norm)f,
                  },
                  !obj:noisylearn.projects.tiled.CompactSoftmax {
                      max_col_norm: %(y_col_norm)f,
@@ -77,8 +47,8 @@
                 },
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
-            input_include_probs: { 'h0' : 1., 'h1' : 1., 'converter' : 1., 'h2' : 0.8},
-            input_scales: { 'h0': 1., 'h1' : 1, 'converter' : 1., 'h2' : 1.25},
+            input_include_probs: { 'h0' : 1., 'h1' : 0.8 },
+            input_scales: { 'h0': 1., 'h1' : 1.25 }
         },
         termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
             channel_name: "valid_y_perplexity",

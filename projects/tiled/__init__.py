@@ -297,7 +297,7 @@ class EmbeddingLinear(Linear):
         updates = OrderedDict()
         for param in self.get_params():
             updates[param] = param
-        self.censor_updates(param)
+        self.censor_updates(updates)
         f = function([], updates=updates)
         f()
 
