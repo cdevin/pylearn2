@@ -397,7 +397,7 @@ def channel(submit = False, make = False):
 def dense(submit = False, make = False):
     "densly connected one layer"
     state = DD()
-    with open('exp/penntree1.yaml') as ymtmp:
+    with open('exp/penntree_dense.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
@@ -411,29 +411,29 @@ def dense(submit = False, make = False):
     state.final_momentum = 0.7
     state.lr_sat = 100
     state.decay = 0.1
-    num_exp = 25
+    num_exp = 30
     if submit:
-        TABLE_NAME = "pentree_dense1"
+        TABLE_NAME = "pentree_dense_2"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_dense1/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_dense_2/")
         PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 15])
 
     for i in xrange(num_exp):
-        state.h0_col_norm = rng.uniform(1., 3.)
+        state.h0_col_norm = rng.uniform(1., 4.)
         state.h1_col_norm = rng.uniform(1., 3.)
-        state.y_col_norm = rng.uniform(3., 10.)
+        state.y_col_norm = rng.uniform(3., 9.)
 
-        state.linear_dim = rng.randint(10,500)
+        state.linear_dim = rng.randint(10,1000)
         state.h1_num_pieces = rng.randint(2, 5)
-        state.h1_num_units = rng.randint(20, 500)
+        state.h1_num_units = rng.randint(20, 1200)
         state.learning_rate = 10. ** rng.uniform(1., -3)
-        state.m_sat = rng.randint(2, 200)
+        state.m_sat = rng.randint(50, 150)
         state.final_momentum = rng.uniform(.5, .7)
-        state.lr_sat =rng.randint(50, 200)
+        state.lr_sat =rng.randint(50, 150)
         state.decay = 10. ** rng.uniform(-3, -1)
 
         def random_init_string():
