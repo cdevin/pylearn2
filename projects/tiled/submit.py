@@ -241,14 +241,7 @@ def sparse_linear2(submit = False, make = False):
 
     state.db = 'penntree'
     state.seq_len = 5
-    state.embed_dim = 96
-    state.img_shape = 24
     state.batch_size = 128
-    state.learning_rate = 0.1
-    state.m_stat = 100
-    state.final_momentum = 0.7
-    state.lr_sat = 100
-    state.decay = 0.1
     num_exp = 30
     if submit:
         TABLE_NAME = "pentree_sparse_local_linear2_2"
@@ -325,19 +318,12 @@ def sparse_linear2_wiki(submit = False, make = False):
     with open('exp/wikipedia_maxout_local_linear2.yaml') as ymtmp:
         state.yaml_string = ymtmp.read()
 
-    state.db = 'penntree'
-    state.seq_len = 5
-    state.embed_dim = 10
-    state.img_shape = 24
-    state.batch_size = 128
-    state.learning_rate = 0.1
-    state.m_stat = 100
-    state.final_momentum = 0.7
-    state.lr_sat = 100
-    state.decay = 0.1
-    num_exp = 30
+    state.db = 'wikipedia'
+    state.seq_len = 100
+    state.batch_size = 256
+    num_exp = 40
     if submit:
-        TABLE_NAME = "wikipeida_sparse_local_linear2_2"
+        TABLE_NAME = "wikipeida_sparse_local_linear2_monk"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
@@ -347,29 +333,29 @@ def sparse_linear2_wiki(submit = False, make = False):
     rng = np.random.RandomState([2014, 1, 15])
 
     for i in xrange(num_exp):
-        state.h0_col_norm = rng.uniform(1., 2.)
-        state.h1_col_norm = rng.uniform(1., 2.)
+        state.h0_col_norm = rng.uniform(1., 4.)
+        state.h1_col_norm = rng.uniform(1., 4.)
         state.h2_col_norm = rng.uniform(2., 3.5)
         state.h3_col_norm = rng.uniform(2., 3.5)
         state.h4_col_norm = rng.uniform(1., 2.5)
-        state.y_col_norm = rng.uniform(3., 8.)
+        state.y_col_norm = rng.uniform(1., 8.)
 
         channel_options = [16]
         state.h2_channels = channel_options[rng.randint(len(channel_options))]
         state.h3_channels = channel_options[rng.randint(len(channel_options))]
 
-        state.embed_dim = rng.randint(50, 200)
+        state.embed_dim = rng.randint(5, 15)
         state.img_shape = rng.randint(20, 40)
         state.linear_dim = state.img_shape ** 2
         state.h2_num_pieces = rng.randint(3, 6)
         state.h2_kernel_shape = rng.randint(4, 6)
         state.h3_num_pieces = rng.randint(2, 5)
         state.h3_kernel_shape = rng.randint(4, 6)
-        state.h4_units = rng.randint(700, 1200)
+        state.h4_units = rng.randint(100, 1000)
         state.h4_pieces = rng.randint(2, 5)
         state.learning_rate = 10. ** rng.uniform(1., -2)
         state.m_sat = rng.randint(50, 200)
-        state.final_momentum = rng.uniform(.6, .75)
+        state.final_momentum = rng.uniform(.6, .8)
         state.lr_sat =rng.randint(50, 200)
         state.decay = 10. ** rng.uniform(-3, -1)
 

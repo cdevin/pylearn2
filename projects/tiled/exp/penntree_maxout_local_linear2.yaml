@@ -93,7 +93,7 @@
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
-            saturate: %(m_stat)i,
+            saturate: %(m_sat)i,
             final_momentum: %(final_momentum)f
         },
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
