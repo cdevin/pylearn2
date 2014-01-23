@@ -270,7 +270,7 @@ def get_result(path):
     best_test = data['id'][np.argmin(data['test'])]
     print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
 
-def report(path):
+def report(path, save_name):
 
     data = {'valid' : [], 'test' : [], 'train' : [], 'id' : []}
     fs = os.listdir(path)
@@ -294,14 +294,14 @@ def report(path):
         data['id'].append(int(f))
 
 
+    serial.save("{}.pkl".format(save_name), data)
     best_test = data['id'][np.argmin(data['test'])]
     print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
 
     best_valid = data['id'][np.argmin(data['valid'])]
-    best_test = data['test'][np.argmin(data('valid'))]
+    best_test = data['test'][np.argmin(data['valid'])]
     print "Best job with lowest valid error id: {}, test error {}".format(best_valid, best_test)
 
-    serial.save("{}.pkl".format(save_name), data)
 
 
 
@@ -323,6 +323,6 @@ if __name__ == "__main__":
     elif args.task == 'report1':
         get_result(args.name)
     elif args.task == 'report':
-        report(args.path)
+        report(args.path, args.name)
     else:
         plot(args.name)
