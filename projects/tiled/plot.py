@@ -291,7 +291,7 @@ def report(path, save_name):
         gc.collect()
 
         conf = yaml_parse.load(open(os.path.join(path, f, 'model.yaml'), 'r'))
-        data['id'].append(int(f))
+        data['id'].append(f)
 
 
     serial.save("{}.pkl".format(save_name), data)
