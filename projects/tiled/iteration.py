@@ -7,14 +7,15 @@ class FiniteDatasetIterator(FiniteDatasetIteratorBase):
 
         next_index = self._subset_iterator.next()
         ind = self._raw_data[0][next_index]
+        batch_size = len(ind)
 
         targets = False
         if len(self._raw_data) == 2:
             targets = True
-            y = np.zeros((self.batch_size, 1))
-        x = np.zeros((self.batch_size, self._dataset.seq_len))
+            y = np.zeros((batch_size, 1))
+        x = np.zeros((batch_size, self._dataset.seq_len))
 
-        for i in xrange(self.batch_size):
+        for i in xrange(batch_size):
             x[i] = self._raw_data[0][ind[i]:ind[i] + self._dataset.seq_len]
             if targets:
                 y[i] = self._raw_data[0][ind[i] + self._dataset.seq_len]

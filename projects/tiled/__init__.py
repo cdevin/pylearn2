@@ -475,7 +475,6 @@ class CompactSoftmax(Softmax):
         super(CompactSoftmax, self).__init__(**kwargs)
         self.output_space = VectorSpace(1)
 
-
     def cost(self, Y, Y_hat):
         """
         Y must be one-hot binary. Y_hat is a softmax estimate.
@@ -535,9 +534,9 @@ class CompactSoftmax(Softmax):
         if target is not None:
             rval['nll'] = self.cost(Y_hat=state, Y=target)
             rval['perplexity'] = 10 ** (rval['nll'] / np.log(10).astype('float32'))
+            rval['entropy'] = rval['nll'] / np.log(2).astype('float32')
 
         return rval
-
 
 class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
 

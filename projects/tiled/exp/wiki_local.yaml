@@ -1,0 +1,98 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.tiled.wikipeida.Wikipedia {
+        which_set: 'train',
+        seq_len: &seq_len 100
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: 5,
+                    layer_name: 'h0',
+                    dict_dim: 205,
+                    irange: .005,
+                    max_col_norm: 1.9365,
+                },
+                !obj:pylearn2.models.mlp.Linear {
+                    dim: 400,
+                    layer_name: 'h1',
+                    irange: .005,
+                    max_col_norm: 1.5,
+                },
+                 !obj:pylearn2.models.mlp.SpaceConverter {
+                    layer_name: 'converter',
+                    output_space: !obj:pylearn2.space.Conv2DSpace {
+                        shape: [20, 20],
+                        num_channels: 1,
+                        axes: ['c', 0, 1, 'b'],
+                    },
+                 },
+                 !obj:pylearn2.models.maxout.MaxoutLocalC01B {
+                     num_channels: 16,
+                     num_pieces: 2,
+                     kernel_shape: [5, 5],
+                     layer_name: 'h2',
+                     irange: .005,
+                     max_filter_norm: 1.9365,
+                 },
+                 !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h3',
+                     num_units: 128,
+                     num_pieces: 5,
+                     irange: .005,
+                     max_col_norm: 1.9365,
+                 },
+                 !obj:noisylearn.projects.tiled.CompactSoftmax {
+                     max_col_norm: 1.9365,
+                     layer_name: 'y',
+                     n_classes: 10000,
+                     irange: .005
+                 }
+                ],
+        nvis: *seq_len,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 512,
+        learning_rate: .1,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                'train' : *train,
+                'valid' : !obj:noisylearn.projects.tiled.wikipeida.Wikipedia {
+                    which_set: 'valid',
+                    seq_len: *seq_len,
+                },
+                'test' : !obj:noisylearn.projects.tiled.wikipeida.Wikipedia {
+                    which_set: 'test',
+                    seq_len: *seq_len,
+                },
+            },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_entropy",
+            prop_decrease: 0,
+            N: 100
+        },
+        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            decay_factor: 1.000004,
+            min_lr: .000001
+        }
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_entropy',
+             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: .7
+        }
+    ],
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_freq: 1
+}

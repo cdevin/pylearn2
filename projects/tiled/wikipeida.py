@@ -53,10 +53,8 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
         self._iter_targets = False
         self._iter_data_specs = (self.X_space, 'features')
 
-
     def get_data(self):
         return self.X, np.zeros(1)
-
 
     @property
     def num_examples(self):
@@ -72,41 +70,69 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
             WRITEME
         """
 
-        if data_specs is not None:
-            raise ValueError("In DenseDesignMatrix.iterator, both "
-                    "the `data_specs` argument and deprecated arguments "
-                    "`topo` or `targets` were provided.",
-                    (data_specs, topo, targets))
+        if topo is not None or targets is not None:
+            if data_specs is not None:
+                raise ValueError("In DenseDesignMatrix.iterator, both "
+                        "the `data_specs` argument and deprecated arguments "
+                        "`topo` or `targets` were provided.",
+                        (data_specs, topo, targets))
 
-        warnings.warn("Usage of `topo` and `target` arguments are being "
-                "deprecated, and will be removed around November 7th, "
-                "2013. `data_specs` should be used instead.",
-                stacklevel=2)
-        # build data_specs from topo and targets if needed
-        if topo is None:
-            topo = getattr(self, '_iter_topo', False)
-        if topo:
-            # self.iterator is called without a data_specs, and with
-            # "topo=True", so we use the default topological space
-            # stored in self.X_topo_space
-            assert self.X_topo_space is not None
-            X_space = self.X_topo_space
+            warnings.warn("Usage of `topo` and `target` arguments are being "
+                    "deprecated, and will be removed around November 7th, "
+                    "2013. `data_specs` should be used instead.",
+                    stacklevel=2)
+            # build data_specs from topo and targets if needed
+            if topo is None:
+                topo = getattr(self, '_iter_topo', False)
+            if topo:
+                # self.iterator is called without a data_specs, and with
+                # "topo=True", so we use the default topological space
+                # stored in self.X_topo_space
+                assert self.X_topo_space is not None
+                X_space = self.X_topo_space
+            else:
+                X_space = self.X_space
+
+            if targets is None:
+                targets = getattr(self, '_iter_targets', False)
+            if targets:
+                assert self.y is not None
+                y_space = self.data_specs[0].components[1]
+                space = CompositeSpace((X_space, y_space))
+                source = ('features', 'targets')
+            else:
+                space = X_space
+                source = 'features'
+
+            data_specs = (space, source)
+            convert = None
+
         else:
-            X_space = self.X_space
+            if data_specs is None:
+                data_specs = self._iter_data_specs
 
-        if targets is None:
-            targets = getattr(self, '_iter_targets', False)
-        if targets:
-            #assert self.y is not None
-            y_space = self.data_specs[0].components[1]
-            space = CompositeSpace((X_space, y_space))
-            source = ('features', 'targets')
-        else:
-            space = X_space
-            source = 'features'
+            # If there is a view_converter, we have to use it to convert
+            # the stored data for "features" into one that the iterator
+            # can return.
+            space, source = data_specs
+            if isinstance(space, CompositeSpace):
+                sub_spaces = space.components
+                sub_sources = source
+            else:
+                sub_spaces = (space,)
+                sub_sources = (source,)
 
-        data_specs = (space, source)
-        convert = None
+            convert = []
+            for sp, src in safe_zip(sub_spaces, sub_sources):
+                if (src == 'features' and
+                        getattr(self, 'view_converter', None) is not None):
+                    conv_fn = (lambda batch, self=self, space=sp:
+                               self.view_converter.get_formatted_batch(
+                                   batch,
+                                   space))
+                else:
+                    conv_fn = None
+                convert.append(conv_fn)
 
         # TODO: Refactor
         if mode is None:
@@ -125,12 +151,11 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
         if rng is None and mode.stochastic:
             rng = self.rng
         return FiniteDatasetIterator(self,
-                                     mode(self.X.shape[0], batch_size,
+                                     mode(self.num_examples, batch_size,
                                      num_batches, rng),
                                      data_specs=data_specs,
                                      return_tuple=return_tuple,
                                      convert=convert)
-
 
 
 def convert_to_pkl():
@@ -147,16 +172,7 @@ def convert_to_pkl():
     serial.save("${PYLEARN2_DATA_PATH}/wikipedia-text/valid_chars.npy", valid)
     serial.save("${PYLEARN2_DATA_PATH}/wikipedia-text/test_chars.npy", test)
 
-
 if __name__ == "__main__":
 
     #convert_to_pkl()
     dd = Wikipedia('train', 200)
-    iter = dd.iterator(batch_size = 10, mode = 'sequential', targets = False)
-    print iter.next()
-    #import ipdb
-    #ipdb.set_trace()
-    for item in iter:
-        print item
-        import ipdb
-        ipdb.set_trace()
