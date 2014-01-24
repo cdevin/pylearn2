@@ -308,7 +308,7 @@ class EmbeddingLinear(Linear):
 
         W, = self.transformer.get_params()
         z = []
-        z = W[state_below.flatten().astype('int8')] + self.b
+        z = W[state_below.flatten().astype('uint32')] + self.b
         z = z.reshape((state_below.shape[0], self.input_dim * self.dim))
 
         return z
@@ -412,7 +412,7 @@ class EmbeddingLinearConv(Linear):
 
         W, = self.transformer.get_params()
         z = []
-        z = W[state_below.flatten().astype('int8')] + self.b
+        z = W[state_below.flatten().astype('uin32')] + self.b
         z = z.reshape((state_below.shape[0],
                         self.num_channels,
                         self.image_shape[0],
@@ -508,7 +508,7 @@ class CompactSoftmax(Softmax):
         log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
         # we use sum and not mean because this is really one variable per row
         Y = OneHotFormatter(self.n_classes).theano_expr(
-                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
         log_prob_of = (Y * log_prob).sum(axis=1)
         assert log_prob_of.ndim == 1
 

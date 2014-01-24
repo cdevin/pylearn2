@@ -16,7 +16,7 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
     _default_seed = (17, 2, 946)
 
     valid_set_names = ["train","valid", "test"]
-    def __init__(self, which_set, seq_len, char = True, rng = _default_seed):
+    def __init__(self, which_set, seq_len, char = True, rng = _default_seed, divide_num_examples = 10):
 
         if which_set not in self.valid_set_names:
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
@@ -58,6 +58,11 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
 
     @property
     def num_examples(self):
+        if self.divide_num_examples:
+            return (self.X.shape[0] - self.seq_len) / self.divide_num_examples
+
+    @property
+    def real_num_examples(self):
         return self.X.shape[0] - self.seq_len
 
     @functools.wraps(Dataset.iterator)
@@ -175,4 +180,6 @@ def convert_to_pkl():
 if __name__ == "__main__":
 
     #convert_to_pkl()
-    dd = Wikipedia('train', 200)
+    train = Wikipedia('train', 100)
+    valid = Wikipedia('valid', 100)
+    test = Wikipedia('test', 100)
