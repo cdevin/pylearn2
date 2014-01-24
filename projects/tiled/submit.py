@@ -244,7 +244,7 @@ def sparse_linear2(submit = False, make = False):
     state.batch_size = 128
     num_exp = 30
     if submit:
-        TABLE_NAME = "pentree_sparse_local_linear2_2"
+        TABLE_NAME = "pentree_sparse_local_linear2_new"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
