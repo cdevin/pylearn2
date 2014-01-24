@@ -54,7 +54,7 @@ class Wikipedia(dense_design_matrix.DenseDesignMatrix):
         self._iter_data_specs = (self.X_space, 'features')
 
     def get_data(self):
-        return self.X, np.zeros(1)
+        return self.X, np.zeros(1, dtype='int32')
 
     @property
     def num_examples(self):
