@@ -321,6 +321,7 @@ def sparse_linear2_wiki(submit = False, make = False):
     state.db = 'wikipedia'
     state.seq_len = 100
     state.batch_size = 256
+    state.monitoring_batches = np.ceil(4999900 / state.batch_size)
     num_exp = 40
     if submit:
         TABLE_NAME = "wikipeida_sparse_local_linear2_monk"
