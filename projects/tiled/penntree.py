@@ -22,7 +22,9 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
 
         super(PennTree, self).__init__(X = x, y = y)
 
-#def generate(model)
+def generate(model):
+   pass
+
 if __name__ == "__main__":
 
     dd = PennTree('train', 3)

@@ -308,7 +308,9 @@ class EmbeddingLinear(Linear):
 
         W, = self.transformer.get_params()
         z = []
-        z = W[state_below.flatten().astype('uint32')] + self.b
+        z = W[state_below.flatten().astype('uint32')]
+        if self.use_bias:
+            z += self.b
         z = z.reshape((state_below.shape[0], self.input_dim * self.dim))
 
         return z

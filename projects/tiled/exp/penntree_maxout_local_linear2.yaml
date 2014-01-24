@@ -10,13 +10,16 @@
                     layer_name: 'h0',
                     dict_dim: 10000,
                     %(h0_init)s,
-                    max_col_norm: %(h0_col_norm)f,
+                    max_col_norm: %(h0_max_col_norm)f,
+                    min_col_norm: %(h0_min_col_norm)f,
+                    use_bias: %(embed_use_bias)i,
                  },
                 !obj:pylearn2.models.mlp.Linear {
                     dim: %(linear_dim)i,
                     layer_name: 'h1',
                     %(h1_init)s,
                     max_col_norm: %(h1_col_norm)f,
+                    use_bias: %(h1_use_bias)i,
                 },
                 !obj:pylearn2.models.mlp.SpaceConverter {
                     layer_name: 'converter',

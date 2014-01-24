@@ -242,6 +242,8 @@ def sparse_linear2(submit = False, make = False):
     state.db = 'penntree'
     state.seq_len = 5
     state.batch_size = 128
+    state.embed_use_bias = 0
+    state.h1_use_bias = 0
     num_exp = 30
     if submit:
         TABLE_NAME = "pentree_sparse_local_linear2_new"
@@ -254,7 +256,9 @@ def sparse_linear2(submit = False, make = False):
     rng = np.random.RandomState([2014, 1, 15])
 
     for i in xrange(num_exp):
-        state.h0_col_norm = rng.uniform(1., 2.)
+        #state.h0_max_col_norm = rng.uniform(1., 2.)
+        state.h0_max_col_norm = 1.
+        state.h0_min_col_norm = 1.
         state.h1_col_norm = rng.uniform(1., 2.)
         state.h2_col_norm = rng.uniform(2., 3.5)
         state.h3_col_norm = rng.uniform(2., 3.5)
