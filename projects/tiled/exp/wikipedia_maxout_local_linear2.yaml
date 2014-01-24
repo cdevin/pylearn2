@@ -62,14 +62,14 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: %(batch_size)i,
-        monitoring_batches: %(monitoring_batches)i,
+        #monitoring_batches: %(monitoring_batches)i,
         learning_rate: %(learning_rate)f,
         learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
             init_momentum: .5,
         },
         monitoring_dataset:
             {
-                'train' : *train,
+                #'train' : *train,
                 'valid' : !obj:noisylearn.projects.tiled.wikipeida.Wikipedia {
                     which_set: 'valid',
                     seq_len: *seq_len,

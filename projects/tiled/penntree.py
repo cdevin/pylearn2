@@ -5,7 +5,6 @@ from pylearn2.utils import serial
 
 class PennTree(dense_design_matrix.DenseDesignMatrix):
 
-
     valid_set_names = ["train","valid", "test"]
     def __init__(self, which_set, seq_len):
 
@@ -23,6 +22,7 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
 
         super(PennTree, self).__init__(X = x, y = y)
 
+#def generate(model)
 if __name__ == "__main__":
 
     dd = PennTree('train', 3)

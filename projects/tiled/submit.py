@@ -360,8 +360,10 @@ def sparse_linear2_wiki(submit = False, make = False):
         state.lr_sat =rng.randint(50, 200)
         state.decay = 10. ** rng.uniform(-3, -1)
 
-        state.h2_pad = state.h2_kernel_shape - 2
-        state.h3_pad = state.h3_kernel_shape - 2
+        #state.h2_pad = state.h2_kernel_shape - 2
+        #state.h3_pad = state.h3_kernel_shape - 2
+        state.h2_pad = 0
+        state.h3_pad = 0
 
         def random_init_string(low = -2.3, high = -1.):
             irange = 10. ** rng.uniform(-2.3, -1.)
