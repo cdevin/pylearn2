@@ -11,12 +11,14 @@
                     dict_dim: 10000,
                     %(h0_init)s,
                     max_col_norm: %(h0_col_norm)f,
+                    use_bias: %(embed_use_bias)i,
                  },
                 !obj:pylearn2.models.mlp.Linear {
                     dim: %(linear_dim)i,
                     layer_name: 'h1',
                     %(h1_init)s,
                     max_col_norm: %(h1_col_norm)f,
+                    use_bias: %(h1_use_bias)i,
                 },
                 !obj:pylearn2.models.mlp.SpaceConverter {
                     layer_name: 'converter',
@@ -83,10 +85,17 @@
             input_include_probs: { 'h0' : 1., 'converter' : 1., 'h1' : 0.8},
             input_scales: { 'h0': 1., 'converter' : 1., 'h1' : 1.25},
         },
-        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
-            channel_name: "valid_y_entropy",
-            prop_decrease: 0,
-            N: 100
+        termination_criterion: !obj:pylearn2.termination_criteria.Or {
+            criteria: [
+                !obj:pylearn2.termination_criteria.MonitorBased {
+                    channel_name: "valid_y_entropy",
+                    prop_decrease: 0,
+                    N: 100
+                },
+                !obj:pylearn2.termination_criteria.ChannelInf {
+                    channel_name: 'valid_y_perplexity'
+                },
+            ],
         },
     },
     extensions: [
