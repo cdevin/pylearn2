@@ -1,7 +1,7 @@
 !obj:pylearn2.train.Train {
     dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
         which_set: 'train',
-        seq_len: &seq_len 5
+        seq_len: &seq_len %(seq_len)i
     },
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
@@ -11,6 +11,8 @@
                     dict_dim: 10000,
                     %(h0_init)s,
                     max_col_norm: %(h0_col_norm)f,
+                    min_col_norm: %(h0_min_col_norm)f,
+                    use_bias: %(embed_use_bias)i,
                     },
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h1',
@@ -18,6 +20,13 @@
                      num_pieces: %(h1_num_pieces)i,
                      %(h1_init)s,
                      max_col_norm: %(h1_col_norm)f,
+                 },
+                !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h2',
+                     num_units: %(h2_num_units)i,
+                     num_pieces: %(h2_num_pieces)i,
+                     %(h2_init)s,
+                     max_col_norm: %(h2_col_norm)f,
                  },
                  !obj:noisylearn.projects.tiled.CompactSoftmax {
                      max_col_norm: %(y_col_norm)f,
@@ -50,10 +59,17 @@
             input_include_probs: { 'h0' : 1., 'h1' : 0.8 },
             input_scales: { 'h0': 1., 'h1' : 1.25 }
         },
-        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
-            channel_name: "valid_y_perplexity",
-            prop_decrease: 0,
-            N: 100
+        termination_criterion: !obj:pylearn2.termination_criteria.Or {
+            criteria: [
+                !obj:pylearn2.termination_criteria.MonitorBased {
+                    channel_name: "valid_y_perplexity",
+                    prop_decrease: 0,
+                    N: 100
+                },
+                !obj:pylearn2.termination_criteria.ChannelInf {
+                    channel_name: 'valid_y_perplexity'
+                },
+            ],
         },
     },
     extensions: [
@@ -63,7 +79,7 @@
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
-            saturate: %(m_stat)i,
+            saturate: %(m_sat)i,
             final_momentum: %(final_momentum)f
         },
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {

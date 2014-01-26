@@ -240,18 +240,18 @@ def sparse_linear2(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
-    state.seq_len = 6
+    state.seq_len = 5
     state.batch_size = 640
     state.embed_use_bias = 0
     state.h1_use_bias = 0
     state.converter_num_channel = 3
     num_exp = 20
     if submit:
-        TABLE_NAME = "pentree_sparse_local_linear2_new_bri"
+        TABLE_NAME = "pentree_sparse_local_linear2_new_gui"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse_local2/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse_local2_5/")
         PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 15])
@@ -486,35 +486,32 @@ def dense(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
-    state.seq_len = 6
-    state.embed_dim = 96
-    state.h1_num_units = 100
-    state.h1_num_pieces = 2
-    state.batch_size = 256
-    state.learning_rate = 0.1
-    state.m_stat = 100
-    state.final_momentum = 0.7
-    state.lr_sat = 100
-    state.decay = 0.1
+    state.batch_size = 640
     num_exp = 30
     if submit:
         TABLE_NAME = "pentree_dense_2"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_dense_2/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_dense/")
         PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 15])
 
     for i in xrange(num_exp):
         state.h0_col_norm = rng.uniform(1., 4.)
+	state.h0_min_col_norm =0
+	state.embed_use_bias = 0
         state.h1_col_norm = rng.uniform(1., 3.)
+        state.h2_col_norm = rng.uniform(1., 3.)
         state.y_col_norm = rng.uniform(3., 9.)
 
-        state.linear_dim = rng.randint(10,1000)
+        state.seq_len = rng.randint(5,7)
+        state.embed_dim = rng.randint(10,1000)
         state.h1_num_pieces = rng.randint(2, 5)
-        state.h1_num_units = rng.randint(20, 1200)
+        state.h1_num_units = rng.randint(200, 1500)
+        state.h2_num_pieces = rng.randint(2, 5)
+        state.h2_num_units = rng.randint(200, 1500)
         state.learning_rate = 10. ** rng.uniform(1., -3)
         state.m_sat = rng.randint(50, 150)
         state.final_momentum = rng.uniform(.5, .7)
