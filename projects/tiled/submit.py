@@ -240,14 +240,14 @@ def sparse_linear2(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
-    state.seq_len = 5
-    state.batch_size = 128
+    state.seq_len = 6
+    state.batch_size = 640
     state.embed_use_bias = 0
     state.h1_use_bias = 0
     state.converter_num_channel = 3
-    num_exp = 30
+    num_exp = 20
     if submit:
-        TABLE_NAME = "pentree_sparse_local_linear2_new_gui"
+        TABLE_NAME = "pentree_sparse_local_linear2_new_bri"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
@@ -270,13 +270,13 @@ def sparse_linear2(submit = False, make = False):
         state.h2_channels = channel_options[rng.randint(len(channel_options))]
         state.h3_channels = channel_options[rng.randint(len(channel_options))]
 
-        state.embed_dim = rng.randint(50, 200)
-        state.img_shape = rng.randint(20, 40)
+        state.embed_dim = rng.randint(10, 300)
+        state.img_shape = rng.randint(10, 40)
         state.linear_dim = (state.img_shape ** 2) * state.converter_num_channel
-        state.h2_num_pieces = rng.randint(3, 6)
-        state.h2_kernel_shape = rng.randint(4, 6)
+        state.h2_num_pieces = rng.randint(2, 5)
+        state.h2_kernel_shape = rng.randint(2, 5)
         state.h3_num_pieces = rng.randint(2, 5)
-        state.h3_kernel_shape = rng.randint(4, 6)
+        state.h3_kernel_shape = rng.randint(2, 4)
         state.h4_units = rng.randint(700, 1200)
         state.h4_pieces = rng.randint(2, 5)
         state.learning_rate = 10. ** rng.uniform(1., -2)
