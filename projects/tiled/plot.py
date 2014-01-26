@@ -302,6 +302,39 @@ def report(path, save_name):
     best_test = data['test'][np.argmin(data['valid'])]
     print "Best job with lowest valid error id: {}, test error {}".format(best_valid, best_test)
 
+def report_entropy(path, save_name):
+
+    data = {'valid' : [], 'test' : [], 'train' : [], 'id' : []}
+    fs = os.listdir(path)
+    for f in fs:
+        print f
+        try:
+            model = serial.load(os.path.join(path, f, 'best.pkl'))
+        except:
+            print "failed at {}".format(f)
+            continue
+
+
+        #model = serial.load(os.path.join(path, f, 'best.pkl'))
+        data['valid'].append(float(model.monitor.channels['valid_y_entropy'].val_record[-1]))
+        data['test'].append(float(model.monitor.channels['test_y_entropy'].val_record[-1]))
+        #data['train'].append(float(model.monitor.channels['train_y_entropy'].val_record[-1]))
+
+        gc.collect()
+
+        conf = yaml_parse.load(open(os.path.join(path, f, 'model.yaml'), 'r'))
+        data['id'].append(f)
+
+
+    serial.save("{}.pkl".format(save_name), data)
+    best_test = data['id'][np.argmin(data['test'])]
+    print "Best test error job id: {}, with value {}".format(best_test, np.min(data['test']))
+
+    best_valid = data['id'][np.argmin(data['valid'])]
+    best_test = data['test'][np.argmin(data['valid'])]
+    print "Best job with lowest valid error id: {}, test error {}".format(best_valid, best_test)
+
+
 
 
 
@@ -310,7 +343,7 @@ if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'Plot')
     #parser.add_argument('-e', '--extract', default = False, action='store_true')
-    parser.add_argument('-t', '--task', choices=['extract', 'plot', 'report'])
+    parser.add_argument('-t', '--task', choices=['extract', 'plot', 'report', 'report_entropy'])
     parser.add_argument('-n', '--name', help = 'file name')
     parser.add_argument('-p', '--path')
     parser.add_argument('-r', '--result', default = True, action = 'store_true')
@@ -324,5 +357,7 @@ if __name__ == "__main__":
         get_result(args.name)
     elif args.task == 'report':
         report(args.path, args.name)
+    elif args.task == 'report_entropy':
+        report_entropy(args.path, args.name)
     else:
         plot(args.name)

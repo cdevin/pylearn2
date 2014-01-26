@@ -325,11 +325,11 @@ def sparse_linear2_wiki(submit = False, make = False):
 
     state.db = 'wikipedia'
     state.seq_len = 100
-    state.batch_size = 2816
+    state.batch_size = 1920
     state.embed_use_bias = 0
     state.h1_use_bias = 0
     state.monitoring_batches = np.ceil(4999900 / state.batch_size)
-    num_exp = 30
+    num_exp = 20
     if submit:
         TABLE_NAME = "wikipeida_sparse_local_linear2_monk"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
