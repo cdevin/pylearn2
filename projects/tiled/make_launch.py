@@ -4,7 +4,8 @@ args = ','.join([str(job_id) for job_id in xrange(20)])
 #path = "/gs/scratch/mmirza/results/pentree_sparse_local1/"
 #path = "/gs/scratch/mmirza/results/pentree_sparse_local_composite/"
 #path = "/gs/scratch/mmirza/results/pentree_sparse_local1_2/"
-path = "/gs/scratch/mmirza/results//pentree_sparse_local1_rec/"
+#path = "/gs/scratch/mmirza/results//pentree_sparse_local1_rec/"
+path = "/gs/scratch/mmirza/results/pentree_sparse_relu_composite/"
 f = open('launch.sh', 'w')
 f.write(base % locals())
 f.close()
