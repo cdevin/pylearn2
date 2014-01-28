@@ -17,7 +17,6 @@ from pylearn2.utils import sharedX
 from pylearn2.format.target_format import OneHotFormatter
 
 class LocalLinearVector(Linear):
-
     def __init__(self, dim, layer_name, kernel_shape, kernel_stride = (1, 1), **kwargs):
         super(LocalLinear, self).__init__(dim, layer_name, **kwargs)
         self.kernel_shape = kernel_shape
@@ -88,7 +87,6 @@ class LocalLinearVector(Linear):
         return z
 
 class LocalRectified(ConvRectifiedLinear):
-
     def set_input_space(self, space):
         """
         .. todo::
@@ -221,7 +219,6 @@ class LocalRectified(ConvRectifiedLinear):
                         ).dimshuffle(0, 1, 'x', 'x', 'x', 2, 3)
 
 class EmbeddingLinear(Linear):
-
     def __init__(self, dict_dim = 1000, **kwargs):
 
         super(EmbeddingLinear, self).__init__(**kwargs)
@@ -422,8 +419,26 @@ class EmbeddingLinearConv(Linear):
 
         return z
 
-class TransposeEmbeddingLinear(Linear):
+class EmbeddingRectifiedLinear(EmbeddingLinear):
+    """
+    Rectified linear MLP layer (Glorot and Bengio 2011).
+    """
 
+    def __init__(self, left_slope = 0.0, **kwargs):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        super(EmbeddingRectifiedLinear, self).__init__(**kwargs)
+        self.left_slope = left_slope
+
+    def fprop(self, state_below):
+        p = self._linear_part(state_below)
+        p = p * (p > 0.) + self.left_slope * p * (p < 0.)
+        return p
+
+class TransposeEmbeddingLinear(Linear):
     def set_input_space(self, space):
         """
         .. todo::
@@ -541,7 +556,6 @@ class CompactSoftmax(Softmax):
         return rval
 
 class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
-
      def fprop(self, state_below):
         """
         .. todo::
