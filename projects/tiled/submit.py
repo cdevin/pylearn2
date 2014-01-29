@@ -730,7 +730,7 @@ def composite_relu(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'penntree'
-    state.seq_len = 5
+    state.seq_len = 7
     state.batch_size = 640
     state.embed_use_bias = 0
     state.h1_use_bias = 0
@@ -741,7 +741,7 @@ def composite_relu(submit = False, make = False):
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
-        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse_relu_composite/")
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_sparse_relu_composite_7/")
         PATH = state.save_path
 
     rng = np.random.RandomState([2014, 1, 15])
