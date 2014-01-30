@@ -15,9 +15,10 @@ from pylearn2.models.mlp import mean_pool
 from pylearn2.models.maxout import MaxoutLocalC01B
 from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.linear import local_c01b
+from pylearn2.space import Space
+from pylearn2.space import CompositeSpace
 from pylearn2.space import VectorSpace
 from pylearn2.space import Conv2DSpace
-from pylearn2.space import Space
 from pylearn2.utils import function
 from pylearn2.utils import sharedX
 from pylearn2.format.target_format import OneHotFormatter
@@ -661,10 +662,12 @@ class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
         return p
 
 class FactorizedSoftmax(Softmax):
+    # TODO cleanup target, class name mess, it's confusing
     def __init__(self, n_targets = None, **kwargs):
         super(FactorizedSoftmax, self).__init__(**kwargs)
         self.n_targets = n_targets
         self.b_target = sharedX( np.zeros((self.n_targets, self.n_classes)), name = 'softmax_b_targets')
+        self.output_space = VectorSpace(1)
 
     def set_input_space(self, space):
         self.input_space = space
@@ -695,11 +698,11 @@ class FactorizedSoftmax(Softmax):
                 assert self.istdev is None
                 assert self.sparse_init is None
                 W_class = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
-                W_target = rng.uniform(-self.irange,self.irange, (self.n_targets, self.input_dim,self.n_classes))
+                W_target = rng.uniform(-self.irange,self.irange, (self.input_dim, self.n_targets, self.n_classes))
             elif self.istdev is not None:
                 assert self.sparse_init is None
                 W_class = rng.randn(self.input_dim, self.n_classes) * self.istdev
-                W_target = rng.randn(self.n_targets, self.input_dim, self.n_classes) * self.istdev
+                W_target = rng.randn(self.input_dim, self.n_targets, self.n_classes) * self.istdev
             else:
                 raise NotImplementedError()
 
@@ -707,6 +710,42 @@ class FactorizedSoftmax(Softmax):
             self.W_target = sharedX(W_target,  'softmax_W_target' )
 
             self._params = [ self.b, self.W_class ]
+
+    def get_monitoring_channels(self):
+
+        if self.no_affine:
+            return OrderedDict()
+
+        W_class = self.W_class
+        W_target = self.W_target
+
+        assert W_class.ndim == 2
+        assert W_class.ndim == 2
+
+        sq_W = T.sqr(W_target)
+        sq_W_class = T.sqr(W_class)
+
+        row_norms = T.sqrt(sq_W.sum(axis=1))
+        col_norms = T.sqrt(sq_W.sum(axis=0))
+
+        row_norms_class = T.sqrt(sq_W_class.sum(axis=1))
+        col_norms_class = T.sqrt(sq_W_class.sum(axis=0))
+
+        return OrderedDict([
+                            ('row_norms_min'  , row_norms.min()),
+                            ('row_norms_mean' , row_norms.mean()),
+                            ('row_norms_max'  , row_norms.max()),
+                            ('col_norms_min'  , col_norms.min()),
+                            ('col_norms_mean' , col_norms.mean()),
+                            ('col_norms_max'  , col_norms.max()),
+                            ('class_row_norms_min'  , row_norms_class.min()),
+                            ('class_row_norms_mean' , row_norms_class.mean()),
+                            ('class_row_norms_max'  , row_norms_class.max()),
+                            ('class_col_norms_min'  , col_norms_class.min()),
+                            ('class_col_norms_mean' , col_norms_class.mean()),
+                            ('clas_col_norms_max'  , col_norms_class.max()),
+
+                            ])
 
     def get_weights(self):
         if not isinstance(self.input_space, VectorSpace):
@@ -729,22 +768,41 @@ class FactorizedSoftmax(Softmax):
         -------
         WRITEME
         """
-
-        assert hasattr(Y_hat, 'owner')
-        owner = Y_hat.owner
+        y_hat, y_cls = Y_hat
+        assert hasattr(y_hat, 'owner')
+        owner = y_hat.owner
         assert owner is not None
         op = owner.op
         if isinstance(op, Print):
             assert len(owner.inputs) == 1
-            Y_hat, = owner.inputs
-            owner = Y_hat.owner
+            y_hat, = owner.inputs
+            owner = y_hat.owner
             op = owner.op
         assert isinstance(op, T.nnet.Softmax)
         z ,= owner.inputs
         assert z.ndim == 2
 
+        assert hasattr(y_cls, 'owner')
+        owner = y_cls.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+            assert len(owner.inputs) == 1
+            y_cls, = owner.inputs
+            owner = y_cls.owner
+            op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        z_cls ,= owner.inputs
+        assert z_cls.ndim == 2
+
+
         z = z - z.max(axis=1).dimshuffle(0, 'x')
         log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+
+        z_cls = z_cls - z_cls.max(axis=1).dimshuffle(0, 'x')
+        log_prob_cls = z_cls - T.log(T.exp(z_cls).sum(axis=1).dimshuffle(0, 'x'))
+
+        log_prob = log_prob * z_cls
         # we use sum and not mean because this is really one variable per row
         Y = OneHotFormatter(self.n_classes).theano_expr(
                                 T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
@@ -755,13 +813,14 @@ class FactorizedSoftmax(Softmax):
 
         return - rval
 
-    def get_monitoring_channels_from_state(self, state, target=None):
+    def get_monitoring_channels_from_state(self, state, target=None, class_target = None):
         """
         .. todo::
 
             WRITEME
         """
 
+        state, cls = state
         mx = state.max(axis=1)
 
         rval =  OrderedDict([
@@ -771,15 +830,15 @@ class FactorizedSoftmax(Softmax):
         ])
 
         if target is not None:
-            rval['nll'] = self.cost(Y_hat=state, Y=target)
+            rval['nll'] = self.cost(Y_hat=(state, cls), Y=target)
 
-            target, cls = self.fprop(state, return_classes = True)
+            target, cls = self.fprop(state, class_target)
             z = target * cls
             z = z - z.max(axis=1).dimshuffle(0, 'x')
             log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
             Y = target
             Y = OneHotFormatter(self.n_classes).theano_expr(
-                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
             log_prob_of = (Y * log_prob).sum(axis=1)
             assert log_prob_of.ndim == 1
             nll = log_prob_of.mean()
@@ -815,16 +874,46 @@ class FactorizedSoftmax(Softmax):
                 gpu='gpu' in theano.config.device)(state_below,
                                                     self.W_target,
                                                     self.b_target,
-                                                    class_targets)
-        rval = T.nnet.softmax(cls)
-
+                                        class_targets.flatten().astype('int64'))
         rval = T.nnet.softmax(Z)
 
         for value in get_debug_values(rval):
-            if self.mlp.batch_size is not None:
+             if self.mlp.batch_size is not None:
                 assert value.shape[0] == self.mlp.batch_size
 
         return rval, cls
+
+    def censor_updates(self, updates):
+        #if self.no_affine:
+            #return
+        #if self.max_row_norm is not None:
+            #W = self.W
+            #if W in updates:
+                #updated_W = updates[W]
+                #row_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=1))
+                #desired_norms = T.clip(row_norms, 0, self.max_row_norm)
+                #updates[W] = updated_W * (desired_norms / (1e-7 + row_norms)).dimshuffle(0, 'x')
+        #if self.max_col_norm is not None:
+            #assert self.max_row_norm is None
+            #W = self.W
+            #if W in updates:
+                #updated_W = updates[W]
+                #col_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=0))
+                #desired_norms = T.clip(col_norms, 0, self.max_col_norm)
+                #updates[W] = updated_W * (desired_norms / (1e-7 + col_norms))
+        return
+
+    def get_weights_format(self):
+        return ('v', 'h', 'h_c')
+
+    def get_biases(self):
+        return self.b.get_value(), self.b_target.get_value()
+
+    def get_weights(self):
+        if not isinstance(self.input_space, VectorSpace):
+            raise NotImplementedError()
+
+        return self.W_target.get_value(), self.W_class.get_value()
 
 class MLP(MLPBase):
     def __init__(self, nclass = None, **kwargs):
@@ -841,7 +930,10 @@ class MLP(MLPBase):
             ch = layer.get_monitoring_channels()
             for key in ch:
                 rval[layer.layer_name+'_'+key] = ch[key]
-            state = layer.fprop(state)
+            if isinstance(layer, FactorizedSoftmax):
+                state = layer.fprop(state, cls)
+            else:
+                state = layer.fprop(state)
             args = [state]
             if layer is self.layers[-1]:
                 args.append(Y)
@@ -919,4 +1011,17 @@ class MLP(MLPBase):
 
     def get_class_space(self):
         return VectorSpace(self.nclass)
+
+    def get_monitoring_data_specs(self):
+        """
+        Notes
+        -----
+        In this case, we want the inputs and targets.
+        """
+        space = CompositeSpace((self.get_input_space(),
+                                self.get_output_space(),
+                                self.get_class_space()))
+        source = (self.get_input_source(), self.get_target_source(),
+                    self.get_class_source())
+        return (space, source)
 

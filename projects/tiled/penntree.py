@@ -23,6 +23,7 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
 
         super(PennTree, self).__init__(X = x, y = y)
 
+        self.brown = brown
         if brown is not None:
             data = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
                 "PennTreebankCorpus/{}_brown_{}.pkl".format(which_set, brown)))
@@ -31,9 +32,17 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
                 cls[i] = data[i + seq_len]
 
             source = ('features', 'targets', 'classes')
-            space = self.data_specs[0].components.append(
-                    VectorSpace(dim=brown))
+            space = self.data_specs[0]
+            space.components.append(VectorSpace(dim=brown))
+            self.data_specs = (space, source)
             self.cls = cls
+
+
+    def get_data(self):
+        if self.brown is None:
+            return (self.X, self.y)
+        else:
+            return (self.X, self.y, self.cls)
 
 def BrownCluster(which_set, cluster_path, save_path):
 

@@ -4,7 +4,6 @@ from pylearn2.space import CompositeSpace
 
 class Dropout(DropoutBase):
 
-
     def expr(self, model, data, ** kwargs):
         """
         .. todo::
