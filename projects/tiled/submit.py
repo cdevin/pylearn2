@@ -805,13 +805,82 @@ def composite_relu(submit = False, make = False):
     if not make:
         db.createView(TABLE_NAME + '_view')
 
+def dense_brown(submit = False, make = False):
+    "densly connected one layer"
+    state = DD()
+    with open('exp/penntree_dense_brown.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'penntree'
+    state.batch_size = 640
+    num_exp = 30
+    if submit:
+        TABLE_NAME = "pentree_dense_2"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+        state.save_path = './'
+    else:
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/pentree_dense_brown/")
+        PATH = state.save_path
+
+    rng = np.random.RandomState([2014, 1, 15])
+
+    for i in xrange(num_exp):
+        state.h0_col_norm = rng.uniform(1., 4.)
+        state.h0_min_col_norm =0
+        state.embed_use_bias = 0
+        state.h1_col_norm = rng.uniform(1., 3.)
+        state.h2_col_norm = rng.uniform(1., 3.)
+        state.y_col_norm = rng.uniform(3., 9.)
+
+        state.seq_len = rng.randint(5,7)
+        state.embed_dim = rng.randint(10,100)
+        state.h1_num_pieces = rng.randint(2, 5)
+        state.h1_num_units = rng.randint(200, 300)
+        state.h2_num_pieces = rng.randint(2, 5)
+        state.h2_num_units = rng.randint(200, 300)
+        state.learning_rate = 10. ** rng.uniform(1., -3)
+        state.m_sat = rng.randint(50, 150)
+        state.final_momentum = rng.uniform(.5, .7)
+        state.lr_sat =rng.randint(50, 150)
+        state.decay = 10. ** rng.uniform(-3, -1)
+
+        def random_init_string():
+            irange = 10. ** rng.uniform(-2.3, -1.)
+            return "irange: " + str(irange)
+
+        state.h0_init = random_init_string()
+        state.h1_init = random_init_string()
+        state.h2_init = random_init_string()
+        state.h3_init = random_init_string()
+        if rng.randint(2):
+            state.y_init = "sparse_init: 0"
+        else:
+            state.y_init = random_init_string()
+
+        if make:
+            state.save_path = os.path.join(PATH, str(i)) + '/'
+            if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+                fp.write(yaml)
+        else:
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
+
+    if not make:
+        db.createView(TABLE_NAME + '_view')
+
 
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
     parser.add_argument('-t', '--task', choices = ['sparse',
             'channel', 'linear', 'linear2', 'dense', 'maxout',
-            'wiki_sparse2', 'composite', 'relu', 'composite_relu'])
+            'wiki_sparse2', 'composite', 'relu', 'composite_relu',
+            'dense_brown'])
     parser.add_argument('-s', '--submit', default = False, action='store_true')
     parser.add_argument('-m', '--make', default = False, action='store_true')
     args = parser.parse_args()
@@ -836,6 +905,8 @@ if __name__ == "__main__":
         composite_relu(args.submit, args.make)
     elif args.task == 'relu':
         relu(args.submit, args.make)
+    elif args.task == 'dense_brown':
+        dense_brown(args.submit, args.make)
     else:
         raise ValueError or("Wrong task optipns {}".fromat(args.task))
 

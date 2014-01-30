@@ -1,7 +1,12 @@
 import numpy as np
+import theano
 from theano import tensor as T
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.printing import Print
 from theano.compat.python2x import OrderedDict
+from theano.gof.op import get_debug_values
+from pylearn2.models.mlp import MLP as MLPBase
+from pylearn2.models.mlp import Layer
 from pylearn2.models.mlp import Linear
 from pylearn2.models.mlp import ConvRectifiedLinear
 from pylearn2.models.mlp import Softmax
@@ -12,9 +17,11 @@ from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.linear import local_c01b
 from pylearn2.space import VectorSpace
 from pylearn2.space import Conv2DSpace
+from pylearn2.space import Space
 from pylearn2.utils import function
 from pylearn2.utils import sharedX
 from pylearn2.format.target_format import OneHotFormatter
+from noisylearn.projects.tiled.special_dot import GroupDot
 
 class LocalLinearVector(Linear):
     def __init__(self, dim, layer_name, kernel_shape, kernel_stride = (1, 1), **kwargs):
@@ -653,5 +660,263 @@ class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
 
         return p
 
+class FactorizedSoftmax(Softmax):
+    def __init__(self, n_targets = None, **kwargs):
+        super(FactorizedSoftmax, self).__init__(**kwargs)
+        self.n_targets = n_targets
+        self.b_target = sharedX( np.zeros((self.n_targets, self.n_classes)), name = 'softmax_b_targets')
 
+    def set_input_space(self, space):
+        self.input_space = space
+
+        if not isinstance(space, Space):
+            raise TypeError("Expected Space, got "+
+                    str(space)+" of type "+str(type(space)))
+
+        self.input_dim = space.get_total_dimension()
+        self.needs_reformat = not isinstance(space, VectorSpace)
+
+        if self.no_affine:
+            desired_dim = self.n_classes
+            assert self.input_dim == desired_dim
+        else:
+            desired_dim = self.input_dim
+        self.desired_space = VectorSpace(desired_dim)
+
+        if not self.needs_reformat:
+            assert self.desired_space == self.input_space
+
+        rng = self.mlp.rng
+
+        if self.no_affine:
+            self._params = []
+        else:
+            if self.irange is not None:
+                assert self.istdev is None
+                assert self.sparse_init is None
+                W_class = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
+                W_target = rng.uniform(-self.irange,self.irange, (self.n_targets, self.input_dim,self.n_classes))
+            elif self.istdev is not None:
+                assert self.sparse_init is None
+                W_class = rng.randn(self.input_dim, self.n_classes) * self.istdev
+                W_target = rng.randn(self.n_targets, self.input_dim, self.n_classes) * self.istdev
+            else:
+                raise NotImplementedError()
+
+            self.W_class = sharedX(W_class,  'softmax_W_class' )
+            self.W_target = sharedX(W_target,  'softmax_W_target' )
+
+            self._params = [ self.b, self.W_class ]
+
+    def get_weights(self):
+        if not isinstance(self.input_space, VectorSpace):
+            raise NotImplementedError()
+
+        return self.W_class.get_value(), self. W_target.get_value()
+
+    def cost(self, Y, Y_hat):
+        """
+        Y must be one-hot binary. Y_hat is a softmax estimate.
+        of Y. Returns negative log probability of Y under the Y_hat
+        distribution.
+
+        Parameters
+        ----------
+        Y : WRITEME
+        Y_hat : WRITEME
+
+        Returns
+        -------
+        WRITEME
+        """
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+            assert len(owner.inputs) == 1
+            Y_hat, = owner.inputs
+            owner = Y_hat.owner
+            op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        z ,= owner.inputs
+        assert z.ndim == 2
+
+        z = z - z.max(axis=1).dimshuffle(0, 'x')
+        log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+        # we use sum and not mean because this is really one variable per row
+        Y = OneHotFormatter(self.n_classes).theano_expr(
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+        log_prob_of = (Y * log_prob).sum(axis=1)
+        assert log_prob_of.ndim == 1
+
+        rval = log_prob_of.mean()
+
+        return - rval
+
+    def get_monitoring_channels_from_state(self, state, target=None):
+        """
+        .. todo::
+
+            WRITEME
+        """
+
+        mx = state.max(axis=1)
+
+        rval =  OrderedDict([
+                ('mean_max_class' , mx.mean()),
+                ('max_max_class' , mx.max()),
+                ('min_max_class' , mx.min())
+        ])
+
+        if target is not None:
+            rval['nll'] = self.cost(Y_hat=state, Y=target)
+
+            target, cls = self.fprop(state, return_classes = True)
+            z = target * cls
+            z = z - z.max(axis=1).dimshuffle(0, 'x')
+            log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+            Y = target
+            Y = OneHotFormatter(self.n_classes).theano_expr(
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+            log_prob_of = (Y * log_prob).sum(axis=1)
+            assert log_prob_of.ndim == 1
+            nll = log_prob_of.mean()
+            rval['perplexity'] = 10 ** (nll / np.log(10).astype('float32'))
+
+        return rval
+
+    def fprop(self, state_below, class_targets):
+        self.input_space.validate(state_below)
+
+        if self.needs_reformat:
+            state_below = self.input_space.format_as(state_below, self.desired_space)
+
+        for value in get_debug_values(state_below):
+            if self.mlp.batch_size is not None and value.shape[0] != self.mlp.batch_size:
+                raise ValueError("state_below should have batch size "+str(self.dbm.batch_size)+" but has "+str(value.shape[0]))
+
+        self.desired_space.validate(state_below)
+        assert state_below.ndim == 2
+
+        if not hasattr(self, 'no_affine'):
+            self.no_affine = False
+
+        if self.no_affine:
+            raise NotImplementedError()
+
+        assert self.W_class.ndim == 2
+        assert self.W_target.ndim == 3
+
+        cls = T.dot(state_below, self.W_class) + self.b
+        cls = T.nnet.softmax(cls)
+        Z = GroupDot(self.n_targets,
+                gpu='gpu' in theano.config.device)(state_below,
+                                                    self.W_target,
+                                                    self.b_target,
+                                                    class_targets)
+        rval = T.nnet.softmax(cls)
+
+        rval = T.nnet.softmax(Z)
+
+        for value in get_debug_values(rval):
+            if self.mlp.batch_size is not None:
+                assert value.shape[0] == self.mlp.batch_size
+
+        return rval, cls
+
+class MLP(MLPBase):
+    def __init__(self, nclass = None, **kwargs):
+        assert nclass is not None
+        self.nclass = nclass
+        super(MLP, self).__init__(**kwargs)
+
+    def get_monitoring_channels(self, data):
+        X, Y, cls = data
+        state = X
+        rval = OrderedDict()
+
+        for layer in self.layers:
+            ch = layer.get_monitoring_channels()
+            for key in ch:
+                rval[layer.layer_name+'_'+key] = ch[key]
+            state = layer.fprop(state)
+            args = [state]
+            if layer is self.layers[-1]:
+                args.append(Y)
+                if isinstance(layer, FactorizedSoftmax):
+                    args.append(cls)
+            ch = layer.get_monitoring_channels_from_state(*args)
+            if not isinstance(ch, OrderedDict):
+                raise TypeError(str((type(ch), layer.layer_name)))
+            for key in ch:
+                rval[layer.layer_name+'_'+key]  = ch[key]
+
+        return rval
+
+    def dropout_fprop(self, state_below, cls = None, default_input_include_prob=0.5,
+                      input_include_probs=None, default_input_scale=2.,
+                      input_scales=None, per_example=True):
+
+        if input_include_probs is None:
+            input_include_probs = {}
+
+        if input_scales is None:
+            input_scales = {}
+
+        self._validate_layer_names(list(input_include_probs.keys()))
+        self._validate_layer_names(list(input_scales.keys()))
+
+        theano_rng = MRG_RandomStreams(max(self.rng.randint(2 ** 15), 1))
+
+        for layer in self.layers:
+            layer_name = layer.layer_name
+
+            if layer_name in input_include_probs:
+                include_prob = input_include_probs[layer_name]
+            else:
+                include_prob = default_input_include_prob
+
+            if layer_name in input_scales:
+                scale = input_scales[layer_name]
+            else:
+                scale = default_input_scale
+
+            state_below = self.apply_dropout(
+                state=state_below,
+                include_prob=include_prob,
+                theano_rng=theano_rng,
+                scale=scale,
+                mask_value=layer.dropout_input_mask_value,
+                input_space=layer.get_input_space(),
+                per_example=per_example
+            )
+            if isinstance(layer, FactorizedSoftmax):
+                state_below = layer.fprop(state_below, cls)
+            else:
+                state_below = layer.fprop(state_below)
+
+        return state_below
+
+    def fprop(self, state_below, cls = None, return_all = False):
+        rval = self.layers[0].fprop(state_below)
+        rlist = [rval]
+
+        for layer in self.layers[1:]:
+            if isinstance(layer, FactorizedSoftmax):
+                rval = layer.fprop(rval, cls)
+            else:
+                rval = layer.fprop(rval)
+            rlist.append(rval)
+
+        if return_all:
+            return rlist
+        return rval
+
+    def get_class_source(self):
+        return 'classes'
+
+    def get_class_space(self):
+        return VectorSpace(self.nclass)
 
