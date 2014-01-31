@@ -663,10 +663,12 @@ class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
 
 class FactorizedSoftmax(Softmax):
     # TODO cleanup target, class name mess, it's confusing
-    def __init__(self, n_targets = None, **kwargs):
+    def __init__(self, n_clusters = None, **kwargs):
         super(FactorizedSoftmax, self).__init__(**kwargs)
-        self.n_targets = n_targets
-        self.b_target = sharedX( np.zeros((self.n_targets, self.n_classes)), name = 'softmax_b_targets')
+        self.n_clusters = n_clusters
+        del self.b
+        self.b_class = sharedX(np.zeros((self.n_clusters, self.n_classes)), name = 'softmax_b_class')
+        self.b_cluster = sharedX( np.zeros((self.n_clusters)), name = 'softmax_b_clusters')
         self.output_space = VectorSpace(1)
 
     def set_input_space(self, space):
@@ -697,19 +699,19 @@ class FactorizedSoftmax(Softmax):
             if self.irange is not None:
                 assert self.istdev is None
                 assert self.sparse_init is None
-                W_class = rng.uniform(-self.irange,self.irange, (self.input_dim,self.n_classes))
-                W_target = rng.uniform(-self.irange,self.irange, (self.input_dim, self.n_targets, self.n_classes))
+                W_cluster = rng.uniform(-self.irange,self.irange, (self.input_dim, self.n_clusters))
+                W_class = rng.uniform(-self.irange,self.irange, (self.n_clusters, self.input_dim, self.n_classes))
             elif self.istdev is not None:
                 assert self.sparse_init is None
-                W_class = rng.randn(self.input_dim, self.n_classes) * self.istdev
-                W_target = rng.randn(self.input_dim, self.n_targets, self.n_classes) * self.istdev
+                W_cluster = rng.randn(self.input_dim, self.n_clusters) * self.istdev
+                W_class = rng.randn(self.n_clusters, self.input_dim, self.n_classes) * self.istdev
             else:
                 raise NotImplementedError()
 
             self.W_class = sharedX(W_class,  'softmax_W_class' )
-            self.W_target = sharedX(W_target,  'softmax_W_target' )
+            self.W_cluster = sharedX(W_cluster,  'softmax_W_cluster' )
 
-            self._params = [ self.b, self.W_class ]
+            self._params = [self.b_class, self.W_class, self.b_cluster, self.W_cluster]
 
     def get_monitoring_channels(self):
 
@@ -717,12 +719,12 @@ class FactorizedSoftmax(Softmax):
             return OrderedDict()
 
         W_class = self.W_class
-        W_target = self.W_target
+        W_cluster = self.W_cluster
 
-        assert W_class.ndim == 2
-        assert W_class.ndim == 2
+        assert W_class.ndim == 3
+        assert W_cluster.ndim == 2
 
-        sq_W = T.sqr(W_target)
+        sq_W = T.sqr(W_cluster)
         sq_W_class = T.sqr(W_class)
 
         row_norms = T.sqrt(sq_W.sum(axis=1))
@@ -751,7 +753,7 @@ class FactorizedSoftmax(Softmax):
         if not isinstance(self.input_space, VectorSpace):
             raise NotImplementedError()
 
-        return self.W_class.get_value(), self. W_target.get_value()
+        return self.W_class.get_value(), self. W_cluster.get_value()
 
     def cost(self, Y, Y_hat):
         """
@@ -769,6 +771,7 @@ class FactorizedSoftmax(Softmax):
         WRITEME
         """
         y_hat, y_cls = Y_hat
+        Y, CLS = Y
         assert hasattr(y_hat, 'owner')
         owner = y_hat.owner
         assert owner is not None
@@ -795,25 +798,32 @@ class FactorizedSoftmax(Softmax):
         z_cls ,= owner.inputs
         assert z_cls.ndim == 2
 
-
+        # Y
         z = z - z.max(axis=1).dimshuffle(0, 'x')
         log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
 
-        z_cls = z_cls - z_cls.max(axis=1).dimshuffle(0, 'x')
-        log_prob_cls = z_cls - T.log(T.exp(z_cls).sum(axis=1).dimshuffle(0, 'x'))
-
-        log_prob = log_prob * z_cls
         # we use sum and not mean because this is really one variable per row
         Y = OneHotFormatter(self.n_classes).theano_expr(
-                                T.addbroadcast(Y, 1).dimshuffle(0).astype('int8'))
+                                T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
         log_prob_of = (Y * log_prob).sum(axis=1)
         assert log_prob_of.ndim == 1
 
+        # cls
+        z_cls = z_cls - z_cls.max(axis=1).dimshuffle(0, 'x')
+        log_prob_cls = z_cls - T.log(T.exp(z_cls).sum(axis=1).dimshuffle(0, 'x'))
+
+        CLS = OneHotFormatter(self.n_clusters).theano_expr(
+                                T.addbroadcast(CLS, 1).dimshuffle(0).astype('uint32'))
+        log_prob_of_cls = (CLS * log_prob_cls).sum(axis=1)
+        assert log_prob_of_cls.ndim == 1
+
+        # p(w|history) = p(c|s) * p(w|c,s)
+        log_prob_of = log_prob_of * log_prob_of_cls
         rval = log_prob_of.mean()
 
         return - rval
 
-    def get_monitoring_channels_from_state(self, state, target=None, class_target = None):
+    def get_monitoring_channels_from_state(self, state, target=None, cluster_tragets = None):
         """
         .. todo::
 
@@ -830,23 +840,13 @@ class FactorizedSoftmax(Softmax):
         ])
 
         if target is not None:
-            rval['nll'] = self.cost(Y_hat=(state, cls), Y=target)
-
-            target, cls = self.fprop(state, class_target)
-            z = target * cls
-            z = z - z.max(axis=1).dimshuffle(0, 'x')
-            log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
-            Y = target
-            Y = OneHotFormatter(self.n_classes).theano_expr(
-                                T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
-            log_prob_of = (Y * log_prob).sum(axis=1)
-            assert log_prob_of.ndim == 1
-            nll = log_prob_of.mean()
-            rval['perplexity'] = 10 ** (nll / np.log(10).astype('float32'))
+            rval['nll'] = self.cost(Y_hat=(state, cls), Y=(target, cluster_tragets))
+            rval['perplexity'] = 10 ** (rval['nll'] / np.log(10).astype('float32'))
+            rval['entropy'] = rval['nll'] / np.log(2).astype('float32')
 
         return rval
 
-    def fprop(self, state_below, class_targets):
+    def fprop(self, state_below, cluster_tragetss):
         self.input_space.validate(state_below)
 
         if self.needs_reformat:
@@ -865,16 +865,16 @@ class FactorizedSoftmax(Softmax):
         if self.no_affine:
             raise NotImplementedError()
 
-        assert self.W_class.ndim == 2
-        assert self.W_target.ndim == 3
+        assert self.W_class.ndim == 3
+        assert self.W_cluster.ndim == 2
 
-        cls = T.dot(state_below, self.W_class) + self.b
+        cls = T.dot(state_below, self.W_cluster) + self.b_cluster
         cls = T.nnet.softmax(cls)
-        Z = GroupDot(self.n_targets,
+        Z = GroupDot(self.n_clusters,
                 gpu='gpu' in theano.config.device)(state_below,
-                                                    self.W_target,
-                                                    self.b_target,
-                                        class_targets.flatten().astype('int64'))
+                                                    self.W_class,
+                                                    self.b_class,
+                                        cluster_tragetss.flatten().astype('int64'))
         rval = T.nnet.softmax(Z)
 
         for value in get_debug_values(rval):
@@ -907,13 +907,13 @@ class FactorizedSoftmax(Softmax):
         return ('v', 'h', 'h_c')
 
     def get_biases(self):
-        return self.b.get_value(), self.b_target.get_value()
+        return self.b_class.get_value(), self.b_cluster.get_value()
 
     def get_weights(self):
         if not isinstance(self.input_space, VectorSpace):
             raise NotImplementedError()
 
-        return self.W_target.get_value(), self.W_class.get_value()
+        return self.W_cluster.get_value(), self.W_class.get_value()
 
 class MLP(MLPBase):
     def __init__(self, nclass = None, **kwargs):
@@ -1010,7 +1010,7 @@ class MLP(MLPBase):
         return 'classes'
 
     def get_class_space(self):
-        return VectorSpace(self.nclass)
+        return VectorSpace(1)
 
     def get_monitoring_data_specs(self):
         """

@@ -33,7 +33,7 @@
                      max_col_norm: %(y_col_norm)f,
                      layer_name: 'y',
                      n_classes: 10000,
-                     n_targets: *brown,
+                     n_clusters: *brown,
                      irange: 0.01,
                      #%(y_init)s,
                  }

@@ -21,7 +21,7 @@ class Dropout(DropoutBase):
             input_scales=self.input_scales,
             per_example=self.per_example
         )
-        return model.cost(Y, Y_hat)
+        return model.cost((Y, cls), Y_hat)
 
 
     def get_data_specs(self, model):

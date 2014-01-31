@@ -33,7 +33,7 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
 
             source = ('features', 'targets', 'classes')
             space = self.data_specs[0]
-            space.components.append(VectorSpace(dim=brown))
+            space.components.append(VectorSpace(dim=1))
             self.data_specs = (space, source)
             self.cls = cls
 
