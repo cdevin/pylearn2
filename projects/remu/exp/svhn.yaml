@@ -1,7 +1,7 @@
 !obj:pylearn2.train.Train {
     dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
         which_set: 'splitted_train',
-        path: '${LOCAL_SVHN}'
+        path: %(data_path)s
     },
     model: !obj:pylearn2.models.mlp.MLP {
         batch_size: 128,
@@ -70,11 +70,11 @@
                 #'train' : *train,
                 'valid' : !obj:pylearn2.datasets.svhn.SVHN {
                               which_set: 'valid',
-                              path: '${LOCAL_SVHN}'
+                              path: %(data_path)s,
                           },
                 'test' : !obj:pylearn2.datasets.svhn.SVHN {
                               which_set: 'test',
-                              path: '${LOCAL_SVHN}'
+                              path: %(data_path)s,
                           }
             },
         cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
