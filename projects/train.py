@@ -34,7 +34,8 @@ def experiment(state, channel):
         test_f = 'test_32x32.h5'
         if any([not os.path.isfile(tmp_path + train_f), not os.path.isfile(tmp_path + valid_f), not os.path.isfile(tmp_path + test_f)]):
             print "Moving data to local tmp"
-            os.makedirs(tmp_path)
+            if not os.path.isdir(tmp_path):
+                os.makedirs(tmp_path)
 
             shutil.copy(orig_path + train_f, tmp_path)
             shutil.copy(orig_path + valid_f, tmp_path)

@@ -28,12 +28,12 @@ def svhn(submit = False, make = False):
         state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/remu_svhn/")
         PATH = state.save_path
 
-    rng = np.random.RandomState([2014, 1, 15])
+    rng = np.random.RandomState([2014, 2, 7])
 
     for i in xrange(num_exp):
         state.y_max_col_norm = rng.uniform(1., 3.)
 
-        channel_options = [16, 32, 64, 128, 256]
+        channel_options = [16, 32, 64, 80, 96, 128]
         state.h0_num_channels = channel_options[rng.randint(len(channel_options))]
         state.h1_num_channels = channel_options[rng.randint(len(channel_options))]
         state.h2_num_channels = channel_options[rng.randint(len(channel_options))]
