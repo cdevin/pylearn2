@@ -107,16 +107,65 @@ def svhn(submit = False, make = False):
     if not make:
         db.createView(TABLE_NAME + '_view')
 
+def svhn_c(submit = False, make = False):
+    """
+    SVHN
+    """
+    state = DD()
+    with open('exp/svhn_continue.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'SVHN'
+    #state.orig_path = '/RQexec/mirzameh/data/SVHN/'
+    state.orig_path = '/scratch/mmirza/data/SVHN/channel/'
+    state.data_path = '/tmp/mmirza/SVHN/'
+    num_exp = 25
+    if submit:
+        TABLE_NAME = "remu_svhn_c"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+        state.save_path = './'
+    else:
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/remu_svhn/")
+        PATH = state.save_path
+
+    rng = np.random.RandomState([2014, 2, 7])
+
+    for i in xrange(num_exp):
+
+        state.learning_rate = 10. ** rng.uniform(1., -2)
+        state.momentum_saturate = rng.randint(50, 200)
+        state.final_momentum = rng.uniform(.6, .9)
+        state.lr_sat =rng.randint(50, 200)
+        state.lr_decay = 10. ** rng.uniform(-3, -1)
+
+        if make:
+            state.save_path = os.path.join(PATH, str(i)) + '/'
+            if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+                fp.write(yaml)
+        else:
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
+
+    if not make:
+        db.createView(TABLE_NAME + '_view')
+
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['svhn'])
+    parser.add_argument('-t', '--task', choices = ['svhn', 'svhn_c'])
     parser.add_argument('-s', '--submit', default = False, action='store_true')
     parser.add_argument('-m', '--make', default = False, action='store_true')
     args = parser.parse_args()
 
     if args.task == 'svhn':
-        svhn(args.submit)
+        svhn(args.submit, args.make)
+    elif args.task == 'svhn_c':
+        svhn_c(args.submit, args.make)
     else:
         raise ValueError or("Wrong task optipns {}".fromat(args.task))
 
