@@ -818,7 +818,7 @@ class FactorizedSoftmax(Softmax):
         assert log_prob_of_cls.ndim == 1
 
         # p(w|history) = p(c|s) * p(w|c,s)
-        log_prob_of = log_prob_of * log_prob_of_cls
+        log_prob_of = log_prob_of + log_prob_of_cls
         rval = log_prob_of.mean()
 
         return - rval
@@ -870,11 +870,12 @@ class FactorizedSoftmax(Softmax):
 
         cls = T.dot(state_below, self.W_cluster) + self.b_cluster
         cls = T.nnet.softmax(cls)
+
         Z = GroupDot(self.n_clusters,
                 gpu='gpu' in theano.config.device)(state_below,
                                                     self.W_class,
                                                     self.b_class,
-                                        cluster_tragetss.flatten().astype('int64'))
+                                        cluster_tragetss.flatten().astype('uint32'))
         rval = T.nnet.softmax(Z)
 
         for value in get_debug_values(rval):

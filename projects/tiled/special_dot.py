@@ -95,7 +95,8 @@ class GroupDot(theano.gof.Op):
     def execute(self, node, ins, _outs):
         state_below, matrix, biases, groups = ins
 
-        if not hasattr(self, 'precompute') or self.tmp_h.shape[0] < state_below.shape[0]:
+        #if not hasattr(self, 'precompute') or self.tmp_h.shape[0] < state_below.shape[0]:
+        if not hasattr(self, 'precompute') or (self.tmp_h is not None and self.tmp_h.shape[0] < state_below.shape[0]):
             if self.gpu:
                 if self.tmp_h:
                     del self.tmp_h
@@ -238,7 +239,8 @@ class GradGroupDot(theano.gof.Op):
 
     def execute(self, node, ins, _outs):
         state_below, matrix, biases, groups, grad_on_out = ins
-        if not hasattr(self, 'precompute') or self.tmp_h.shape[0] < state_below.shape[0]:
+        #if not hasattr(self, 'precompute') or self.tmp_h.shape[0] < state_below.shape[0]:
+        if not hasattr(self, 'precompute') or (self.tmp_h is not None and self.tmp_h.shape[0] < state_below.shape[0]):
             if self.gpu:
                 if self.tmp_h:
                     del self.tmp_h

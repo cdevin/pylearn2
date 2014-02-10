@@ -26,6 +26,7 @@ def map_words(word_dict, clusters):
     # remap labels
     counter = Counter(labels)
     max_size = np.max(counter.values())
+    print "maximum cluster size is: {}".format(max_size)
 
     # new word id's
     mapped_dict = np.zeros(len(word_dict))

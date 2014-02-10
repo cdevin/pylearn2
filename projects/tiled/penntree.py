@@ -31,7 +31,7 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
         if brown is not None:
             cluster_path = "${PYLEARN2_DATA_PATH}/"\
                     "PennTreebankCorpus/brown-cluster/" + \
-                    "train-c{}-p1.out/paths".format(brown)
+                    "train-c{}-p1.out/paths".format(brown - 1)
             clusters = BrownClusterDict(preprocess(cluster_path))
             word_dicts = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
                 "PennTreebankCorpus/dictionaries.npz"))
@@ -57,5 +57,4 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
 
 
 if __name__ == "__main__":
-    dd = PennTree('train', 3, brown = 50)
-
+    dd = PennTree('train', 3, brown = 51)
