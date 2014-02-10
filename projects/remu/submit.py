@@ -17,11 +17,12 @@ def svhn(submit = False, make = False):
         state.yaml_string = ymtmp.read()
 
     state.db = 'SVHN'
-    state.orig_path = '/RQexec/mirzameh/data/SVHN/'
+    #state.orig_path = '/RQexec/mirzameh/data/SVHN/'
+    state.orig_path = '/scratch/mmirza/data/SVHN/channel/'
     state.data_path = '/tmp/mmirza/SVHN/'
     num_exp = 25
     if submit:
-        TABLE_NAME = "remu_svhn"
+        TABLE_NAME = "remu_svhn_monk"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
         state.save_path = './'
     else:
@@ -33,7 +34,7 @@ def svhn(submit = False, make = False):
     for i in xrange(num_exp):
         state.y_max_col_norm = rng.uniform(1., 3.)
 
-        channel_options = [16, 32, 64, 80, 96, 128]
+        channel_options = [32, 64, 80, 96, 128, 256]
         state.h0_num_channels = channel_options[rng.randint(len(channel_options))]
         state.h1_num_channels = channel_options[rng.randint(len(channel_options))]
         state.h2_num_channels = channel_options[rng.randint(len(channel_options))]
@@ -54,10 +55,15 @@ def svhn(submit = False, make = False):
         state.h1_pool_stride = rng.randint(1, state.h1_pool_shape)
         state.h2_pool_stride = rng.randint(1, state.h2_pool_shape)
 
-        state.h3_num_units = rng.randint(100, 1000)
+        state.h3_num_units = rng.randint(200, 1000)
         state.h3_num_pieces = rng.randint(2, 5)
         state.h3_w_scale= 1.
         state.h3_slope_scale = 1.
+        state.h4_num_units = rng.randint(100, 1000)
+        state.h4_num_pieces = rng.randint(2, 5)
+        state.h4_w_scale= 1.
+        state.h4_slope_scale = 1.
+
 
         state.learning_rate = 10. ** rng.uniform(1., -2)
         state.momentum_saturate = rng.randint(50, 200)
@@ -69,6 +75,7 @@ def svhn(submit = False, make = False):
         state.h1_islope = 10 ** rng.uniform(0, -2.)
         state.h2_islope = 10 ** rng.uniform(0, -2.)
         state.h3_islope = 10 ** rng.uniform(0, -2.)
+        state.h4_islope = 10 ** rng.uniform(0, -2.)
 
         def random_init_string(low = -2.3, high = -1.):
             irange = 10. ** rng.uniform(-2.3, -1.)
@@ -78,6 +85,7 @@ def svhn(submit = False, make = False):
         state.h1_init = random_init_string()
         state.h2_init = random_init_string()
         state.h3_init = random_init_string()
+        state.h4_init = random_init_string()
         if rng.randint(2):
             state.y_init = "sparse_init: {}".format([0, 10, 100][rng.randint(3)])
         else:

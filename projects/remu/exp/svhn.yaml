@@ -48,6 +48,16 @@
                      W_lr_scale: %(h3_w_scale)f,
                      slope_lr_scale: %(h3_slope_scale)f,
                  },
+                !obj:galatea.remu.RestrictedMaxout {
+                     layer_name: 'h4',
+                     num_units: %(h4_num_units)i,
+                     num_pieces: %(h4_num_pieces)i,
+                     %(h4_init)s,
+                     islope: %(h4_islope)f,
+                     W_lr_scale: %(h4_w_scale)f,
+                     slope_lr_scale: %(h4_slope_scale)f,
+                 },
+
                  !obj:pylearn2.models.mlp.Softmax {
                      max_col_norm: %(y_max_col_norm)f,
                      layer_name: 'y',
