@@ -13,7 +13,7 @@
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         learning_rate: %(learning_rate)f,
-        init_momentum: .5,
+        init_momentum: %(init_momentum)f,
         train_iteration_mode: 'batchwise_shuffled_sequential',
         monitoring_dataset:
             {

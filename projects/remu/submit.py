@@ -119,7 +119,7 @@ def svhn_c(submit = False, make = False):
     #state.orig_path = '/RQexec/mirzameh/data/SVHN/'
     state.orig_path = '/scratch/mmirza/data/SVHN/channel/'
     state.data_path = '/tmp/mmirza/SVHN/'
-    num_exp = 25
+    num_exp = 20
     if submit:
         TABLE_NAME = "remu_svhn_c"
         db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
@@ -132,11 +132,12 @@ def svhn_c(submit = False, make = False):
 
     for i in xrange(num_exp):
 
-        state.learning_rate = 10. ** rng.uniform(1., -2)
-        state.momentum_saturate = rng.randint(50, 200)
-        state.final_momentum = rng.uniform(.6, .9)
-        state.lr_sat =rng.randint(50, 200)
-        state.lr_decay = 10. ** rng.uniform(-3, -1)
+        state.learning_rate = 10. ** rng.uniform(0., -4)
+        state.momentum_saturate = rng.randint(1, 100)
+        state.init_momentum = rng.uniform(.6, .8)
+        state.final_momentum = rng.uniform(state.init_momentum, .8)
+        state.lr_sat =rng.randint(1, 100)
+        state.lr_decay = 10. ** rng.uniform(-3, 0)
 
         if make:
             state.save_path = os.path.join(PATH, str(i)) + '/'
