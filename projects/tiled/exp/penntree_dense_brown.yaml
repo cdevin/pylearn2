@@ -34,6 +34,9 @@
                      layer_name: 'y',
                      n_classes: 951,
                      n_clusters: 52,
+                     clusters_scope: !obj:noisylearn.projects.tiled.penntree.clusters_scope {
+                            num_clusters: 50
+                        },
                      irange: 0.01,
                      #%(y_init)s,
                  }

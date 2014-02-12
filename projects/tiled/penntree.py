@@ -35,7 +35,7 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
             clusters = BrownClusterDict(preprocess(cluster_path))
             word_dicts = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
                 "PennTreebankCorpus/dictionaries.npz"))
-            mapped_dict, clusters = map_words(word_dicts, clusters)
+            mapped_dict, clusters, _ = map_words(word_dicts, clusters)
 
             cls = np.zeros((tot_len, 1))
             for i in xrange(tot_len):
@@ -48,13 +48,25 @@ class PennTree(dense_design_matrix.DenseDesignMatrix):
             self.data_specs = (space, source)
             self.cls = cls
 
-
     def get_data(self):
         if self.brown is None:
             return (self.X, self.y)
         else:
             return (self.X, self.y, self.cls)
 
+def clusters_scope(num_clusters):
+    cluster_path = "${PYLEARN2_DATA_PATH}/"\
+        "PennTreebankCorpus/brown-cluster/" + \
+        "train-c{}-p1.out/paths".format(num_clusters)
+    clusters = BrownClusterDict(preprocess(cluster_path))
+    word_dicts = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
+    "PennTreebankCorpus/dictionaries.npz"))
+    _, _, counter = map_words(word_dicts, clusters)
+    return counter
+
+
 
 if __name__ == "__main__":
     dd = PennTree('train', 3, brown = 51)
+    import ipdb
+    ipdb.set_trace()

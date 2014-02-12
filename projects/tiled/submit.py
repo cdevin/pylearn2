@@ -838,7 +838,7 @@ def dense_brown(submit = False, make = False):
         state.h1_num_units = rng.randint(200, 300)
         state.h2_num_pieces = rng.randint(2, 5)
         state.h2_num_units = rng.randint(200, 300)
-        state.learning_rate = 10. ** rng.uniform(1., -3)
+        state.learning_rate = 10. ** rng.uniform(-1, -3)
         state.m_sat = rng.randint(50, 150)
         state.final_momentum = rng.uniform(.5, .7)
         state.lr_sat =rng.randint(50, 150)

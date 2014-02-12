@@ -1,7 +1,6 @@
 import numpy as np
 from collections import Counter
 
-
 def map_words(word_dict, clusters):
     """
     When using brown clustering, map id of each word
@@ -35,7 +34,7 @@ def map_words(word_dict, clusters):
         for j, item in enumerate(cluster_words):
             mapped_dict[item] = j
 
-    return mapped_dict, labels
+    return mapped_dict, labels, counter
 
 def BrownClusterDict(cluster_file):
     """
@@ -52,5 +51,4 @@ def BrownClusterDict(cluster_file):
         word_dict[splitted[1]] = classes.index(splitted[0])
 
     return word_dict
-
 

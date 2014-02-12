@@ -663,9 +663,10 @@ class MaxoutLocalC01BPoolLess(MaxoutLocalC01B):
 
 class FactorizedSoftmax(Softmax):
     # TODO cleanup target, class name mess, it's confusing
-    def __init__(self, n_clusters = None, **kwargs):
+    def __init__(self, n_clusters = None, clusters_scope = None, **kwargs):
         super(FactorizedSoftmax, self).__init__(**kwargs)
         self.n_clusters = n_clusters
+        self.clusters_scope = clusters_scope
         del self.b
         self.b_class = sharedX(np.zeros((self.n_clusters, self.n_classes)), name = 'softmax_b_class')
         self.b_cluster = sharedX( np.zeros((self.n_clusters)), name = 'softmax_b_clusters')
@@ -707,6 +708,10 @@ class FactorizedSoftmax(Softmax):
                 W_class = rng.randn(self.n_clusters, self.input_dim, self.n_classes) * self.istdev
             else:
                 raise NotImplementedError()
+
+            # set the extra dummy weights to 0
+            for key in self.clusters_scope.keys():
+                W_class[int(key), :, :self.clusters_scope[key]] = 0.
 
             self.W_class = sharedX(W_class,  'softmax_W_class' )
             self.W_cluster = sharedX(W_cluster,  'softmax_W_cluster' )
