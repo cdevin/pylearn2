@@ -1,8 +1,11 @@
 import warnings
 import functools
+import numpy as np
 from pylearn2.datasets import Dataset
 from pylearn2.datasets import dense_design_matrix
+from pylearn2.space import CompositeSpace
 from pylearn2.utils import safe_zip
+from pylearn2.utils.iteration import resolve_iterator_class
 from noisylearn.projects.tiled.iteration import FiniteDatasetIterator
 
 

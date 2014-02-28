@@ -60,76 +60,8 @@
 \begin_body
 
 \begin_layout Standard
-From the talk
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $P(x)=\sum_{h}P(x,h)=\sum_{h}1/Q(x,h)p(x,h)q(x,h),$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $q(h|x)^{*}=p(h|x)$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-From sketch:
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $P(y|x)=\sum_{G}P(Y|G,x)P_{\theta}(G|X)=mean_{G\sim P(G|X)}P(Y|G,x)$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $\frac{\partial logP(y|x)}{\partial\theta}=\frac{1}{P(y|x)}\sum_{G}P(y|G,x)P(G|X)\frac{\partial P(G|x)}{\partial\theta}\approx mean_{G\sim Q}(\frac{P(G|y,x)}{Q(G|Y,x)})\frac{\partial P(G|x)}{\partial\theta}=\sum_{G}P(G|y,x)\frac{\partial logP(G|x)}{\partial\theta}=\sum_{G}Q(G|y,x)(\frac{P(G|y,x)}{Q(G|y,x)})\frac{\partial logP(G|x)}{\partial\theta}$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula $Q(G|y,x)\approx P(Y|G,x)P(G|x)$
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-New
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-P(Y\vert X)=\sum_{G}P(Y\vert G,X)P_{\theta}(G\vert X)
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Formula 
-\[
-\frac{\partial logP(Y\vert X)}{\partial\theta}=\frac{1}{P(Y\vert X)}\sum_{G}P(Y\vert G,X)P(G\vert X)\frac{\partial P(G\vert X)}{\partial\theta}=\sum_{G}P(G\vert Y,X)\frac{\partial logP(G\vert X)}{\partial\theta}=\sum_{G}Q(G\vert Y,X)(\frac{P(G\vert Y,X)}{Q(G\vert Y,X)})\frac{\partial logP(G\vert X)}{\partial\theta}
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-----
+G is stochastic neuron gater with two pathways.
+ During training get Y as input and during predication X.
 \end_layout
 
 \begin_layout Standard
@@ -146,11 +78,77 @@ P(Y\vert X)=E_{G}[P(Y\vert G,X)P_{\theta}(G\vert X)]\approx mean_{G\sim P(G\vert
 \begin_layout Standard
 \begin_inset Formula 
 \[
+\frac{\partial logP(Y\vert X)}{\partial\theta}=\frac{1}{P(Y\vert X)}E_{G}[P(Y\vert G,X)P(G\vert X)\frac{\partial logP(G\vert X)}{\partial\theta}]
 \]
 
 \end_inset
 
 
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\uuline off
+\uwave off
+\noun off
+\color none
+\begin_inset Formula 
+\[
+=E_{G}[P(G\vert Y,X)\frac{\partial logP(G\vert X)}{\partial\theta}]=E_{G}[Q(G\vert Y,X)(\frac{P(G\vert Y,X)}{Q(G\vert Y,X)})\frac{\partial logP(G\vert X)}{\partial\theta}]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\approx mean_{G\sim Q}(\frac{P(G\vert Y,X)}{Q(G\vert Y,X)})\frac{\partial logP(G\vert X)}{\partial\theta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+-
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+Q^{*}(G\vert Y,X)\approx P(Y\vert G,X)P(G\vert X)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+-
+\end_layout
+
+\begin_layout Standard
+Q is another disturbation
+\end_layout
+
+\begin_layout Standard
+We should use biased importance sampling, byt minimizing P/Q
+\end_layout
+
+\begin_layout Standard
+NADE would be a good option for Q
 \end_layout
 
 \end_body

@@ -16,7 +16,7 @@ class OneBilllionWords(SequenceDesignMatrix):
         if which_set not in self.valid_set_names:
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
         data = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
-                "smt/billion/en/newsxx.test.npy")
+                "smt/billion/en/newsxx.test.npy"))
 
         self.seq_len = seq_len
         self.X = data
@@ -44,8 +44,26 @@ class OneBilllionWords(SequenceDesignMatrix):
         self._iter_data_specs = (self.X_space, 'features')
 
 
+    def get_num_words(self):
+        if not hasattr(self, 'num_wrods'):
+            words = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
+                "smt/billion/en/newsxx.stream_word_indxs.pkl"))
+            words = np.asarray(words.values())
+            self.num_words = words.max()
+            return self.num_words
+        else:
+            return self.num_words
+
+    @property
+    def end_of_sentense(self):
+        return self.get_num_words() + 1
+
 if __name__ == "__main__":
 
     train = OneBilllionWords('train', 6)
+    #print train.num_words
+    print train.end_of_sentense
+    iter = train.iterator(mode = 'sequential', batch_size = 100)
+    iter.next()
     print train.num_examples
 
