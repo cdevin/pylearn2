@@ -87,10 +87,12 @@ class SequentialSubsetIterator(SubsetIterator):
 
 
 
-class FiniteDatasetIterator(FiniteDatasetIteratorBase):
+class FiniteDatasetIterator2(FiniteDatasetIteratorBase):
     def next(self):
 
         next_index = self._subset_iterator.next()
+        # BUG BUG BUG
+        raise Error
         ind = self._raw_data[0][next_index]
         batch_size = len(ind)
 
@@ -115,29 +117,31 @@ class FiniteDatasetIterator(FiniteDatasetIteratorBase):
         return rval
 
 class FiniteDatasetIterator(FiniteDatasetIteratorBase):
+
+    def get_seq(self, ind):
+        """
+        return seq_len words before ind, including ind
+        while paying attention to sentence structure
+        """
+
+        return format_sentence(data = self._raw_data[0],
+                        seq_len = self._dataset.seq_len,
+                        ind = ind - 1,
+                        begin = self._dataset.begin_sentence,
+                        end = self._dataset.end_sentence)
+
     def next(self):
 
         next_index = self._subset_iterator.next()
-        ind = self._raw_data[0][next_index]
-        batch_size = len(ind)
-
         targets = False
         if len(self._raw_data) == 2:
             targets = True
-            y = np.zeros((batch_size, 1))
-        x = np.zeros((batch_size, self._dataset.seq_len))
+            y = self._raw_data[1][next_index]
+        if isinstance(next_index, slice):
+            next_index = slice_to_list(next_index)
 
-        import ipdb
-        ipdb.set_trace()
-        for i in xrange(batch_size):
-            #x[i] = self._raw_data[0][ind[i]:ind[i] + self._dataset.seq_len]
-            x_ = []
-            #for j in xrnage(self._dataset.seq_len, 0, -1):
-                #x_[j] =
-
-            if targets:
-                y[i] = self._raw_data[0][ind[i]]
-                #y[i] = self._raw_data[0][ind[i] + self._dataset.seq_len]
+        x = np.zeros((self.batch_size, self._dataset.seq_len))
+        x = [self.get_seq(i) for i in xrange(self.batch_size)]
 
         if targets:
             rval = (self._convert[0](x), self._convert[1](y))
@@ -147,5 +151,31 @@ class FiniteDatasetIterator(FiniteDatasetIteratorBase):
         if not self._return_tuple and len(rval) == 1:
             rval, = rval
         return rval
+
+
+def slice_to_list(item):
+    ifnone = lambda a, b: b if a is None else a
+    return list(range(ifnone(item.start, 0), item.stop, ifnone(item.step, 1)))
+
+
+
+
+def format_sentence(data, ind, seq_len, begin = -2, end = -1):
+
+    rval = np.ones((seq_len)) * end
+    if ind > seq_len:
+        rval[:] = data[ind-seq_len:ind]
+    elif ind > 0:
+        rval[seq_len-ind:] =  data[:ind]
+
+    w = np.where(rval == -1)[0]
+    if len(w) > 0:
+        #import ipdb
+        #ipdb.set_trace()
+        rval[0:max(0, w[-1])] = end
+        rval[w[-1]] = begin
+
+
+    return rval
 
 

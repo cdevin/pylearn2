@@ -5,6 +5,8 @@ from pylearn2.utils.string_utils import preprocess
 from pylearn2.space import VectorSpace, CompositeSpace
 from pylearn2.utils.iteration import resolve_iterator_class
 from noisylearn.projects.tiled.dataset import SequenceDesignMatrix
+from noisylearn.utils.cache import CachedAttribute
+from noisylearn.projects.tiled.flatten_one_billion_word import get_num_words
 
 class OneBilllionWords(SequenceDesignMatrix):
 
@@ -15,8 +17,9 @@ class OneBilllionWords(SequenceDesignMatrix):
 
         if which_set not in self.valid_set_names:
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
-        data = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
-                "smt/billion/en/newsxx.test.npy"))
+        #data = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
+                #"smt/billion/en/newsxx.test.npy"))
+        data = serial.load(os.path.join("${PYLEARN2_DATA_CUSTOM}", "obw/{}.npy".format(which_set)))
 
         self.seq_len = seq_len
         self.X = data
@@ -44,25 +47,25 @@ class OneBilllionWords(SequenceDesignMatrix):
         self._iter_data_specs = (self.X_space, 'features')
 
 
-    def get_num_words(self):
-        if not hasattr(self, 'num_wrods'):
-            words = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
-                "smt/billion/en/newsxx.stream_word_indxs.pkl"))
-            words = np.asarray(words.values())
-            self.num_words = words.max()
-            return self.num_words
-        else:
-            return self.num_words
+    @CachedAttribute
+    def num_words(self):
+        rval = get_num_words()
+        return rval
 
     @property
-    def end_of_sentense(self):
-        return self.get_num_words() + 1
+    def end_sentence(self):
+        #return self.num_words + 1
+        return -1
+
+    @property
+    def begin_sentence(self):
+        #return self.num_words + 2
+        return -2
+
 
 if __name__ == "__main__":
 
-    train = OneBilllionWords('train', 6)
-    #print train.num_words
-    print train.end_of_sentense
+    train = OneBilllionWords('test', 6)
     iter = train.iterator(mode = 'sequential', batch_size = 100)
     iter.next()
     print train.num_examples

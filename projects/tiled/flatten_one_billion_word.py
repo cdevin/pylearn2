@@ -1,4 +1,5 @@
 """
+This script is for One billion word dataset
 The data currently are sorted in list of sentenses.
 This script convert them to a single list, inserting
 endo of sentense symbol at the end of each sentence.
@@ -72,5 +73,5 @@ if __name__ == "__main__":
     for set_ in ['valid']:
         data = load_data(set_)
         flattened = flatten(data, sentence_end)
-        np.save(set_, np.asarray(flattened))
+        np.save(set_, np.asarray(flattened) )
 
