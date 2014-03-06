@@ -13,7 +13,7 @@ class OneBilllionWords(SequenceDesignMatrix):
     _default_seed = (17, 2, 946)
 
     valid_set_names = ["train","valid", "test"]
-    def __init__(self, which_set, seq_len, rng=_default_seed):
+    def __init__(self, which_set, seq_len, brown = None, rng=_default_seed):
 
         if which_set not in self.valid_set_names:
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
@@ -23,14 +23,19 @@ class OneBilllionWords(SequenceDesignMatrix):
 
         self.seq_len = seq_len
         self.X = data
+        self.y = None
+        self.brown = brown
 
         x_space = VectorSpace(dim = seq_len)
-        x_source = 'features'
         y_space = VectorSpace(dim=1)
-        y_source = 'targets'
+        if self.brown is not None:
+            cls_space = VectorSpace(dim=brown)
+            target_space = CompositeSpace((y_space, cls_space))
+        else:
+            target_space = y_space
 
-        space = CompositeSpace((x_space, y_space))
-        source = (x_source, y_source)
+        space = CompositeSpace((x_space, target_space))
+        source = ('features', 'targets')
         self.data_specs = (space, source)
         self.X_space = x_space
 
@@ -66,7 +71,9 @@ class OneBilllionWords(SequenceDesignMatrix):
 if __name__ == "__main__":
 
     train = OneBilllionWords('test', 6)
-    iter = train.iterator(mode = 'sequential', batch_size = 100)
-    iter.next()
-    print train.num_examples
+    iter = train.iterator(mode = 'sequential', batch_size = 100, data_specs = train.data_specs)
+    rval = iter.next()
+    #import ipdb
+    #ipdb.set_trace()
+    print train.num_words
 

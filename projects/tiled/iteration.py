@@ -136,12 +136,13 @@ class FiniteDatasetIterator(FiniteDatasetIteratorBase):
         targets = False
         if len(self._raw_data) == 2:
             targets = True
-            y = self._raw_data[1][next_index]
+            y = self._raw_data[0][next_index]
+            y = y.reshape((self.batch_size, 1))
         if isinstance(next_index, slice):
             next_index = slice_to_list(next_index)
 
         x = np.zeros((self.batch_size, self._dataset.seq_len))
-        x = [self.get_seq(i) for i in xrange(self.batch_size)]
+        x = np.asarray([self.get_seq(i) for i in xrange(self.batch_size)])
 
         if targets:
             rval = (self._convert[0](x), self._convert[1](y))

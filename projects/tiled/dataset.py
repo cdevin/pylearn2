@@ -12,7 +12,10 @@ from noisylearn.projects.tiled.iteration import FiniteDatasetIterator
 class SequenceDesignMatrix(dense_design_matrix.DenseDesignMatrix):
 
     def get_data(self):
-        return self.X, np.zeros(1, dtype='int32')
+        #if self.y is None:
+            #return self.X
+        #else:
+        return self.X, np.zeros((1,1), dtype='int32')
 
     @property
     def num_examples(self):
