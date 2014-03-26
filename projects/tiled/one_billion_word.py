@@ -4,11 +4,13 @@ from pylearn2.utils import serial
 from pylearn2.utils.string_utils import preprocess
 from pylearn2.space import VectorSpace, CompositeSpace
 from pylearn2.utils.iteration import resolve_iterator_class
-from noisylearn.projects.tiled.dataset import SequenceDesignMatrix
+from noisylearn.projects.tiled.dataset import SequenceClusterDesignMatrix
 from noisylearn.utils.cache import CachedAttribute
 from noisylearn.projects.tiled.flatten_one_billion_word import get_num_words
+from pylearn2.utils.string_utils import preprocess
+from noisylearn.projects.tiled.brown_utils import map_words, BrownClusterDict
 
-class OneBilllionWords(SequenceDesignMatrix):
+class OneBilllionWords(SequenceClusterDesignMatrix):
 
     _default_seed = (17, 2, 946)
 
@@ -19,7 +21,14 @@ class OneBilllionWords(SequenceDesignMatrix):
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
         #data = serial.load(os.path.join("${PYLEARN2_DATA_PATH}",
                 #"smt/billion/en/newsxx.test.npy"))
-        data = serial.load(os.path.join("${PYLEARN2_DATA_CUSTOM}", "obw/{}.npy".format(which_set)))
+        if which_set == 'train':
+            data = np.memmap(preprocess(os.path.join("${PYLEARN2_DATA_CUSTOM}", "obw/{}.dat".format(which_set))),
+                             mode = 'r')
+        else:
+            data = serial.load(os.path.join("${PYLEARN2_DATA_CUSTOM}", "obw/{}.npy".format(which_set)))
+
+        if data.ndim == 1:
+            data = data.reshape((data.shape[0], 1))
 
         self.seq_len = seq_len
         self.X = data
@@ -28,14 +37,10 @@ class OneBilllionWords(SequenceDesignMatrix):
 
         x_space = VectorSpace(dim = seq_len)
         y_space = VectorSpace(dim=1)
-        if self.brown is not None:
-            cls_space = VectorSpace(dim=brown)
-            target_space = CompositeSpace((y_space, cls_space))
-        else:
-            target_space = y_space
+        cls_space = VectorSpace(dim=brown)
+        space = CompositeSpace((x_space, y_space, cls_space))
+        source = ('features', 'targets', 'aux_targets')
 
-        space = CompositeSpace((x_space, target_space))
-        source = ('features', 'targets')
         self.data_specs = (space, source)
         self.X_space = x_space
 
@@ -52,6 +57,19 @@ class OneBilllionWords(SequenceDesignMatrix):
         self._iter_data_specs = (self.X_space, 'features')
 
 
+        assert brown is not None
+        cluster_path = os.path.join("${PYLEARN2_DATA_CUSTOM}", "obw/brown/{}.dat".format(brown))
+        cluster_path = preprocess(cluster_path)
+        clusters = BrownClusterDict(preprocess(cluster_path))
+        word_dict = serial.load("${PYLEARN2_DATA_PATH}/smt/billion/en/newsxx_word_indxs.pkl")
+        # add extra chars
+        word_dict['<s>'] = self.begin_sentence
+        word_dict['</s>'] = self.end_sentence
+        mapped_dict, clusters, _ = map_words(word_dict, clusters)
+        self.clusters = clusters
+        self.mapped_dict = mapped_dict
+
+
     @CachedAttribute
     def num_words(self):
         rval = get_num_words()
@@ -59,18 +77,18 @@ class OneBilllionWords(SequenceDesignMatrix):
 
     @property
     def end_sentence(self):
-        #return self.num_words + 1
-        return -1
+        return self.num_words + 1
 
     @property
     def begin_sentence(self):
-        #return self.num_words + 2
-        return -2
+        return self.num_words + 2
 
 
 if __name__ == "__main__":
 
-    train = OneBilllionWords('test', 6)
+    train = OneBilllionWords('test', 6, brown = 100)
+    #mapping = DataSpecsMapping(train.data_specs)
+    #flattened_specs = (mapping.flatten(train.data_specs[0], return_tuple=False), mapping.flatten(train.data_specs[1]))
     iter = train.iterator(mode = 'sequential', batch_size = 100, data_specs = train.data_specs)
     rval = iter.next()
     #import ipdb

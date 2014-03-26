@@ -1,14 +1,15 @@
 import numpy as np
 from collections import Counter
 
-def map_words(word_dict, clusters):
+def map_words(word_dict, clusters, unique_words = False):
     """
     When using brown clustering, map id of each word
     to a samller dictionary for each cluster
     """
 
     # words dictionary
-    word_dict = word_dict['unique_words']
+    if unique_words:
+        word_dict = word_dict['unique_words']
 
     # cluster mapping for the words
     num_clusters = len(np.unique(clusters.values()))

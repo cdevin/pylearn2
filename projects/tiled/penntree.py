@@ -65,7 +65,6 @@ def clusters_scope(num_clusters):
     return counter
 
 
-
 if __name__ == "__main__":
     dd = PennTree('train', 3, brown = 51)
     import ipdb

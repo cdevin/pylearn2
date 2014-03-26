@@ -1031,3 +1031,113 @@ class MLP(MLPBase):
                     self.get_class_source())
         return (space, source)
 
+class MLP2(MLPBase):
+    def __init__(self, nclass = None, **kwargs):
+        assert nclass is not None
+        self.nclass = nclass
+        super(MLP, self).__init__(**kwargs)
+
+    def get_monitoring_channels(self, data):
+        X, Y, cls = data
+        state = X
+        rval = OrderedDict()
+
+        for layer in self.layers:
+            ch = layer.get_monitoring_channels()
+            for key in ch:
+                rval[layer.layer_name+'_'+key] = ch[key]
+            if isinstance(layer, FactorizedSoftmax):
+                state = layer.fprop(state, cls)
+            else:
+                state = layer.fprop(state)
+            args = [state]
+            if layer is self.layers[-1]:
+                args.append(Y)
+                if isinstance(layer, FactorizedSoftmax):
+                    args.append(cls)
+            ch = layer.get_monitoring_channels_from_state(*args)
+            if not isinstance(ch, OrderedDict):
+                raise TypeError(str((type(ch), layer.layer_name)))
+            for key in ch:
+                rval[layer.layer_name+'_'+key]  = ch[key]
+
+        return rval
+
+    def dropout_fprop(self, state_below, cls = None, default_input_include_prob=0.5,
+                      input_include_probs=None, default_input_scale=2.,
+                      input_scales=None, per_example=True):
+
+        if input_include_probs is None:
+            input_include_probs = {}
+
+        if input_scales is None:
+            input_scales = {}
+
+        self._validate_layer_names(list(input_include_probs.keys()))
+        self._validate_layer_names(list(input_scales.keys()))
+
+        theano_rng = MRG_RandomStreams(max(self.rng.randint(2 ** 15), 1))
+
+        for layer in self.layers:
+            layer_name = layer.layer_name
+
+            if layer_name in input_include_probs:
+                include_prob = input_include_probs[layer_name]
+            else:
+                include_prob = default_input_include_prob
+
+            if layer_name in input_scales:
+                scale = input_scales[layer_name]
+            else:
+                scale = default_input_scale
+
+            state_below = self.apply_dropout(
+                state=state_below,
+                include_prob=include_prob,
+                theano_rng=theano_rng,
+                scale=scale,
+                mask_value=layer.dropout_input_mask_value,
+                input_space=layer.get_input_space(),
+                per_example=per_example
+            )
+            if isinstance(layer, FactorizedSoftmax):
+                state_below = layer.fprop(state_below, cls)
+            else:
+                state_below = layer.fprop(state_below)
+
+        return state_below
+
+    def fprop(self, state_below, cls = None, return_all = False):
+        rval = self.layers[0].fprop(state_below)
+        rlist = [rval]
+
+        for layer in self.layers[1:]:
+            if isinstance(layer, FactorizedSoftmax):
+                rval = layer.fprop(rval, cls)
+            else:
+                rval = layer.fprop(rval)
+            rlist.append(rval)
+
+        if return_all:
+            return rlist
+        return rval
+
+    def get_class_source(self):
+        return 'classes'
+
+    def get_class_space(self):
+        return VectorSpace(1)
+
+    def get_monitoring_data_specs(self):
+        """
+        Notes
+        -----
+        In this case, we want the inputs and targets.
+        """
+        space = CompositeSpace((self.get_input_space(),
+                                self.get_output_space(),
+                                self.get_class_space()))
+        source = (self.get_input_source(), self.get_target_source(),
+                    self.get_class_source())
+        return (space, source)
+
