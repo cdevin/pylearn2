@@ -3,7 +3,8 @@
         which_set: 'train',
         seq_len: &seq_len 5
     },
-    model: !obj:noisylearn.projects.gating2.MLP {
+    #model: !obj:noisylearn.projects.gating2.MLP {
+    model: !obj:pylearn2.models.mlp.MLP {
         layers: [
                 !obj:noisylearn.projects.tiled.EmbeddingLinear {
                     dim: 120,
