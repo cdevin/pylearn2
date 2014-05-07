@@ -13,81 +13,13 @@ from pylearn2.format.target_format import OneHotFormatter
 #import ipdb
 
 
-class MLP(MLP):
-
-    def cost_from_X(self, data):
-        self.cost_from_X_data_specs()[0].validate(data)
-        X, Y = data
-        state_below = X
-        state_below = self.layers[0].fprop(state_below)
-        for layer in self.layers[1:-1]:
-            state_below = layer.fprop(state_below)
-        return self.layers[-1].cost(state_below, Y)
-
-    def get_monitoring_channels(self, data):
-
-        X, Y = data
-        state = X
-        rval = OrderedDict()
-
-        for layer in self.layers:
-            ch = layer.get_monitoring_channels()
-            for key in ch:
-                value = ch[key]
-                doc = get_monitor_doc(value)
-                if doc is None:
-                    doc = str(type(layer)) + ".get_monitoring_channels did" + \
-                            " not provide any further documentation for" + \
-                            " this channel."
-                doc = 'This channel came from a layer called "' + \
-                        layer.layer_name + '" of an MLP.\n' + doc
-                value.__doc__ = doc
-                rval[layer.layer_name+'_'+key] = value
-            old_state = state
-            state = layer.fprop(state)
-            args = [state]
-            if layer is self.layers[-1]:
-                args.append(Y)
-                state = old_state
-            ch = layer.get_monitoring_channels_from_state(*args)
-            if not isinstance(ch, OrderedDict):
-                raise TypeError(str((type(ch), layer.layer_name)))
-            for key in ch:
-                value = ch[key]
-                doc = get_monitor_doc(value)
-                if doc is None:
-                    doc = str(type(layer)) + \
-                            ".get_monitoring_channels_from_state did" + \
-                            " not provide any further documentation for" + \
-                            " this channel."
-                doc = 'This channel came from a layer called "' + \
-                        layer.layer_name + '" of an MLP.\n' + doc
-                value.__doc__ = doc
-                rval[layer.layer_name+'_'+key] = value
-
-        return rval
-
-
-
 class NCE(Softmax):
-
 
     def __init__(self, num_noise_samples = 2, **kwargs):
 
         super(NCE, self).__init__(**kwargs)
         self.num_noise_samples = num_noise_samples
         self.output_space = VectorSpace(1)
-
-
-    #def fprop(self, state_below):
-        ## TODO this is a hack to fix the monitorinf for now
-        #return state_below
-
-    #def fprop(self, state_below):
-#
-        #p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
-
-
 
 
     def cost(self, Y, Y_hat):
@@ -123,10 +55,7 @@ class NCE(Softmax):
         neg = (p_x / (p_x + k * p_n) * T.log(p_x)).sum(axis=1)
 
 
-        #pos = T.nnet.sigmoid(T.dot(state_below, self.W[:,Y]) + self.b[Y] - T.log(self.num_noise_samples * p_n))
-        #neg = T.nnet.sigmoid(T.dot(state_below, self.W[:,noise].T) + self.b[noise] - T.log(k * p_n))
-
-        return - (pos - neg).mean()
+        return -(pos - neg).mean()
 
 
     def nll(self, Y, Y_hat):
