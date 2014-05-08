@@ -22,7 +22,7 @@ class NCE(Softmax):
         self.output_space = VectorSpace(1)
 
 
-    def cost(self, Y, Y_hat):
+    def cost_(self, Y, Y_hat):
         # TODO fix me later when using IndexSpace
 
         assert hasattr(Y_hat, 'owner')
@@ -56,6 +56,46 @@ class NCE(Softmax):
 
 
         return -(pos - neg).mean()
+
+
+    def cost(self, Y, Y_hat):
+        # TODO fix me later when using IndexSpace
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+            assert len(owner.inputs) == 1
+            Y_hat, = owner.inputs
+            owner = Y_hat.owner
+            op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        state_below, = owner.inputs
+        assert state_below.ndim == 2
+
+        # TODO make this more generic like above
+        state_below = state_below.owner.inputs[0].owner.inputs[0]
+
+        #import ipdb
+        #ipdb.set_trace()
+        Y = T.argmax(Y, axis = 1)
+        #Y = Y.astype('uint32')
+        theano_rng = RandomStreams(seed = self.mlp.rng.randint(2 ** 15))
+        noise = theano_rng.random_integers(size = (state_below.shape[0], self.num_noise_samples,), low=0, high = self.n_classes - 1)
+        k = self.num_noise_samples
+        p_n = 1. / self.n_classes
+
+        pos = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y] - T.log(k * p_n))
+        neg = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()] - T.log(k * p_n))
+        # TODO is this reshape necessary?
+        neg = neg.reshape((state_below.shape[0], k)).sum(axis=1)
+
+
+
+        rval =  -T.log(pos) - T.log(1 - neg)
+        return rval.mean()
+
 
 
     def nll(self, Y, Y_hat):

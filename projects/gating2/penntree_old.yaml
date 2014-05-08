@@ -1,16 +1,18 @@
 !obj:pylearn2.train.Train {
-    dataset: &train !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+    dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
         which_set: 'train',
-        context_len: &context_len 5
+        seq_len: &seq_len 5
     },
     #model: !obj:noisylearn.projects.gating2.MLP {
     model: !obj:pylearn2.models.mlp.MLP {
         layers: [
-                 !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
-                    dim: 100,
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: 120,
                     layer_name: 'h0',
-                    irange: 0.01
-                 },
+                    dict_dim: 10000,
+                    irange: 0.01,
+                    max_col_norm: 1.5,
+                    },
                  !obj:pylearn2.models.maxout.Maxout {
                      layer_name: 'h1',
                      num_units: 200,
@@ -25,10 +27,7 @@
                      irange: 0.01,
                  }
                 ],
-        input_space: !obj:pylearn2.space.IndexSpace {
-                dim : *context_len,
-                max_labels: 10000
-        }
+        nvis: *seq_len,
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 256,
@@ -38,14 +37,14 @@
         },
         monitoring_dataset:
             {
-                #'train' : *train,
-                'valid' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
-                        which_set: 'valid',
-                        context_len: *context_len
+                'train' : *train,
+                'valid' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'valid',
+                    seq_len: *seq_len,
                 },
-                'test' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
-                        which_set: 'test',
-                        context_len: *context_len
+                'test' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'test',
+                    seq_len: *seq_len,
                 },
             },
         #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
