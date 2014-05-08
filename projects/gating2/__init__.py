@@ -19,10 +19,10 @@ class NCE(Softmax):
 
         super(NCE, self).__init__(**kwargs)
         self.num_noise_samples = num_noise_samples
-        self.output_space = VectorSpace(1)
+        #self.output_space = VectorSpace(1)
 
 
-    def cost_(self, Y, Y_hat):
+    def cost(self, Y, Y_hat):
         # TODO fix me later when using IndexSpace
 
         assert hasattr(Y_hat, 'owner')
@@ -58,7 +58,7 @@ class NCE(Softmax):
         return -(pos - neg).mean()
 
 
-    def cost(self, Y, Y_hat):
+    def cost_(self, Y, Y_hat):
         # TODO fix me later when using IndexSpace
 
         assert hasattr(Y_hat, 'owner')
@@ -92,7 +92,6 @@ class NCE(Softmax):
         neg = neg.reshape((state_below.shape[0], k)).sum(axis=1)
 
 
-
         rval =  -T.log(pos) - T.log(1 - neg)
         return rval.mean()
 
@@ -119,8 +118,8 @@ class NCE(Softmax):
         z = z - z.max(axis=1).dimshuffle(0, 'x')
         log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
         # we use sum and not mean because this is really one variable per row
-        Y = OneHotFormatter(self.n_classes).theano_expr(
-                            T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
+        #Y = OneHotFormatter(self.n_classes).theano_expr(
+                            #T.addbroadcast(Y, 1).dimshuffle(0).astype('uint32'))
         log_prob_of = (Y * log_prob).sum(axis=1)
         assert log_prob_of.ndim == 1
 
