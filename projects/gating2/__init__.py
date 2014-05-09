@@ -10,15 +10,20 @@ from pylearn2.models.mlp import Softmax
 from pylearn2.monitor import get_monitor_doc
 from pylearn2.space import VectorSpace
 from pylearn2.format.target_format import OneHotFormatter
+from theano.sandbox.rng_mrg import MRG_RandomStreams
+from pylearn2.utils import sharedX
 #import ipdb
 
 
 class NCE(Softmax):
 
-    def __init__(self, num_noise_samples = 2, **kwargs):
+    def __init__(self, num_noise_samples = 2, noise_prob = None,  **kwargs):
 
         super(NCE, self).__init__(**kwargs)
         self.num_noise_samples = num_noise_samples
+        if noise_prob is not None:
+            noise_prob = sharedX(noise_prob)
+        self.noise_prob = noise_prob
         #self.output_space = VectorSpace(1)
 
 
@@ -42,17 +47,33 @@ class NCE(Softmax):
         state_below = state_below.owner.inputs[0].owner.inputs[0]
 
         Y = T.argmax(Y, axis = 1)
-        theano_rng = RandomStreams(seed = self.mlp.rng.randint(2 ** 15))
-        noise = theano_rng.random_integers(size = (state_below.shape[0], self.num_noise_samples,), low=0, high = self.n_classes - 1)
         k = self.num_noise_samples
-        p_n = 1. / self.n_classes
-        p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
-        p_x = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()])
-        # TODO is this reshape necessary?
-        p_x = p_x.reshape((state_below.shape[0], k))
 
-        pos = k * p_n / (p_w + k * p_n) * T.log(p_w)
-        neg = (p_x / (p_x + k * p_n) * T.log(p_x)).sum(axis=1)
+        if self.noise_prob is None:
+            theano_rng = RandomStreams(seed = self.mlp.rng.randint(2 ** 15))
+            noise = theano_rng.random_integers(size = (state_below.shape[0], self.num_noise_samples,), low=0, high = self.n_classes - 1)
+            p_n = 1. / self.n_classes
+            p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
+            p_x = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()])
+            # TODO is this reshape necessary?
+            p_x = p_x.reshape((state_below.shape[0], k))
+
+            pos = k * p_n / (p_w + k * p_n) * T.log(p_w)
+            neg = (p_x / (p_x + k * p_n) * T.log(p_x)).sum(axis=1)
+        else:
+            #import ipdb
+            #ipdb.set_trace()
+            theano_rng = MRG_RandomStreams(max(self.mlp.rng.randint(2 ** 15), 1))
+            assert self.mlp.batch_size is not None
+            noise = theano_rng.multinomial(pvals = np.tile(self.noise_prob.get_value(), (k * self.mlp.batch_size, 1)))
+            noise = T.argmax(noise, axis = 1)
+            p_n = self.noise_prob
+            p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
+            p_x = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()])
+            p_x = p_x.reshape((state_below.shape[0], k))
+
+            pos = k * p_n[Y] / (p_w + k * p_n[Y]) * T.log(p_w)
+            neg = (p_x / (p_x + k * p_n[noise].reshape(p_x.shape)) * T.log(p_x)).sum(axis=1)
 
 
         return -(pos - neg).mean()
