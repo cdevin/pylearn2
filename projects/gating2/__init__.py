@@ -17,13 +17,18 @@ from pylearn2.utils import sharedX
 
 class NCE(Softmax):
 
-    def __init__(self, num_noise_samples = 2, noise_prob = None,  **kwargs):
+    def __init__(self,
+                num_noise_samples = 2,
+                noise_prob = None,
+                disable_ppl_monitor = True,
+                **kwargs):
 
         super(NCE, self).__init__(**kwargs)
         self.num_noise_samples = num_noise_samples
         if noise_prob is not None:
             noise_prob = sharedX(noise_prob)
         self.noise_prob = noise_prob
+        self.disable_ppl_monitor = disable_ppl_monitor
         #self.output_space = VectorSpace(1)
 
 
@@ -159,16 +164,12 @@ class NCE(Softmax):
 
 
         if target is not None:
-            #y_hat = T.argmax(state, axis=1)
-            #y = T.argmax(target, axis=1)
-            #misclass = T.neq(y, y_hat).mean()
-            #misclass = T.cast(misclass, config.floatX)
-            #rval['misclass'] = misclass
             rval['nce'] = self.cost(Y_hat=state, Y=target)
             # NOTE expensive
-            rval['nll'] = self.nll(Y_hat=state, Y=target)
-            rval['perplexity'] = 10 ** (rval['nll'] / np.log(10)).astype(config.floatX)
-            rval['entropy'] = rval['nll'] / np.log(2).astype(config.floatX)
+            if not self.disable_ppl_monitor:
+                rval['nll'] = self.nll(Y_hat=state, Y=target)
+                rval['perplexity'] = 10 ** (rval['nll'] / np.log(10)).astype(config.floatX)
+                rval['entropy'] = rval['nll'] / np.log(2).astype(config.floatX)
 
         return rval
 
