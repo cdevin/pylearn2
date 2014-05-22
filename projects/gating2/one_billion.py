@@ -22,6 +22,7 @@ import numpy as np
 from collections import Counter
 from pylearn2.utils import serial
 from noisylearn.utils.cache import CachedAttribute
+from noisylearn.projects.gating2.parse_text import make_dataset
 import ipdb
 
 #class OneBillionWord(SequenceDataset):
@@ -77,7 +78,7 @@ def cleanup(counter):
 
     return voc
 
-def make_dataset(voc, files):
+def make_dataset2(voc, files):
     """
     Construct the dataset
 
@@ -108,6 +109,7 @@ def make_dataset(voc, files):
                 # end of sentence
                 np.append(data, voc['</S>'])
                 np.append(sent_ends, ind)
+        ipdb.set_trace()
 
     return data, sent_ends
 
@@ -138,16 +140,18 @@ if __name__ == '__main__':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
         voc = serial.load('one_billion_voc.pkl')
-        data, sent_ends = make_dataset(voc, files)
+        #data, sent_ends = make_dataset(voc, files)
+        data = make_dataset(voc, files)
         np.save('one_billion_train.npy', data)
-        np.save('one_billion_train_sentence_end.npy', sent_ends)
+        #np.save('one_billion_train_sentence_end.npy', sent_ends)
     elif args.task == 'test_set':
         files = glob.glob(test_path + 'news.en.heldout*')
         files = [os.path.join(test_path, item) for item in files]
         voc = serial.load('one_billion_voc.pkl')
-        data, sent_ends = make_dataset(voc, files)
+        #data, sent_ends = make_dataset(voc, files)
+        data = make_dataset(voc, files)
         np.save('one_billion_test.npy', data)
-        np.save('one_billion_test_sentence_end.npy', sent_ends)
+        #np.save('one_billion_test_sentence_end.npy', sent_ends)
 
     else:
         raise ValueError("Unknown task : {}".format(args.task))
