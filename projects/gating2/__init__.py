@@ -8,10 +8,12 @@ from theano.compat.python2x import OrderedDict
 from pylearn2.models.mlp import MLP
 from pylearn2.models.mlp import Softmax
 from pylearn2.monitor import get_monitor_doc
-from pylearn2.space import VectorSpace
+from pylearn2.space import VectorSpace, IndexSpace
 from pylearn2.format.target_format import OneHotFormatter
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from pylearn2.utils import sharedX
+from pylearn2.sandbox.nlp.linear.matrixmul import MatrixMul
+from pylearn2.models.model import Model
 #import ipdb
 
 
@@ -173,3 +175,164 @@ class NCE(Softmax):
 
         return rval
 
+class NCE2(Softmax):
+    def __init__(self,
+                num_noise_samples = 2,
+                noise_prob = None,
+                disable_ppl_monitor = True,
+                **kwargs):
+
+        super(NCE, self).__init__(**kwargs)
+        self.num_noise_samples = num_noise_samples
+        if noise_prob is not None:
+            noise_prob = sharedX(noise_prob)
+        self.noise_prob = noise_prob
+        self.disable_ppl_monitor = disable_ppl_monitor
+        #self.output_space = VectorSpace(1)
+
+
+    def cost(self, Y, Y_hat):
+        raise NotImplementedError()
+
+    def get_monitoring_channels_from_state(self, state, target=None):
+
+        mx = state.max(axis=1)
+
+        rval = OrderedDict([('mean_max_class', mx.mean()),
+                            ('max_max_class', mx.max()),
+                            ('min_max_class', mx.min())])
+
+
+        if target is not None:
+            rval['nce'] = self.cost(Y_hat=state, Y=target)
+            # NOTE expensive
+            if not self.disable_ppl_monitor:
+                rval['nll'] = self.nll(Y_hat=state, Y=target)
+                rval['perplexity'] = 10 ** (rval['nll'] / np.log(10)).astype(config.floatX)
+                rval['entropy'] = rval['nll'] / np.log(2).astype(config.floatX)
+
+        return rval
+
+    def score(self, Y, Y_hat):
+        # TODO fix me later when using IndexSpace
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+            assert len(owner.inputs) == 1
+            Y_hat, = owner.inputs
+            owner = Y_hat.owner
+            op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        state_below, = owner.inputs
+        assert state_below.ndim == 2
+
+        # TODO make this more generic like above
+        state_below = state_below.owner.inputs[0].owner.inputs[0]
+
+        Y = T.argmax(Y, axis = 1)
+        k = self.num_noise_samples
+
+        if self.noise_prob is None:
+            theano_rng = RandomStreams(seed = self.mlp.rng.randint(2 ** 15))
+            noise = theano_rng.random_integers(size = (state_below.shape[0], self.num_noise_samples,), low=0, high = self.n_classes - 1)
+            p_n = 1. / self.n_classes
+            p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
+            p_x = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()])
+            # TODO is this reshape necessary?
+            p_x = p_x.reshape((state_below.shape[0], k))
+
+            #pos = k * p_n / (p_w + k * p_n) * T.log(p_w)
+            #neg = (p_x / (p_x + k * p_n) * T.log(p_x)).sum(axis=1)
+        else:
+            #import ipdb
+            #ipdb.set_trace()
+            theano_rng = MRG_RandomStreams(max(self.mlp.rng.randint(2 ** 15), 1))
+            assert self.mlp.batch_size is not None
+            noise = theano_rng.multinomial(pvals = np.tile(self.noise_prob.get_value(), (k * self.mlp.batch_size, 1)))
+            noise = T.argmax(noise, axis = 1)
+            p_n = self.noise_prob
+            p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
+            p_x = T.nnet.sigmoid((T.concatenate([state_below] * k) * self.W[:, noise.flatten()].T).sum(axis=1) + self.b[noise.flatten()])
+            p_x = p_x.reshape((state_below.shape[0], k))
+
+            pos = k * p_n[Y] / (p_w + k * p_n[Y]) * T.log(p_w)
+            neg = (p_x / (p_x + k * p_n[noise].reshape(p_x.shape)) * T.log(p_x)).sum(axis=1)
+
+
+        #return -(pos - neg).mean()
+        return p_w, p_x
+
+class vLBL(Model):
+
+    def __init__(self, dict_size, dim, context_length, k, irange = 0.1, seed = 22):
+
+        rng = np.random.RandomState(seed)
+        self.rng = rng
+        self.k = k
+        self.context_length = context_length
+        self.dim = dim
+        self.dict_size = dict_size
+        C = rng.randn(dim, context_length)
+        self.C = sharedX(C)
+
+        W = rng.uniform(-irange, irange, (dict_size, dim))
+        W = sharedX(W)
+        self.projector = MatrixMul(W)
+
+        self.b = sharedX(np.zeros((dict_size,)), name = 'vLBL_b')
+
+        self.input_space = IndexSpace(dim = context_length, max_labels = dict_size)
+        self.output_space = IndexSpace(dim = 1, max_labels = dict_size)
+
+    def get_params(self):
+
+        rval = self.projector.get_params()
+        rval.extend([self.C, self.b])
+        return rval
+
+
+    def fprop(self, state_below):
+
+        state_below = state_below.reshape((state_below.shape[0], self.dim, self.context_length))
+        rval = self.C.dimshuffle('x', 0, 1) * state_below
+        rval = rval.sum(axis=2)
+
+        return rval
+
+
+    def score(self, X, Y, ndim = 1):
+        X = self.projector.project(X)
+        q_h = self.fprop(X)
+        if ndim == 1:
+            q_w = self.projector.project(Y).reshape((Y.shape[0], self.dim))
+            rval = (q_w + q_h).sum(axis=1) + self.b[Y].flatten()
+        elif ndim == 2:
+            q_w = self.projector.project(Y).reshape((Y.shape[0], Y.shape[1], self.dim)).dimshuffle(1, 0, 2)
+            rval = (q_h.dimshuffle('x', 0, 1) + q_w).sum(axis=1) #+ self.b[Y].flatten()
+
+        return rval
+
+
+    def delta(self, data, ndim = 1):
+
+        X, Y = data
+        p_n = 1. / self.dict_size
+
+        #return self.score(X, Y) - T.log(self.k * p_n[Y])
+        return self.score(X, Y, ndim = ndim) - T.log(self.k * p_n)
+
+
+    def cost_from_X(self, data):
+        X, Y = data
+        theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
+        noise = theano_rng.random_integers(size = (X.shape[0], self.k,), low=0, high = self.dict_size - 1)
+
+        pos = T.log(self.delta(data, ndim = 1))
+        neg = T.log(self.delta((X, noise), ndim = 2))
+
+        import ipdb
+        ipdb.set_trace()
+        return pos - neg.sum()
