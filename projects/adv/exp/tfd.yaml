@@ -1,0 +1,123 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.tfd.TFD {
+        which_set: 'unlabeled',
+        scale: True
+    },
+    model: !obj:galatea.adversarial.AdversaryPair {
+        generator: !obj:galatea.adversarial.Generator {
+            monitor_ll: 1,
+            mlp: !obj:pylearn2.models.mlp.MLP {
+            layers: [
+                     !obj:pylearn2.models.mlp.RectifiedLinear {
+                         layer_name: 'h0',
+                         dim: %(g_dim0)i,
+                         irange: .05,
+                         max_col_norm: %(g_h0_col_norm)f,
+                     },
+                     !obj:pylearn2.models.mlp.RectifiedLinear {
+                         layer_name: 'h1',
+                         dim: %(g_dim1)i,
+                         irange: .05,
+                         max_col_norm: %(g_h1_col_norm)f,
+                     },
+                     !obj:pylearn2.models.mlp.Linear {
+                         max_col_norm: %(g_y_col_norm)f,
+                         #init_bias: !obj:pylearn2.models.dbm.init_sigmoid_bias_from_marginals { dataset: *train},
+                         layer_name: 'y',
+                         irange: .05,
+                         dim: 2304
+                     }
+                    ],
+            nvis: %(nvis)i,
+        }},
+        discriminator:
+            !obj:pylearn2.models.mlp.MLP {
+            layers: [
+                     !obj:pylearn2.models.maxout.Maxout {
+                         #W_lr_scale: .1,
+                         #b_lr_scale: .1,
+                         layer_name: 'h0',
+                         num_units: %(d_dim0)i,
+                         num_pieces: %(d_pieces0)i,
+                         irange: .005,
+                         max_col_norm: %(d_h0_col_norm)f,
+                     },
+                     !obj:pylearn2.models.maxout.Maxout {
+                         #W_lr_scale: .1,
+                         #b_lr_scale: .1,
+                         layer_name: 'h1',
+                         num_units: %(d_dim1)i,
+                         num_pieces: %(d_pieces1)i,
+                         irange: .005,
+                         max_col_norm: %(d_h1_col_norm)f,
+                     },
+                     !obj:pylearn2.models.mlp.Sigmoid {
+                         #W_lr_scale: .1,
+                         #b_lr_scale: .1,
+                         max_col_norm: %(d_y_col_norm)f,
+                         layer_name: 'y',
+                         dim: 1,
+                         irange: .005
+                     }
+                    ],
+            nvis: 2304,
+        },
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 100,
+        learning_rate: %(lr)f,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                'valid' : !obj:pylearn2.datasets.tfd.TFD {
+                              which_set: 'valid',
+                              scale: True
+                          },
+                'test'  : !obj:pylearn2.datasets.tfd.TFD {
+                              which_set: 'test',
+                              scale: True
+                          }
+            },
+        cost: !obj:galatea.adversarial.AdversaryCost2 {
+            scale_grads: 0,
+            #target_scale: 1.,
+            discriminator_default_input_include_prob: .5,
+            discriminator_input_include_probs: {
+                'h0': .8
+            },
+            discriminator_default_input_scale: 2.,
+            discriminator_input_scales: {
+                'h0': 1.25
+            }
+            },
+        #!obj:pylearn2.costs.mlp.dropout.Dropout {
+        #    input_include_probs: { 'h0' : .8 },
+        #    input_scales: { 'h0': 1. }
+        #},
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_gen_nll",
+            prop_decrease: %(term_dec)f,
+            N: 50
+        },
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_gen_nll',
+             save_path: "%(save_path)s_best.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: %(momentum_saturate)f,
+            final_momentum: %(final_momentum)f
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 250,
+            decay_factor: %(lr_decay)f
+        },
+    ],
+    save_path: "%(save_path)s.pkl",
+    save_freq: 10
+}
