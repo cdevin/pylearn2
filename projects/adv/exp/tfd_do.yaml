@@ -7,6 +7,8 @@
         generator: !obj:galatea.adversarial.IntrinsicDropoutGenerator {
             default_input_include_prob: .5,
             default_input_scale: 2.,
+            input_include_probs: { 'h0' : 1. },
+            input_scales: { 'h0' : 1.},
             monitor_ll: 1,
             mlp: !obj:pylearn2.models.mlp.MLP {
             layers: [
