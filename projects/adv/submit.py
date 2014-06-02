@@ -175,11 +175,160 @@ def tfd_do(submit = False, make = False):
     if not make:
         db.createView(TABLE_NAME + '_view')
 
+def tfd_mo(submit = False, make = False):
+    state = DD()
+    with open('exp/tfd_mo.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'tfd'
+    num_exp = 20
+    if submit:
+        TABLE_NAME = "adv_tfd_mo"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+        state.save_path = './'
+    else:
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/adv/tfd/")
+        PATH = state.save_path
+
+    rng = np.random.RandomState([2014, 1, 15])
+
+    for i in xrange(num_exp):
+        state.g_h0_col_norm = rng.uniform(1., 3.)
+        state.g_h1_col_norm = rng.uniform(1., 3.)
+        state.g_y_col_norm = rng.uniform(1., 3.)
+        state.d_h0_col_norm = rng.uniform(1., 3.)
+        state.d_h1_col_norm = rng.uniform(1., 3.)
+        state.d_y_col_norm = rng.uniform(1., 5.)
+
+        state.nvis = rng.randint(50, 2000)
+        state.g_dim0 = rng.randint(500, 5000)
+        state.g_dim1 = rng.randint(500, 5000)
+        state.g_pieces0 = rng.randint(2, 5)
+        state.g_pieces1 = rng.randint(2, 5)
+        state.d_dim0 = rng.randint(500, 5000)
+        state.d_dim1 = rng.randint(500, 5000)
+        state.d_pieces0 = rng.randint(2, 5)
+        state.d_pieces1 = rng.randint(2, 5)
+
+        state.lr = 10. ** rng.uniform(0.2, -2)
+        state.term_dec = 10 ** rng.uniform(-2, -3)
+        state.momentum_saturate = rng.randint(2, 250)
+        state.final_momentum = rng.uniform(.5, .8)
+        #state.lr_sat =rng.randint(50, 200)
+        state.lr_decay = 10. ** rng.uniform(-4, -1)
+
+        def random_init_string():
+            irange = 10. ** rng.uniform(-2.3, -1.)
+            return "irange: " + str(irange)
+
+        state.h0_init = random_init_string()
+        state.h1_init = random_init_string()
+        state.h2_init = random_init_string()
+        state.h3_init = random_init_string()
+        if rng.randint(2):
+            state.y_init = "sparse_init: 0"
+        else:
+            state.y_init = random_init_string()
+
+        if make:
+            state.save_path = os.path.join(PATH, str(i)) + '/'
+            if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+                fp.write(yaml)
+        else:
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
+
+    if not make:
+        db.createView(TABLE_NAME + '_view')
+
+def tfd_mo3(submit = False, make = False):
+    state = DD()
+    with open('exp/tfd_mo3.yaml') as ymtmp:
+        state.yaml_string = ymtmp.read()
+
+    state.db = 'tfd'
+    state.no_drop_in_d_for_g = 1
+    num_exp = 20
+    if submit:
+        TABLE_NAME = "adv_tfd_mo3"
+        db = api0.open_db("postgres://mirzamom:pishy83@opter.iro.umontreal.ca/mirzamom_db?table=" + TABLE_NAME)
+        state.save_path = './'
+    else:
+        state.save_path = preprocess("${PYLEARN2_EXP_RESULTS}/adv/tfd/")
+        PATH = state.save_path
+
+    rng = np.random.RandomState([2014, 1, 15])
+
+    for i in xrange(num_exp):
+        state.g_h0_col_norm = rng.uniform(1., 3.)
+        state.g_h1_col_norm = rng.uniform(1., 3.)
+        state.g_h2_col_norm = rng.uniform(1., 3.)
+        state.g_y_col_norm = rng.uniform(1., 3.)
+        state.d_h0_col_norm = rng.uniform(1., 3.)
+        state.d_h1_col_norm = rng.uniform(1., 3.)
+        state.d_y_col_norm = rng.uniform(1., 5.)
+
+        state.nvis = rng.randint(50, 2000)
+        state.g_dim0 = rng.randint(500, 5000)
+        state.g_dim1 = rng.randint(500, 5000)
+        state.g_dim2 = rng.randint(500, 5000)
+        state.g_pieces0 = rng.randint(2, 5)
+        state.g_pieces1 = rng.randint(2, 5)
+        state.g_pieces2 = rng.randint(2, 5)
+        state.d_dim0 = rng.randint(500, 5000)
+        state.d_dim1 = rng.randint(500, 5000)
+        state.d_pieces0 = rng.randint(2, 5)
+        state.d_pieces1 = rng.randint(2, 5)
+
+        state.lr = 10. ** rng.uniform(0.2, -2)
+        state.term_dec = 10 ** rng.uniform(-2, -3)
+        state.momentum_saturate = rng.randint(2, 250)
+        state.final_momentum = rng.uniform(.5, .8)
+        #state.lr_sat =rng.randint(50, 200)
+        state.lr_decay = 10. ** rng.uniform(-4, -1)
+
+        def random_init_string():
+            irange = 10. ** rng.uniform(-2.3, -1.)
+            return "irange: " + str(irange)
+
+        state.g0_init = random_init_string()
+        state.g1_init = random_init_string()
+        state.g2_init = random_init_string()
+        state.gy_init = random_init_string()
+        state.d0_init = random_init_string()
+        state.d1_init = random_init_string()
+        if rng.randint(2):
+            state.dy_init = "sparse_init: 0"
+        else:
+            state.dy_init = random_init_string()
+
+        if make:
+            state.save_path = os.path.join(PATH, str(i)) + '/'
+            if not os.path.isdir(state.save_path):
+                os.mkdir(state.save_path)
+            yaml = state.yaml_string % (state)
+            with open(os.path.join(state.save_path, 'model.yaml'), 'w') as fp:
+                fp.write(yaml)
+        else:
+            if submit:
+                sql.insert_job(experiment, flatten(state), db)
+            else:
+                experiment(state, None)
+
+    if not make:
+        db.createView(TABLE_NAME + '_view')
+
+
 
 if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = 'job submitter')
-    parser.add_argument('-t', '--task', choices = ['tfd', 'tfd_do'])
+    parser.add_argument('-t', '--task', choices = ['tfd', 'tfd_do', 'tfd_mo', 'tfd_mo3'])
     parser.add_argument('-s', '--submit', default = False, action='store_true')
     parser.add_argument('-m', '--make', default = False, action='store_true')
     args = parser.parse_args()
@@ -188,6 +337,10 @@ if __name__ == "__main__":
         tfd(args.submit)
     if args.task == 'tfd_do':
         tfd_do(args.submit)
+    if args.task == 'tfd_mo':
+        tfd_mo(args.submit)
+    if args.task == 'tfd_mo3':
+        tfd_mo3(args.submit)
     else:
         raise ValueError or("Wrong task optipns {}".fromat(args.task))
 
