@@ -3,7 +3,7 @@
         which_set: 'train',
         context_len: &context_len 5
     },
-    model: !obj:noisylearn.projects.gating2.vLBL {
+    model: !obj:noisylearn.projects.gating2.vLBL_NCE {
         dict_size: 10000,
         dim: 500,
         context_length: *context_len,

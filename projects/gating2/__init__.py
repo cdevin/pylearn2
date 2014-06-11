@@ -287,9 +287,12 @@ class vLBL(Model):
 
         self.b = sharedX(np.zeros((dict_size,)), name = 'vLBL_b')
 
-        self.input_space = IndexSpace(dim = context_length, max_labels = dict_size)
-        #self.output_space = IndexSpace(dim = 1, max_labels = dict_size)
-        self.output_space = VectorSpace(dim = dict_size)
+        self.set_spaces()
+
+
+    def set_spaces(self):
+        self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
+        self.output_space = VectorSpace(dim=self.dict_size)
 
     def get_params(self):
 
@@ -352,6 +355,13 @@ class vLBL(Model):
 
 class vLBL_NCE(vLBL):
 
+
+    def set_spaces(self):
+        self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
+        self.output_space = IndexSpace(dim=1, max_labels=self.dict_size)
+
+
+
     def delta(self, data):
 
         X, Y = data
@@ -372,3 +382,29 @@ class vLBL_NCE(vLBL):
 
         rval = T.log(pos) + self.k * T.log(neg)
         return rval.mean()
+
+
+    def nll(self, data):
+        X, Y = data
+        z = self.score(X)
+        z = z - z.max(axis=1).dimshuffle(0, 'x')
+        log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+        Y = OneHotFormatter(self.dict_size).theano_expr(Y)
+        Y = Y.reshape((Y.shape[0], Y.shape[2]))
+        #import ipdb
+        #ipdb.set_trace()
+        log_prob_of = (Y * log_prob).sum(axis=1)
+        assert log_prob_of.ndim == 1
+        rval = as_floatX(log_prob_of.mean())
+        return - rval
+
+
+    def get_monitoring_channels(self, data):
+        X, Y = data
+        rval = OrderedDict()
+
+        nll = self.nll(data)
+        rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
+        return rval
+
+
