@@ -8,12 +8,13 @@ from theano.compat.python2x import OrderedDict
 from pylearn2.models.mlp import MLP
 from pylearn2.models.mlp import Softmax
 from pylearn2.monitor import get_monitor_doc
-from pylearn2.space import VectorSpace, IndexSpace
+from pylearn2.space import VectorSpace, IndexSpace, CompositeSpace
 from pylearn2.format.target_format import OneHotFormatter
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from pylearn2.utils import sharedX
 from pylearn2.sandbox.nlp.linear.matrixmul import MatrixMul
 from pylearn2.models.model import Model
+from pylearn2.utils import as_floatX
 #import ipdb
 
 
@@ -280,12 +281,15 @@ class vLBL(Model):
 
         W = rng.uniform(-irange, irange, (dict_size, dim))
         W = sharedX(W)
+
+        # TODO maybe have another projector for tagets
         self.projector = MatrixMul(W)
 
         self.b = sharedX(np.zeros((dict_size,)), name = 'vLBL_b')
 
         self.input_space = IndexSpace(dim = context_length, max_labels = dict_size)
-        self.output_space = IndexSpace(dim = 1, max_labels = dict_size)
+        #self.output_space = IndexSpace(dim = 1, max_labels = dict_size)
+        self.output_space = VectorSpace(dim = dict_size)
 
     def get_params(self):
 
@@ -294,7 +298,8 @@ class vLBL(Model):
         return rval
 
 
-    def fprop(self, state_below):
+    def context(self, state_below):
+        "q^(h) from EQ. 2"
 
         state_below = state_below.reshape((state_below.shape[0], self.dim, self.context_length))
         rval = self.C.dimshuffle('x', 0, 1) * state_below
@@ -303,36 +308,67 @@ class vLBL(Model):
         return rval
 
 
-    def score(self, X, Y, ndim = 1):
+    def score(self, X, Y=None):
         X = self.projector.project(X)
-        q_h = self.fprop(X)
-        if ndim == 1:
+        q_h = self.context(X)
+        # this is used during training
+        if Y is not None:
             q_w = self.projector.project(Y).reshape((Y.shape[0], self.dim))
-            rval = (q_w + q_h).sum(axis=1) + self.b[Y].flatten()
-        elif ndim == 2:
-            q_w = self.projector.project(Y).reshape((Y.shape[0], Y.shape[1], self.dim)).dimshuffle(1, 0, 2)
-            rval = (q_h.dimshuffle('x', 0, 1) + q_w).sum(axis=1) #+ self.b[Y].flatten()
+            rval = (q_w * q_h).sum(axis=1) + self.b[Y].flatten()
+        # during nll
+        else:
+            q_w = self.projector._W
+            rval = T.dot(q_h, q_w.T) + self.b.dimshuffle('x', 0)
 
         return rval
 
 
-    def delta(self, data, ndim = 1):
+    def cost_from_X(self, data):
+        X, Y = data
+        z = self.score(X)
+        z = z - z.max(axis=1).dimshuffle(0, 'x')
+        log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
+        log_prob_of = (Y * log_prob).sum(axis=1)
+        assert log_prob_of.ndim == 1
+        rval = as_floatX(log_prob_of.mean())
+        return - rval
+
+
+    def get_monitoring_data_specs(self):
+
+        space = CompositeSpace((self.get_input_space(),
+                                self.get_output_space()))
+        source = (self.get_input_source(), self.get_target_source())
+        return (space, source)
+
+    def get_monitoring_channels(self, data):
+        X, Y = data
+        rval = OrderedDict()
+
+        nll = self.cost_from_X(data)
+        rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
+        return rval
+
+
+class vLBL_NCE(vLBL):
+
+    def delta(self, data):
 
         X, Y = data
         p_n = 1. / self.dict_size
 
         #return self.score(X, Y) - T.log(self.k * p_n[Y])
-        return self.score(X, Y, ndim = ndim) - T.log(self.k * p_n)
+        return self.score(X, Y) - T.log(self.k * p_n)
 
 
     def cost_from_X(self, data):
         X, Y = data
         theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
-        noise = theano_rng.random_integers(size = (X.shape[0], self.k,), low=0, high = self.dict_size - 1)
+        noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
 
-        pos = T.log(self.delta(data, ndim = 1))
-        neg = T.log(self.delta((X, noise), ndim = 2))
+        pos = T.nnet.sigmoid(self.delta(data))
+        neg = 1 - T.nnet.sigmoid((self.delta((T.tile(X, (self.k, 1)), noise))))
+        neg = neg.reshape((X.shape[0], self.k)).sum(axis=1)
 
-        import ipdb
-        ipdb.set_trace()
-        return pos - neg.sum()
+        rval = T.log(pos) + self.k * T.log(neg)
+        return rval.mean()
