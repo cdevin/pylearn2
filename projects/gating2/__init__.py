@@ -381,7 +381,7 @@ class vLBL_NCE(vLBL):
         neg = neg.reshape((X.shape[0], self.k)).sum(axis=1)
 
         rval = T.log(pos) + self.k * T.log(neg)
-        return rval.mean()
+        return -rval.mean()
 
 
     def nll(self, data):
