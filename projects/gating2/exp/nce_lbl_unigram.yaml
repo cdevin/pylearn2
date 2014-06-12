@@ -4,7 +4,8 @@
         context_len: &context_len 5
     },
     model: !obj:noisylearn.projects.gating2.vLBL_NCE {
-        batch_size: &batch_size 1000,
+        batch_size: &batch_size 100,
+        noise_p: !pkl: 'penntree_unigram.npy',
         dict_size: 10000,
         dim: 500,
         context_length: *context_len,
@@ -44,7 +45,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_perplexity',
-             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}best.pkl"
+             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
@@ -58,5 +59,6 @@
         },
     ],
     #save_path: "last.pkl",
-    #save_freq: 1
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_freq: 1
 }

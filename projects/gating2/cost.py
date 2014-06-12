@@ -20,24 +20,37 @@ class NCE(DefaultDataSpecsMixin, Cost):
 
 
         theano_rng = RandomStreams(seed = model.rng.randint(2 ** 15))
-        noise = theano_rng.random_integers(size = (X.shape[0], model.k,), low=0, high = model.dict_size - 1)
+        noise = theano_rng.random_integers(size = (X.shape[0] * model.k,), low=0, high = model.dict_size - 1)
 
 
         delta = model.delta(data)
         p = model.score(X, Y)
         params = model.get_params()
 
-        pos = T.jacobian(model.score(X, Y), params, disconnected_inputs='ignore')
-        import ipdb
-        ipdb.set_trace()
-        pos = [(1 - T.nnet.sigmoid(model.delta(data))) * item for item in pos]
-        #neg = 0
-        #for i in xrange(model.k):
-            #neg += T.nnet.sigmoid(model.delta((X, noise[:,i]))) * T.jacobian(model.score(X, noise[:, i]), params, disconnected_inputs='ignore')
+        pos_ = T.jacobian(model.score(X, Y), params, disconnected_inputs='ignore')
+        pos_coeff = 1 - T.nnet.sigmoid(model.delta(data))
+        pos = []
+        for param in pos_:
+            axes = [0]
+            axes.extend(['x' for item in range(param.ndim - 1)])
+            pos.append(pos_coeff.dimshuffle(axes) * param)
+        del pos_, pos_coeff
 
-        #grads = pos - neg
-        grads = pos
-        grads = gras.mean(axis=0)
+        noise_x = T.tile(X, (model.k, 1))
+        neg_ = T.jacobian(model.score(noise_x, noise), params, disconnected_inputs='ignore')
+        neg_coeff = T.nnet.sigmoid(model.delta((noise_x, noise)))
+        neg = []
+        for param in neg_:
+            axes = [0]
+            axes.extend(['x' for item in range(param.ndim - 1)])
+            tmp = neg_coeff.dimshuffle(axes) * param
+            new_shape = [X.shape[0], model.k]
+            new_shape.extend([tmp.shape[i] for i in range(1, tmp.ndim)])
+            neg.append(tmp.reshape(new_shape).sum(axis=1))
+        del neg_, neg_coeff
+
+
+        grads = [(pos_ - neg_).mean(axis=0) for pos_, neg_ in zip(pos, neg)]
         gradients = OrderedDict(izip(params, grads))
         updates = OrderedDict()
 

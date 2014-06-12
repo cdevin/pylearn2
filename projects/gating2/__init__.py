@@ -289,6 +289,8 @@ class vLBL(Model):
 
         self.set_spaces()
 
+        self.rng = np.random.RandomState(2014)
+
 
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
@@ -355,6 +357,11 @@ class vLBL(Model):
 
 class vLBL_NCE(vLBL):
 
+    def __init__(self, batch_size, noise_p, **kwargs):
+
+        super(vLBL_NCE, self).__init__(**kwargs)
+        self.__dict__.update(locals())
+        del self.self
 
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
@@ -370,11 +377,22 @@ class vLBL_NCE(vLBL):
         #return self.score(X, Y) - T.log(self.k * p_n[Y])
         return self.score(X, Y) - T.log(self.k * p_n)
 
+    def get_noise(self):
+
+        if self.noise_p is None:
+            if self.batch_size is None:
+                raise NameError("Since numpy random is faster, batch_size is required")
+            return self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
+        else:
+            rval = self.rng.multinomial(n = 1, pvals = self.noise_p, size = self.batch_size * self.k)
+            return np.argmax(rval, axis=1)
+
 
     def cost_from_X(self, data):
         X, Y = data
         theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
-        noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
+        #noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
+        noise = self.get_noise()
 
         pos = T.nnet.sigmoid(self.delta(data))
         neg = 1 - T.nnet.sigmoid((self.delta((T.tile(X, (self.k, 1)), noise))))
@@ -382,6 +400,19 @@ class vLBL_NCE(vLBL):
 
         rval = T.log(pos) + self.k * T.log(neg)
         return -rval.mean()
+
+    def cost_from_X_wrong(self, data):
+        X, Y = data
+        theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
+        noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
+        p_n = 1. / self.dict_size
+
+        pos = T.nnet.sigmoid(self.delta(data) - T.log(self.k * p_n))
+        neg = T.nnet.sigmoid(self.delta((T.tile(X, (self.k, 1)), noise)) - T.log(self.k * p_n))
+        neg =neg.reshape((X.shape[0], self.k))
+
+        rval = -T.log(pos) - T.log(1 - neg).sum(axis=1)
+        return rval.mean()
 
 
     def nll(self, data):
