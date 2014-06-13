@@ -6,9 +6,9 @@
     model: !obj:noisylearn.projects.gating2.vLBL_NCE {
         batch_size: &batch_size 1000,
         dict_size: 10000,
-        dim: 500,
+        dim: 100,
         context_length: *context_len,
-        k: 5
+        k: 10
     },
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: *batch_size,
@@ -44,7 +44,7 @@
     extensions: [
         !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
              channel_name: 'valid_perplexity',
-             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}best.pkl"
+             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
         },
         !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
             start: 1,
@@ -54,9 +54,10 @@
         !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
             start: 1,
             saturate: 100,
-            decay_factor: 0.001
+            decay_factor: 0.0001
         },
     ],
     #save_path: "last.pkl",
-    #save_freq: 1
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    save_freq: 1
 }

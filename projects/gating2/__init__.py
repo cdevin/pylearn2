@@ -357,7 +357,7 @@ class vLBL(Model):
 
 class vLBL_NCE(vLBL):
 
-    def __init__(self, batch_size, noise_p, **kwargs):
+    def __init__(self, batch_size, noise_p = None, **kwargs):
 
         super(vLBL_NCE, self).__init__(**kwargs)
         self.__dict__.update(locals())
