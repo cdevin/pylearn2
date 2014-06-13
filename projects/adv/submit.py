@@ -269,9 +269,9 @@ def tfd_mo3(submit = False, make = False):
         state.g_h1_col_norm = rng.uniform(1., 3.)
         state.g_h2_col_norm = rng.uniform(1., 3.)
         state.g_y_col_norm = rng.uniform(1., 3.)
-        state.d_h0_col_norm = rng.uniform(1., 3.)
-        state.d_h1_col_norm = rng.uniform(1., 3.)
-        state.d_y_col_norm = rng.uniform(1., 5.)
+        state.d_h0_col_norm = rng.uniform(2., 5.)
+        state.d_h1_col_norm = rng.uniform(2., 4.)
+        state.d_y_col_norm = rng.uniform(1.5, 4.)
 
         state.nvis = rng.randint(50, 2000)
         state.g_dim0 = rng.randint(500, 5000)
