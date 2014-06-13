@@ -268,14 +268,13 @@ class NCE2(Softmax):
 
 class vLBL(Model):
 
-    def __init__(self, dict_size, dim, context_length, k, irange = 0.1, seed = 22):
+    def __init__(self, dict_size, dim, context_length, k, irange = 0.1,
+                 seed = 22, max_col_norm = None, min_col_norm = None):
 
+        self.__dict__.update(locals())
+        del self.self
         rng = np.random.RandomState(seed)
         self.rng = rng
-        self.k = k
-        self.context_length = context_length
-        self.dim = dim
-        self.dict_size = dict_size
         C = rng.randn(dim, context_length)
         self.C = sharedX(C)
 
@@ -289,8 +288,7 @@ class vLBL(Model):
 
         self.set_spaces()
 
-        self.rng = np.random.RandomState(2014)
-
+        self.rng =  np.random.RandomState(2014)
 
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
@@ -302,6 +300,19 @@ class vLBL(Model):
         rval.extend([self.C, self.b])
         return rval
 
+    def _modify_updates(self, updates):
+
+        if self.max_col_norm is not None:
+            W, = self.projector.get_params()
+            if self.min_col_norm is None:
+                self.min_col_norm = 0.
+            if W in updates:
+                updated_W = updates[W]
+                col_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=0))
+                desired_norms = T.clip(col_norms,
+                                       self.min_col_norm,
+                                       self.max_col_norm)
+                updates[W] = updated_W * desired_norms / (1e-7 + col_norms)
 
     def context(self, state_below):
         "q^(h) from EQ. 2"
@@ -311,7 +322,6 @@ class vLBL(Model):
         rval = rval.sum(axis=2)
 
         return rval
-
 
     def score(self, X, Y=None):
         X = self.projector.project(X)
@@ -327,7 +337,6 @@ class vLBL(Model):
 
         return rval
 
-
     def cost_from_X(self, data):
         X, Y = data
         z = self.score(X)
@@ -338,7 +347,6 @@ class vLBL(Model):
         rval = as_floatX(log_prob_of.mean())
         return - rval
 
-
     def get_monitoring_data_specs(self):
 
         space = CompositeSpace((self.get_input_space(),
@@ -346,12 +354,39 @@ class vLBL(Model):
         source = (self.get_input_source(), self.get_target_source())
         return (space, source)
 
+
+    def nll(self, data):
+
+        return self.cost_from_X(data)
+
     def get_monitoring_channels(self, data):
         X, Y = data
         rval = OrderedDict()
 
-        nll = self.cost_from_X(data)
+        nll = self.nll(data)
         rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
+
+        W, = self.projector.get_params()
+        sq_W = T.sqr(W)
+        row_norms = T.sqrt(sq_W.sum(axis=1))
+        col_norms = T.sqrt(sq_W.sum(axis=0))
+        rval['projector_row_norms_min'] = row_norms.min()
+        rval['projector_row_norms_mean'] = row_norms.mean()
+        rval['projector_row_norms_max'] = row_norms.max()
+        rval['projector_col_norms_min'] = col_norms.min()
+        rval['projector_col_norms_mean'] = col_norms.mean()
+        rval['projector_col_norms_max'] = col_norms.max()
+
+        sq_W = T.sqr(self.C)
+        row_norms = T.sqrt(sq_W.sum(axis=1))
+        col_norms = T.sqrt(sq_W.sum(axis=0))
+        rval['C_row_norms_min'] = row_norms.min()
+        rval['C_row_norms_mean'] = row_norms.mean()
+        rval['C_row_norms_max'] = row_norms.max()
+        rval['C_col_norms_min'] = col_norms.min()
+        rval['C_col_norms_mean'] = col_norms.mean()
+        rval['C_col_norms_max'] = col_norms.max()
+
         return rval
 
 
@@ -366,7 +401,6 @@ class vLBL_NCE(vLBL):
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
         self.output_space = IndexSpace(dim=1, max_labels=self.dict_size)
-
 
 
     def delta(self, data):
@@ -430,12 +464,12 @@ class vLBL_NCE(vLBL):
         return - rval
 
 
-    def get_monitoring_channels(self, data):
-        X, Y = data
-        rval = OrderedDict()
+    #def get_monitoring_channels(self, data):
+        #X, Y = data
+        #rval = OrderedDict()
 
-        nll = self.nll(data)
-        rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
-        return rval
+        #nll = self.nll(data)
+        #rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
+        #return rval
 
 
