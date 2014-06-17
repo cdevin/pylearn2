@@ -269,25 +269,25 @@ class NCE2(Softmax):
 class vLBL(Model):
 
     def __init__(self, dict_size, dim, context_length, k, irange = 0.1,
-                 seed = 22, max_col_norm = None, min_col_norm = None):
+                 seed = 22, max_col_norm = None, min_col_norm = None,
+                 y_max_col_norm = None, y_min_col_norm = None,
+                 c_max_col_norm = None, c_min_col_norm = None):
 
         self.__dict__.update(locals())
         del self.self
         rng = np.random.RandomState(seed)
         self.rng = rng
-        C = rng.randn(dim, context_length)
+        C = rng.uniform(-irange, irange, (dim, context_length))
         self.C = sharedX(C)
 
         W = rng.uniform(-irange, irange, (dict_size, dim))
         W = sharedX(W)
-
-        # TODO maybe have another projector for tagets
         self.projector = MatrixMul(W)
-
+        W = rng.uniform(-irange, irange, (dict_size, dim))
+        W = sharedX(W)
+        self.y_projector = MatrixMul(W)
         self.b = sharedX(np.zeros((dict_size,)), name = 'vLBL_b')
-
         self.set_spaces()
-
         self.rng =  np.random.RandomState(2014)
 
     def set_spaces(self):
@@ -297,6 +297,7 @@ class vLBL(Model):
     def get_params(self):
 
         rval = self.projector.get_params()
+        rval.extend(self.y_projector.get_params())
         rval.extend([self.C, self.b])
         return rval
 
@@ -314,6 +315,31 @@ class vLBL(Model):
                                        self.max_col_norm)
                 updates[W] = updated_W * desired_norms / (1e-7 + col_norms)
 
+        if self.y_max_col_norm is not None:
+            W, = self.y_projector.get_params()
+            if self.y_min_col_norm is None:
+                self.y_min_col_norm = 0.
+            if W in updates:
+                updated_W = updates[W]
+                col_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=0))
+                desired_norms = T.clip(col_norms,
+                                       self.y_min_col_norm,
+                                       self.y_max_col_norm)
+                updates[W] = updated_W * desired_norms / (1e-7 + col_norms)
+
+
+
+        if self.c_max_col_norm is not None:
+            if self.c_min_col_norm is None:
+                self.c_min_col_norm = 0.
+            if self.C in updates:
+                updated_C = updates[self.C]
+                col_norms = T.sqrt(T.sum(T.sqr(updated_C), axis=0))
+                desired_norms = T.clip(col_norms,
+                                       self.c_min_col_norm,
+                                       self.c_max_col_norm)
+                updates[self.C] = updated_C * desired_norms / (1e-7 + col_norms)
+
     def context(self, state_below):
         "q^(h) from EQ. 2"
 
@@ -328,11 +354,11 @@ class vLBL(Model):
         q_h = self.context(X)
         # this is used during training
         if Y is not None:
-            q_w = self.projector.project(Y).reshape((Y.shape[0], self.dim))
+            q_w = self.y_projector.project(Y).reshape((Y.shape[0], self.dim))
             rval = (q_w * q_h).sum(axis=1) + self.b[Y].flatten()
         # during nll
         else:
-            q_w = self.projector._W
+            q_w = self.y_projector._W
             rval = T.dot(q_h, q_w.T) + self.b.dimshuffle('x', 0)
 
         return rval
@@ -377,6 +403,20 @@ class vLBL(Model):
         rval['projector_col_norms_mean'] = col_norms.mean()
         rval['projector_col_norms_max'] = col_norms.max()
 
+        W, = self.y_projector.get_params()
+        sq_W = T.sqr(W)
+        row_norms = T.sqrt(sq_W.sum(axis=1))
+        col_norms = T.sqrt(sq_W.sum(axis=0))
+        rval['y_projector_row_norms_min'] = row_norms.min()
+        rval['y_projector_row_norms_mean'] = row_norms.mean()
+        rval['y_projector_row_norms_max'] = row_norms.max()
+        rval['y_projector_col_norms_min'] = col_norms.min()
+        rval['y_projector_col_norms_mean'] = col_norms.mean()
+        rval['y_projector_col_norms_max'] = col_norms.max()
+
+
+
+
         sq_W = T.sqr(self.C)
         row_norms = T.sqrt(sq_W.sum(axis=1))
         col_norms = T.sqrt(sq_W.sum(axis=0))
@@ -406,47 +446,44 @@ class vLBL_NCE(vLBL):
     def delta(self, data):
 
         X, Y = data
-        p_n = 1. / self.dict_size
 
-        #return self.score(X, Y) - T.log(self.k * p_n[Y])
-        return self.score(X, Y) - T.log(self.k * p_n)
+        if self.noise_p is None:
+            p_n = 1. / self.dict_size
+            rval = self.score(X, Y) - T.log(self.k * p_n)
+        else:
+            p_n = self.noise_p
+            rval = self.score(X, Y) - T.log(self.k * p_n[Y.flatten()])
+        return T.cast(rval, config.floatX)
 
-    def get_noise(self):
+
+    def set_noise(self):
 
         if self.noise_p is None:
             if self.batch_size is None:
                 raise NameError("Since numpy random is faster, batch_size is required")
-            return self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
+            noise = self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
+            self.noise_p = 1. / self.dict_size * np.ones(self.dict_size)
         else:
             rval = self.rng.multinomial(n = 1, pvals = self.noise_p, size = self.batch_size * self.k)
-            return np.argmax(rval, axis=1)
+            noise = np.argmax(rval, axis=1)
+        self.noise = T.cast(sharedX(noise), 'int32')
+        self.noise_p = sharedX(self.noise_p)
 
 
     def cost_from_X(self, data):
         X, Y = data
         theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
         #noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
-        noise = self.get_noise()
+        if not hasattr(self, 'noise'):
+            self.set_noise()
 
         pos = T.nnet.sigmoid(self.delta(data))
-        neg = 1 - T.nnet.sigmoid((self.delta((T.tile(X, (self.k, 1)), noise))))
+        neg = 1 - T.nnet.sigmoid((self.delta((T.tile(X, (self.k, 1)), self.noise))))
         neg = neg.reshape((X.shape[0], self.k)).sum(axis=1)
 
-        rval = T.log(pos) + self.k * T.log(neg)
+        #rval = T.log(pos) + self.k * T.log(neg)
+        rval = T.log(pos) + T.log(neg)
         return -rval.mean()
-
-    def cost_from_X_wrong(self, data):
-        X, Y = data
-        theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
-        noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
-        p_n = 1. / self.dict_size
-
-        pos = T.nnet.sigmoid(self.delta(data) - T.log(self.k * p_n))
-        neg = T.nnet.sigmoid(self.delta((T.tile(X, (self.k, 1)), noise)) - T.log(self.k * p_n))
-        neg =neg.reshape((X.shape[0], self.k))
-
-        rval = -T.log(pos) - T.log(1 - neg).sum(axis=1)
-        return rval.mean()
 
 
     def nll(self, data):
@@ -456,20 +493,9 @@ class vLBL_NCE(vLBL):
         log_prob = z - T.log(T.exp(z).sum(axis=1).dimshuffle(0, 'x'))
         Y = OneHotFormatter(self.dict_size).theano_expr(Y)
         Y = Y.reshape((Y.shape[0], Y.shape[2]))
-        #import ipdb
-        #ipdb.set_trace()
         log_prob_of = (Y * log_prob).sum(axis=1)
         assert log_prob_of.ndim == 1
         rval = as_floatX(log_prob_of.mean())
         return - rval
-
-
-    #def get_monitoring_channels(self, data):
-        #X, Y = data
-        #rval = OrderedDict()
-
-        #nll = self.nll(data)
-        #rval['perplexity'] = as_floatX(10 ** (nll/np.log(10)))
-        #return rval
 
 
