@@ -349,13 +349,14 @@ class vLBL(Model):
 
         return rval
 
-    def score(self, X, Y=None):
+    def score(self, X, Y=None, k = 1):
         X = self.projector.project(X)
         q_h = self.context(X)
         # this is used during training
         if Y is not None:
             q_w = self.y_projector.project(Y).reshape((Y.shape[0], self.dim))
-            rval = (q_w * q_h).sum(axis=1) + self.b[Y].flatten()
+            rval = (q_w.reshape((k, X.shape[0], q_w.shape[1])) * q_h).sum(axis=2)
+            rval = rval + self.b[Y].reshape((k, X.shape[0]))
         # during nll
         else:
             q_w = self.y_projector._W
@@ -443,7 +444,7 @@ class vLBL_NCE(vLBL):
         self.output_space = IndexSpace(dim=1, max_labels=self.dict_size)
 
 
-    def delta(self, data):
+    def delta(self, data, k = 1):
 
         X, Y = data
 
@@ -452,7 +453,9 @@ class vLBL_NCE(vLBL):
             rval = self.score(X, Y) - T.log(self.k * p_n)
         else:
             p_n = self.noise_p
-            rval = self.score(X, Y) - T.log(self.k * p_n[Y.flatten()])
+            rval = self.score(X, Y, k = k)
+            rval = rval - T.log(self.k * p_n[Y.flatten()]).reshape(rval.shape)
+            #rval = self.score(X, Y) - T.log(self.k * p_n[Y.flatten()].reshape())
         return T.cast(rval, config.floatX)
 
 
@@ -472,14 +475,13 @@ class vLBL_NCE(vLBL):
 
     def cost_from_X(self, data):
         X, Y = data
-        theano_rng = RandomStreams(seed = self.rng.randint(2 ** 15))
-        #noise = theano_rng.random_integers(size = (X.shape[0] * self.k,), low=0, high = self.dict_size - 1)
         if not hasattr(self, 'noise'):
             self.set_noise()
 
         pos = T.nnet.sigmoid(self.delta(data))
-        neg = 1 - T.nnet.sigmoid((self.delta((T.tile(X, (self.k, 1)), self.noise))))
-        neg = neg.reshape((X.shape[0], self.k)).sum(axis=1)
+        pos = pos.sum(axis=0)
+        neg = 1. - T.nnet.sigmoid((self.delta((X, self.noise), self.k)))
+        neg = neg.sum(axis=0)
 
         #rval = T.log(pos) + self.k * T.log(neg)
         rval = T.log(pos) + T.log(neg)
