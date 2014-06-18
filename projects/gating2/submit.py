@@ -28,9 +28,9 @@ def unigram(submit = False, make = False, num_exp = 20):
     for i in xrange(num_exp):
         state.max_col_norm = rng.uniform(1., 3.)
 
-        state.batch_size = rng.randint(100, 500)
+        state.batch_size = rng.randint(50, 500)
         state.dim = rng.randint(50, 1000)
-        state.context_len = rng.randint(2,10)
+        state.context_len = rng.randint(2,15)
         state.nce_k = rng.randint(2, 30)
 
         state.learning_rate = 10. ** rng.uniform(1., -3)

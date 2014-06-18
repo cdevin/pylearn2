@@ -60,6 +60,6 @@
             decay_factor: %(lr_decay)f,
         },
     ],
-    save_path: "%(save_path)s.pkl",
+    save_path: "%(save_path)slast.pkl",
     save_freq: 1
 }
