@@ -176,6 +176,7 @@ class NCE(Softmax):
 
         return rval
 
+
 class NCE2(Softmax):
     def __init__(self,
                 num_noise_samples = 2,
@@ -266,6 +267,7 @@ class NCE2(Softmax):
         #return -(pos - neg).mean()
         return p_w, p_x
 
+
 class vLBL(Model):
 
     def __init__(self, dict_size, dim, context_length, k, irange = 0.1,
@@ -354,8 +356,10 @@ class vLBL(Model):
         q_h = self.context(X)
         # this is used during training
         if Y is not None:
-            q_w = self.y_projector.project(Y).reshape((Y.shape[0], self.dim))
-            rval = (q_w.reshape((k, X.shape[0], q_w.shape[1])) * q_h).sum(axis=2)
+            if Y.ndim != 1:
+                Y = Y.flatten().dimshuffle(0)
+            q_w = self.y_projector.project(Y)
+            rval = (q_w.reshape((k, X.shape[0], q_h.shape[1])) * q_h).sum(axis=2)
             rval = rval + self.b[Y].reshape((k, X.shape[0]))
         # during nll
         else:
@@ -447,6 +451,8 @@ class vLBL_NCE(vLBL):
     def delta(self, data, k = 1):
 
         X, Y = data
+        if Y.ndim != 1:
+            Y = Y.flatten().dimshuffle(0)
 
         if self.noise_p is None:
             p_n = 1. / self.dict_size
@@ -454,8 +460,7 @@ class vLBL_NCE(vLBL):
         else:
             p_n = self.noise_p
             rval = self.score(X, Y, k = k)
-            rval = rval - T.log(self.k * p_n[Y.flatten()]).reshape(rval.shape)
-            #rval = self.score(X, Y) - T.log(self.k * p_n[Y.flatten()].reshape())
+            rval = rval - T.log(self.k * p_n[Y]).reshape(rval.shape)
         return T.cast(rval, config.floatX)
 
 
@@ -479,7 +484,6 @@ class vLBL_NCE(vLBL):
             self.set_noise()
 
         pos = T.nnet.sigmoid(self.delta(data))
-        pos = pos.sum(axis=0)
         neg = 1. - T.nnet.sigmoid((self.delta((X, self.noise), self.k)))
         neg = neg.sum(axis=0)
 
