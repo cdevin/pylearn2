@@ -253,7 +253,7 @@ class NCE2(Softmax):
             #ipdb.set_trace()
             theano_rng = MRG_RandomStreams(max(self.mlp.rng.randint(2 ** 15), 1))
             assert self.mlp.batch_size is not None
-            noise = theano_rng.multinomial(pvals = np.tile(self.noise_prob.get_value(), (k * self.mlp.batch_size, 1)))
+            noise = theano_rng.multinomial(pvals = np.tile(self.noise_prob.get_value(), k * self.mlp.batch_size))
             noise = T.argmax(noise, axis = 1)
             p_n = self.noise_prob
             p_w = T.nnet.sigmoid((state_below * self.W[:, Y].T).sum(axis=1) + self.b[Y])
@@ -443,6 +443,16 @@ class vLBL_NCE(vLBL):
         self.__dict__.update(locals())
         del self.self
 
+        self.noise = sharedX(np.zeros(batch_size * self.k), dtype = 'int64')
+
+        if noise_p is None:
+            self.uniform = True
+            self.noise_p = sharedX(1. / dict_size)
+        else:
+            self.uniform = False
+            self.noise_p = sharedX(noise_p)
+            self.theano_rng = MRG_RandomStreams(max(self.rng.randint(2 ** 15), 1))
+
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
         self.output_space = IndexSpace(dim=1, max_labels=self.dict_size)
@@ -454,41 +464,38 @@ class vLBL_NCE(vLBL):
         if Y.ndim != 1:
             Y = Y.flatten().dimshuffle(0)
 
-        if self.noise_p is None:
-            p_n = 1. / self.dict_size
-            rval = self.score(X, Y) - T.log(self.k * p_n)
+        if self.uniform:
+            rval = self.score(X, Y) - T.log(self.k * self.noise_p)
         else:
-            p_n = self.noise_p
             rval = self.score(X, Y, k = k)
-            rval = rval - T.log(self.k * p_n[Y]).reshape(rval.shape)
+            rval = rval - T.log(self.k * self.noise_p[Y]).reshape(rval.shape)
         return T.cast(rval, config.floatX)
 
 
-    def set_noise(self):
+    def get_noise(self):
 
-        if self.noise_p is None:
+        if self.uniform:
             if self.batch_size is None:
                 raise NameError("Since numpy random is faster, batch_size is required")
-            noise = self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
-            self.noise_p = 1. / self.dict_size * np.ones(self.dict_size)
+            #noise = self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
+            #self.noise.set_value(noise)
+            rval = self.theano_rng.random_integers(low = 0, high = self.dict_size -1,
+                                                    size = (self.batch_size * self.k))
         else:
-            rval = self.rng.multinomial(n = 1, pvals = self.noise_p, size = self.batch_size * self.k)
-            noise = np.argmax(rval, axis=1)
-        self.noise = T.cast(sharedX(noise), 'int32')
-        self.noise_p = sharedX(self.noise_p)
-
+            #rval = self.rng.multinomial(n = 1, pvals = self.noise_p.get_value(), size = self.batch_size * self.k)
+            rval = self.theano_rng.multinomial(pvals = T.repeat(self.noise_p.reshape((1, self.dict_size)),repeats= self.k * self.batch_size, axis=0))
+            rval = T.argmax(rval, axis=1)
+        return rval
 
     def cost_from_X(self, data):
         X, Y = data
-        if not hasattr(self, 'noise'):
-            self.set_noise()
 
         pos = T.nnet.sigmoid(self.delta(data))
-        neg = 1. - T.nnet.sigmoid((self.delta((X, self.noise), self.k)))
+        neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
         neg = neg.sum(axis=0)
 
-        #rval = T.log(pos) + self.k * T.log(neg)
-        rval = T.log(pos) + T.log(neg)
+        rval = T.log(pos) + self.k * T.log(neg)
+        #rval = T.log(pos) + T.log(neg)
         return -rval.mean()
 
 
@@ -505,3 +512,16 @@ class vLBL_NCE(vLBL):
         return - rval
 
 
+    def get_monitoring_channels(self, data):
+
+        rval = super(vLBL_NCE, self).get_monitoring_channels(data)
+        X, Y = data
+
+        pos = T.nnet.sigmoid(self.delta(data))
+        neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
+        neg = neg.sum(axis=0)
+
+        rval['pos'] = -T.log(pos).mean()
+        rval['neg'] = -T.log(neg).mean()
+        rval['noise'] = T.cast(self.get_noise().sum(), config.floatX)
+        return rval
