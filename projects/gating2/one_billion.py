@@ -29,7 +29,7 @@ class OneBillionWord(SequenceDataset):
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
         
         if which_set =='train':
-            data = serial.load('full/one_billion_train.npy')
+            data = serial.load('test/one_billion_train.npy')
         self.X = data.reshape((data.shape[0],1))
         self.y = None
         self.seq_len = seq_len
@@ -43,7 +43,7 @@ class OneBillionWord(SequenceDataset):
 
 
         # get voc
-        voc = serial.load('full/one_billionr_voc.pkl')
+        voc = serial.load('test/one_billionr_voc.pkl')
         self.num_words = len(voc)
         self.end_sentence = voc['</S>']
         self.begin_sentence = voc['<S>']

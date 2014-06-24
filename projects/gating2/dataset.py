@@ -130,11 +130,16 @@ if __name__=="__main__":
     
     from noisylearn.projects.gating2.one_billion import OneBillionWord
     train = OneBillionWord('train',5)
-    iter= train.iterator(mode='sequential',batch_size=1000,data_specs=train.data_specs)
+    iter= train.iterator(mode='sequential',batch_size=100,data_specs=train.data_specs)
     rval = iter.next()
-    print rval[0][:10,:],rval[1][:10]
+    for i in range(0,100):
+        print rval[0][i,:],rval[1][i]
+    print 'next'
+    rval = iter.next()    
+    for i in range(0,100):
+        print rval[0][i,:],rval[1][i]
+    print 'next'
     rval = iter.next()
-    print rval[0][:10,:],rval[1][:10]
-    rval = iter.next()
-    print rval[0][:10,:],rval[1][:10]
+    for i in range(0,100):
+        print rval[0][i,:],rval[1][i]
     print train.num_words
