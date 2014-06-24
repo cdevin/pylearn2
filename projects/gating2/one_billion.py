@@ -94,10 +94,13 @@ def make_dataset2(voc, files):
             Dataset text files
     """
 
-    #data = np.array([], dtype = 'int64')
+    data = np.zeros(shape=(1000000000), dtype = 'int64')
     ind = 0
-    datalist = []
+    fileid=0
     for file in files:
+        print fileid
+        fileid+=1
+       
         print "Processing {}".format(file)
         with open(file, 'r') as file:
             for line in file.readlines():
@@ -107,14 +110,11 @@ def make_dataset2(voc, files):
                         key = voc[item]
                     except KeyError:
                         key = voc['<UNK>']
-                    datalist.append(key)
-                    #data = np.append(data, key)
+                    data[ind]=key
                     ind += 1
                 # end of sentence
-                datalist.append(voc['</S>'])
-    #concatenating numpy arrays at each step is very slow because of reallocation of memory each time.
-    #so using list and then converts to array at end
-    return np.asarray(datalist)
+                data[ind]=voc['</S>']
+    return np.trim_zeros(data)
 
 
 if __name__ == '__main__':
