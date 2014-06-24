@@ -7,9 +7,28 @@ from pylearn2.space import CompositeSpace
 from pylearn2.utils import safe_zip
 from pylearn2.utils.iteration import resolve_iterator_class
 from noisylearn.projects.gating2.iteration import SequenceDatasetIterator
-
+from pylearn2.space import VectorSpace, CompositeSpace
+import sys
+import os
+import glob
+import argparse
+import numpy as np
+from collections import Counter
+from pylearn2.utils import serial
+from noisylearn.utils.cache import CachedAttribute
 
 class SequenceDataset(DenseDesignMatrix):
+    _default_seed = (17, 2, 946)
+    def __init__(self, X=None, topo_view=None, y=None,
+                 view_converter=None, axes=('b', 0, 1, 'c'),
+                 rng=_default_seed, preprocessor=None, fit_preprocessor=False,
+                 max_labels=None, X_labels=None, y_labels=None):
+        super(SequenceDataset, self).__init__(X = self.X, y = self.y)
+        x_space = VectorSpace(dim = self.seq_len)
+        y_space = VectorSpace(dim=1)
+        space = CompositeSpace((x_space, y_space))
+        source = ('features', 'targets')
+        self.data_specs = (space, source)
 
     def get_data(self):
         garbage = np.zeros((1, 1), dtype = 'int64')
@@ -60,6 +79,7 @@ class SequenceDataset(DenseDesignMatrix):
                 source = 'features'
 
             data_specs = (space, source)
+
             convert = None
 
         else:
@@ -88,7 +108,6 @@ class SequenceDataset(DenseDesignMatrix):
                 else:
                     conv_fn = None
                 convert.append(conv_fn)
-
         # TODO: Refactor
         if mode is None:
             if hasattr(self, '_iter_subset_class'):
@@ -105,10 +124,54 @@ class SequenceDataset(DenseDesignMatrix):
             num_batches = getattr(self, '_iter_num_batches', None)
         if rng is None and mode.stochastic:
             rng = self.rng
-        return SequeneceDatasetIterator(self,
+        return SequenceDatasetIterator(self,
                                      mode(self.num_examples, batch_size,
                                      num_batches, rng),
                                      data_specs=data_specs,
                                      return_tuple=return_tuple,
                                      convert=convert)
 
+
+class OneBillionWord(SequenceDataset):
+    valid_set_names = ["train","valid", "test"]
+    def __init__(self, which_set, seq_len):
+
+        if which_set not in self.valid_set_names:
+            raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
+        
+        if which_set =='train':
+            data = serial.load('test/one_billion_train.npy')
+        self.X = data.reshape((data.shape[0],1))
+        self.y = None
+        self.seq_len = seq_len
+
+        x_space = VectorSpace(dim = seq_len)
+        y_space = VectorSpace(dim=1)
+        space = CompositeSpace((x_space, y_space))
+        source = ('features', 'targets')
+        self.data_specs = (space, source)
+        self.X_space = x_space
+
+
+        # get voc
+        voc = serial.load('test/one_billionr_voc.pkl')
+        self.num_words = len(voc)
+        self.end_sentence = voc['</S>']
+        self.begin_sentence = voc['<S>']
+        del voc
+        super(OneBillionWord, self).__init__(X = self.X, y = self.y)
+
+    @CachedAttribute
+    def num_words(self):
+        return self.num_words
+
+if __name__=="__main__":
+    train = OneBillionWord('train',5)
+    iter= train.iterator(mode='sequential',batch_size=1000,data_specs=train.data_specs)
+    rval = iter.next()
+    print rval[0][:10,:],rval[1][:10]
+    rval = iter.next()
+    print rval[0][:10,:],rval[1][:10]
+    rval = iter.next()
+    print rval[0][:10,:],rval[1][:10]
+    print train.num_words

@@ -22,33 +22,32 @@ import numpy as np
 from collections import Counter
 from pylearn2.utils import serial
 from noisylearn.utils.cache import CachedAttribute
-from noisylearn.projects.gating2.parse_text import make_dataset
+from noisylearn.projects.gating2.dataset import SequenceDataset
+#from noisylearn.projects.gating2.parse_text import make_dataset
 import ipdb
 
-#class OneBillionWord(SequenceDataset):
+class OneBillionWord(SequenceDataset):
 
 
-    #def __init__(self, which_set, seq_len):
+    def __init__(self, which_set, seq_len):
 
+        data = serial.load('dss.npy')
+        X = data
+        y = None
+        self.seq_len = seq_len
 
-        #data = serial.load('dss.npy')
-        #X = data
-        #y = None
-        #self.seq_len = seq_len
+        # get voc
+        voc = serial.load('')
+        self.num_words = len(voc.key())
+        self.end_sentence = voc['</S>']
+        self.begin_sentence = voc['<S>']
+        del voc
+        super(OneBillionWord, self).__init__(X = X, y = y)
 
-        ## get voc
-        #voc = serial.load('')
-        #self.num_words = len(voc.key())
-        #self.end_sentence = voc['</S>']
-        #self.begin_setence = voc['<S>']
-        #del voc
-
-        #super(OneBillionWord, self).__init__(X = X, y = y)
-
-    #@CachedAttribute
-    #def num_words(self):
-        #voc = serial.load('')
-        #return len(voc.keys())
+    @CachedAttribute
+    def num_words(self):
+        voc = serial.load('')
+        return len(voc.keys())
 
 
 
@@ -91,27 +90,24 @@ def make_dataset2(voc, files):
     """
 
     data = np.array([], dtype = 'int64')
-    sent_ends = np.array([], dtype = 'int64')
     ind = 0
 
     for file in files:
         print "Processing {}".format(file)
         with open(file, 'r') as file:
             for line in file.readlines():
-                words = line.rstrip('/n').split(' ')
+                words = line.rstrip('\n').split(' ')
                 for item in words:
                     try:
                         key = voc[item]
                     except KeyError:
                         key = voc['<UNK>']
-                    np.append(data, key)
+                    data = np.append(data, key)
                     ind += 1
                 # end of sentence
-                np.append(data, voc['</S>'])
-                np.append(sent_ends, ind)
-        ipdb.set_trace()
+                data = np.append(data, voc['</S>'])
 
-    return data, sent_ends
+    return data
 
 
 if __name__ == '__main__':
@@ -123,6 +119,7 @@ if __name__ == '__main__':
     train_path = "/data/lisatmp2/mirzamom/data/1-billion-word-language-" +\
             "modeling-benchmark-r13output/training-monolingual." +\
             "tokenized.shuffled/"
+    #train_path = "/u/huilgolr/data/1billion/train/"
 
     test_path = "/data/lisatmp2/mirzamom/data/1-billion-word-language-" +\
             "modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/"
@@ -131,26 +128,27 @@ if __name__ == '__main__':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
         counter = construct_voc(files)
-        serial.save('one_billion_counter_full.pkl', counter)
+        serial.save('full/one_billion_counter_full.pkl', counter)
     elif args.task == 'clean':
-        counter = serial.load('one_billion_counter_full.pkl')
+        counter = serial.load('test/one_billion_counter_full.pkl')
         voc = cleanup(counter)
-        serial.save('one_billionr_voc.pkl', voc)
+        print voc
+        #ipdb.set_trace()
+        serial.save('full/one_billionr_voc.pkl', voc)
     elif args.task == 'train_set':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
-        voc = serial.load('one_billion_voc.pkl')
-        #data, sent_ends = make_dataset(voc, files)
-        data = make_dataset(voc, files)
-        np.save('one_billion_train.npy', data)
-        #np.save('one_billion_train_sentence_end.npy', sent_ends)
+        voc = serial.load('full/one_billionr_voc.pkl')
+
+        data = make_dataset2(voc, files)
+        np.save('full/one_billion_train.npy', data)
     elif args.task == 'test_set':
         files = glob.glob(test_path + 'news.en.heldout*')
         files = [os.path.join(test_path, item) for item in files]
-        voc = serial.load('one_billion_voc.pkl')
+        voc = serial.load('full/one_billion_voc.pkl')
         #data, sent_ends = make_dataset(voc, files)
         data = make_dataset(voc, files)
-        np.save('one_billion_test.npy', data)
+        np.save('full/one_billion_test.npy', data)
         #np.save('one_billion_test_sentence_end.npy', sent_ends)
 
     else:

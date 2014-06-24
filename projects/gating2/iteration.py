@@ -12,11 +12,12 @@ class SequenceDatasetIterator(FiniteDatasetIterator):
         beginning and end of setences with special character
         """
 
-        return format_sentence(data = self._raw_data[0],
+        self.prev = format_sentence(data = self._raw_data[0],
                         seq_len = self._dataset.seq_len,
-                        ind = ind - 1,
+                        ind = ind ,
                         begin = self._dataset.begin_sentence,
                         end = self._dataset.end_sentence)
+        return self.prev
 
     def next(self):
 
@@ -30,12 +31,10 @@ class SequenceDatasetIterator(FiniteDatasetIterator):
             next_index = slice_to_list(next_index)
 
         x = np.zeros((self.batch_size, self._dataset.seq_len))
-        x = np.asarray([self.get_seq(i) for i in xrange(self.batch_size)])
+        x = np.asarray([self.get_seq(next_index[i]) for i in xrange(self.batch_size)])
 
-        y = self._dataset.mapped_dict[y]
-
+        rval=(x,y)
         rval = (self._convert[0](x), self._convert[1](y))
-
         return rval
 
 
@@ -60,11 +59,13 @@ def format_sentence(data, ind, seq_len, begin, end):
     elif ind > 0:
         rval[seq_len-ind:] =  data[:ind].flatten()
 
-    w = np.where(rval == -1)[0]
+
+    w = np.where(rval == 1)[0]
     if len(w) > 0:
+        #print 'old',rval,data[ind]
         rval[0:max(0, w[-1])] = end
         rval[w[-1]] = begin
-
+        #print 'new',rval
     return rval
 
 
