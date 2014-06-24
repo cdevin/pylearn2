@@ -94,9 +94,9 @@ def make_dataset2(voc, files):
             Dataset text files
     """
 
-    data = np.array([], dtype = 'int64')
+    #data = np.array([], dtype = 'int64')
     ind = 0
-
+    datalist = []
     for file in files:
         print "Processing {}".format(file)
         with open(file, 'r') as file:
@@ -107,12 +107,14 @@ def make_dataset2(voc, files):
                         key = voc[item]
                     except KeyError:
                         key = voc['<UNK>']
-                    data = np.append(data, key)
+                    datalist.append(key)
+                    #data = np.append(data, key)
                     ind += 1
                 # end of sentence
-                data = np.append(data, voc['</S>'])
-
-    return data
+                datalist.append(voc['</S>'])
+    #concatenating numpy arrays at each step is very slow because of reallocation of memory each time.
+    #so using list and then converts to array at end
+    return np.asarray(datalist)
 
 
 if __name__ == '__main__':
@@ -148,7 +150,7 @@ if __name__ == '__main__':
     elif args.task == 'test_set':
         files = glob.glob(test_path + 'news.en.heldout*')
         files = [os.path.join(test_path, item) for item in files]
-        voc = serial.load('full/one_billion_voc.pkl')
+        voc = serial.load('full/one_billionr_voc.pkl')
         #data, sent_ends = make_dataset(voc, files)
         data = make_dataset(voc, files)
         np.save('full/one_billion_test.npy', data)
