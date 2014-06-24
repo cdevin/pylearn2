@@ -29,7 +29,7 @@ class OneBillionWord(SequenceDataset):
             raise ValueError("which_set should have one of these values: {}".format(self.valid_set_names))
         
         if which_set =='train':
-            data = serial.load('test/one_billion_train.npy')
+            data = serial.load('full/one_billion_train.npy')
         self.X = data.reshape((data.shape[0],1))
         self.y = None
         self.seq_len = seq_len
@@ -43,7 +43,7 @@ class OneBillionWord(SequenceDataset):
 
 
         # get voc
-        voc = serial.load('test/one_billionr_voc.pkl')
+        voc = serial.load('full/one_billionr_voc.pkl')
         self.num_words = len(voc)
         self.end_sentence = voc['</S>']
         self.begin_sentence = voc['<S>']
@@ -121,10 +121,10 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--task', choices = ['vocabulary', 'clean', 'train_set', 'test_set'])
     args = parser.parse_args()
 
-    # train_path = "/data/lisatmp2/mirzamom/data/1-billion-word-language-" +\
-    #         "modeling-benchmark-r13output/training-monolingual." +\
-    #         "tokenized.shuffled/"
-    train_path = "/u/huilgolr/data/1billion/train/"
+    train_path = "/data/lisatmp2/mirzamom/data/1-billion-word-language-" +\
+             "modeling-benchmark-r13output/training-monolingual." +\
+             "tokenized.shuffled/"
+    #train_path = "/u/huilgolr/data/1billion/train/"
 
     test_path = "/data/lisatmp2/mirzamom/data/1-billion-word-language-" +\
             "modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/"
@@ -133,27 +133,25 @@ if __name__ == '__main__':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
         counter = construct_voc(files)
-        serial.save('test/one_billion_counter_full.pkl', counter)
+        serial.save('full/one_billion_counter_full.pkl', counter)
     elif args.task == 'clean':
-        counter = serial.load('test/one_billion_counter_full.pkl')
+        counter = serial.load('full/one_billion_counter_full.pkl')
         voc = cleanup(counter)
-        print voc
-        #ipdb.set_trace()
-        serial.save('test/one_billionr_voc.pkl', voc)
+        serial.save('full/one_billionr_voc.pkl', voc)
     elif args.task == 'train_set':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
-        voc = serial.load('test/one_billionr_voc.pkl')
+        voc = serial.load('full/one_billionr_voc.pkl')
 
         data = make_dataset2(voc, files)
-        np.save('test/one_billion_train.npy', data)
+        np.save('full/one_billion_train.npy', data)
     elif args.task == 'test_set':
         files = glob.glob(test_path + 'news.en.heldout*')
         files = [os.path.join(test_path, item) for item in files]
-        voc = serial.load('test/one_billion_voc.pkl')
+        voc = serial.load('full/one_billion_voc.pkl')
         #data, sent_ends = make_dataset(voc, files)
         data = make_dataset(voc, files)
-        np.save('test/one_billion_test.npy', data)
+        np.save('full/one_billion_test.npy', data)
         #np.save('one_billion_test_sentence_end.npy', sent_ends)
 
     else:
