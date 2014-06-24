@@ -12,12 +12,11 @@ class SequenceDatasetIterator(FiniteDatasetIterator):
         beginning and end of setences with special character
         """
 
-        self.prev = format_sentence(data = self._raw_data[0],
+        return format_sentence(data = self._raw_data[0],
                         seq_len = self._dataset.seq_len,
                         ind = ind ,
                         begin = self._dataset.begin_sentence,
                         end = self._dataset.end_sentence)
-        return self.prev
 
     def next(self):
 
