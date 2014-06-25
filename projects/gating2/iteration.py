@@ -29,7 +29,6 @@ class SequenceDatasetIterator(FiniteDatasetIterator):
         if isinstance(next_index, slice):
             next_index = slice_to_list(next_index)
 
-        x = np.zeros((self.batch_size, self._dataset.seq_len))
         x = np.asarray([self.get_seq(next_index[i]) for i in xrange(self.batch_size)])
 
         rval=(x,y)
