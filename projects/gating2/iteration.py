@@ -80,6 +80,8 @@ class NoiseIterator(FiniteDatasetIterator):
                                             convert=convert)
         self.noise_p = noise_p
         self.num_noise = num_noise
+        self.current = 0
+
 
 
     def get_noise(self):
@@ -108,6 +110,10 @@ class NoiseIterator(FiniteDatasetIterator):
         next_index = self._subset_iterator.next()
         # TODO: handle fancy-index copies by allocating a buffer and
         # using np.take()
+
+        print "batch {}/{}".format(self.current, self.num_batches)
+        self.current += 1
+
 
 
         if 'noises' in self._source:
