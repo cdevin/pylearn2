@@ -82,7 +82,7 @@ def cleanup(counter):
 
     return voc
 
-def make_dataset2(voc, files):
+def make_dataset2(voc, files,which_set):
     """
     Construct the dataset
 
@@ -94,13 +94,18 @@ def make_dataset2(voc, files):
             Dataset text files
     """
 
-    data = np.zeros(shape=(1000000000), dtype = 'int64')
+    if which_set=='train':
+	data = np.zeros(shape=(1000000000), dtype = 'int64')
+    elif which_set=='test':
+	#save time trimming if you have an idea of how much data
+	#8096699
+	data = np.zeros(shape=(8100000),dtype='int64')
+
     ind = 0
     fileid=0
     for file in files:
         print fileid
         fileid+=1
-       
         print "Processing {}".format(file)
         with open(file, 'r') as file:
             for line in file.readlines():
@@ -112,8 +117,12 @@ def make_dataset2(voc, files):
                         key = voc['<UNK>']
                     data[ind]=key
                     ind += 1
+		    #print data[ind-1]
+		    #print key
                 # end of sentence
                 data[ind]=voc['</S>']
+		ind+=1
+    print ind
     return np.trim_zeros(data)
 
 
@@ -144,17 +153,14 @@ if __name__ == '__main__':
         files = os.listdir(train_path)
         files = [os.path.join(train_path, item) for item in files]
         voc = serial.load('full/one_billionr_voc.pkl')
-
-        data = make_dataset2(voc, files)
+        data = make_dataset2(voc, files,'train')
         np.save('full/one_billion_train.npy', data)
     elif args.task == 'test_set':
         files = glob.glob(test_path + 'news.en.heldout*')
         files = [os.path.join(test_path, item) for item in files]
         voc = serial.load('full/one_billionr_voc.pkl')
-        #data, sent_ends = make_dataset(voc, files)
-        data = make_dataset(voc, files)
+        data = make_dataset2(voc, files,'test')
         np.save('full/one_billion_test.npy', data)
-        #np.save('one_billion_test_sentence_end.npy', sent_ends)
 
     else:
         raise ValueError("Unknown task : {}".format(args.task))
