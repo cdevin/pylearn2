@@ -1,6 +1,6 @@
 from pylearn2.utils import serial
-data = serial.load('/u/huilgolr/noisylearn/projects/gating2/full/one_billion_train.npy')
-old = serial.load('/data/lisa/exp/mirzamom/noisylearn/projects/gating2/one_billion_train.npy')
+data = serial.load('/u/huilgolr/noisylearn/projects/gating2/full/one_billion_test.npy')
+old = serial.load('/data/lisa/exp/mirzamom/noisylearn/projects/gating2/one_billion_test.npy')
 print len(data)
 print len(old)
 import numpy as np

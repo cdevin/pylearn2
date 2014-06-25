@@ -20,6 +20,7 @@ from collections import Counter
 from pylearn2.utils import serial
 from noisylearn.projects.gating2.dataset import SequenceDataset
 from pylearn2.space import VectorSpace, CompositeSpace
+from noisylearn.utils.cache import CachedAttribute
 
 class OneBillionWord(SequenceDataset):
     valid_set_names = ["train","valid", "test"]
@@ -66,8 +67,6 @@ def construct_voc(files):
                 line = line.rstrip('/n')
                 #counter.update(word.lower() for word in line.split())
                 counter.update(word for word in line.split())
-
-
     return counter
 
 
@@ -79,7 +78,6 @@ def cleanup(counter):
         if counter[item] > 2:
             voc[item] = ind
             ind += 1
-
     return voc
 
 def make_dataset2(voc, files,which_set):
@@ -95,11 +93,11 @@ def make_dataset2(voc, files,which_set):
     """
 
     if which_set=='train':
-	data = np.zeros(shape=(1000000000), dtype = 'int64')
+        data = np.zeros(shape=(798949990), dtype = 'int64')
     elif which_set=='test':
-	#save time trimming if you have an idea of how much data
-	#8096699
-	data = np.zeros(shape=(8100000),dtype='int64')
+    #save time trimming if you have an idea of how much data
+    #8096699
+        data = np.zeros(shape=(8100000),dtype='int64')
 
     ind = 0
     fileid=0
@@ -117,13 +115,16 @@ def make_dataset2(voc, files,which_set):
                         key = voc['<UNK>']
                     data[ind]=key
                     ind += 1
-		    #print data[ind-1]
-		    #print key
                 # end of sentence
                 data[ind]=voc['</S>']
-		ind+=1
+                ind+=1
     print ind
-    return np.trim_zeros(data)
+    rval = np.trim_zeros(data)
+    print len(rval)
+    if which_set=='train':
+        assert len(rval)==798949912
+    #coz 798949912 + 30301028 (numer of 0s not present here) = 829250940
+    return rval
 
 
 if __name__ == '__main__':
