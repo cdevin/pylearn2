@@ -50,7 +50,7 @@ class OneBillionWord(SequenceDataset):
         del voc
         super(OneBillionWord, self).__init__(X = self.X, y = self.y)
 
-    #@CachedAttribute
+    @CachedAttribute
     def num_words(self):
         return self.num_words
 
