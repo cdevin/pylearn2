@@ -443,7 +443,7 @@ class vLBL_NCE(vLBL):
         self.__dict__.update(locals())
         del self.self
 
-        self.noise = sharedX(np.zeros(batch_size * self.k), dtype = 'int64')
+        #self.noise = sharedX(np.zeros(batch_size * self.k), dtype = 'int64')
 
         if noise_p is None:
             self.uniform = True
@@ -456,7 +456,13 @@ class vLBL_NCE(vLBL):
     def set_spaces(self):
         self.input_space = IndexSpace(dim=self.context_length, max_labels=self.dict_size)
         self.output_space = IndexSpace(dim=1, max_labels=self.dict_size)
+        self.noise_space = IndexSpace(dim=self.k, max_labels=self.dict_size)
 
+    def get_noise_space(self):
+        return self.noise_space
+
+    def get_noise_source(self):
+        return 'noises'
 
     def delta(self, data, k = 1):
 
@@ -464,7 +470,7 @@ class vLBL_NCE(vLBL):
         if Y.ndim != 1:
             Y = Y.flatten().dimshuffle(0)
 
-        if self.uniform:
+        if self.uniform is True:
             rval = self.score(X, Y) - T.log(self.k * self.noise_p)
         else:
             rval = self.score(X, Y, k = k)
@@ -488,10 +494,10 @@ class vLBL_NCE(vLBL):
         return rval
 
     def cost_from_X(self, data):
-        X, Y = data
+        X, Y, noise = data
 
-        pos = T.nnet.sigmoid(self.delta(data))
-        neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
+        pos = T.nnet.sigmoid(self.delta((X, Y)))
+        neg = 1. - T.nnet.sigmoid((self.delta((X, noise), k = self.k)))
         neg = neg.sum(axis=0)
 
         rval = T.log(pos) + self.k * T.log(neg)
@@ -512,16 +518,16 @@ class vLBL_NCE(vLBL):
         return - rval
 
 
-    def get_monitoring_channels(self, data):
-
-        rval = super(vLBL_NCE, self).get_monitoring_channels(data)
-        X, Y = data
-
-        pos = T.nnet.sigmoid(self.delta(data))
-        neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
-        neg = neg.sum(axis=0)
-
-        rval['pos'] = -T.log(pos).mean()
-        rval['neg'] = -T.log(neg).mean()
-        rval['noise'] = T.cast(self.get_noise().sum(), config.floatX)
-        return rval
+    #def get_monitoring_channels(self, data):
+#
+        #rval = super(vLBL_NCE, self).get_monitoring_channels(data)
+        #X, Y = data
+#
+        #pos = T.nnet.sigmoid(self.delta(data))
+        #neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
+        #neg = neg.sum(axis=0)
+#
+        #rval['pos'] = -T.log(pos).mean()
+        #rval['neg'] = -T.log(neg).mean()
+        #rval['noise'] = T.cast(self.get_noise().sum(), config.floatX)
+        #return rval

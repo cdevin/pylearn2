@@ -1,8 +1,10 @@
 from itertools import izip
 import theano.tensor as T
 from theano.compat.python2x import OrderedDict
-from pylearn2.costs.cost import DefaultDataSpecsMixin, Cost
 from theano.tensor.shared_randomstreams import RandomStreams
+from pylearn2.costs.cost import DefaultDataSpecsMixin, Cost
+from pylearn2.costs.mlp import Default as MLPDefaultCost
+from pylearn2.space import CompositeSpace
 
 
 class NCE(DefaultDataSpecsMixin, Cost):
@@ -92,3 +94,13 @@ class NCE_MLP(DefaultDataSpecsMixin, Cost):
 
         return  gradients, updates
 
+
+class NCE_Noise(MLPDefaultCost):
+
+    def get_data_specs(self, model):
+
+        spaces = CompositeSpace([model.get_input_space(),
+                                model.get_output_space(),
+                                model.get_noise_space()])
+        sources = (model.get_input_source(), model.get_target_source(), model.get_noise_source())
+        return (spaces, sources)
