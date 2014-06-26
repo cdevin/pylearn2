@@ -80,11 +80,22 @@ class NoiseIterator(FiniteDatasetIterator):
                                             convert=convert)
         self.noise_p = noise_p
         self.num_noise = num_noise
-        self.current = 0
+        self.setup_noise()
 
-
+    def setup_noise(self):
+        J, q = alias_setup(self.noise_p)
+        self._J = J
+        self._q = q
+        self.noise_sample = np.zeros((self.batch_size * self.num_noise))
 
     def get_noise(self):
+
+        rng = self._dataset.rng
+        for i in xrange(self.batch_size * self.num_noise):
+            self.noise_sample[i] = alias_draw(self._J, self._q, rng)
+        return self.noise_sample.reshape((self.batch_size, self.num_noise))
+
+    def get_noise2(self):
         rng = self._dataset.rng
         rval = rng.multinomial(n=1, pvals=self.noise_p, size=(self.batch_size * self.num_noise))
         return np.argmax(rval, axis=1).reshape((self.batch_size, self.num_noise))
@@ -110,11 +121,6 @@ class NoiseIterator(FiniteDatasetIterator):
         next_index = self._subset_iterator.next()
         # TODO: handle fancy-index copies by allocating a buffer and
         # using np.take()
-
-        print "batch {}/{}".format(self.current, self.num_batches)
-        self.current += 1
-
-
 
         if 'noises' in self._source:
             self._raw_data = list(self._raw_data)
@@ -143,5 +149,56 @@ class NoiseIterator(FiniteDatasetIterator):
         if not self._return_tuple and len(rval) == 1:
             rval, = rval
         return rval
+
+
+
+#----
+# https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/
+def alias_setup(probs):
+    K       = len(probs)
+    q       = np.zeros(K)
+    J       = np.zeros(K, dtype=np.int)
+
+    # Sort the data into the outcomes with probabilities
+    # that are larger and smaller than 1/K.
+    smaller = []
+    larger  = []
+    for kk, prob in enumerate(probs):
+        q[kk] = K*prob
+        if q[kk] < 1.0:
+            smaller.append(kk)
+        else:
+            larger.append(kk)
+
+    # Loop though and create little binary mixtures that
+    # appropriately allocate the larger outcomes over the
+    # overall uniform mixture.
+    while len(smaller) > 0 and len(larger) > 0:
+        small = smaller.pop()
+        large = larger.pop()
+
+        J[small] = large
+        q[large] = q[large] - (1.0 - q[small])
+
+        if q[large] < 1.0:
+            smaller.append(large)
+        else:
+            larger.append(large)
+
+    return J, q
+
+def alias_draw(J, q, rng):
+    K  = len(J)
+
+    # Draw from the overall uniform mixture.
+    kk = int(np.floor(rng.rand()*K))
+
+    # Draw from the binary mixture, either keeping the
+    # small one, or choosing the associated larger one.
+    if rng.rand() < q[kk]:
+        return kk
+    else:
+         return J[kk]
+
 
 
