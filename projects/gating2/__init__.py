@@ -7,6 +7,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from theano.compat.python2x import OrderedDict
 from pylearn2.models.mlp import MLP
 from pylearn2.models.mlp import Softmax
+from pylearn2.models.mlp import Layer
 from pylearn2.monitor import get_monitor_doc
 from pylearn2.space import VectorSpace, IndexSpace, CompositeSpace
 from pylearn2.format.target_format import OneHotFormatter
@@ -385,7 +386,6 @@ class vLBL(Model):
         source = (self.get_input_source(), self.get_target_source())
         return (space, source)
 
-
     def nll(self, data):
 
         return self.cost_from_X(data)
@@ -477,7 +477,6 @@ class vLBL_NCE(vLBL):
             rval = rval - T.log(self.k * self.noise_p[Y]).reshape(rval.shape)
         return T.cast(rval, config.floatX)
 
-
     def get_noise(self):
 
         if self.uniform:
@@ -504,7 +503,6 @@ class vLBL_NCE(vLBL):
         #rval = T.log(pos) + T.log(neg)
         return -rval.mean()
 
-
     def nll(self, data):
         X, Y = data
         z = self.score(X)
@@ -518,16 +516,49 @@ class vLBL_NCE(vLBL):
         return - rval
 
 
-    #def get_monitoring_channels(self, data):
-#
-        #rval = super(vLBL_NCE, self).get_monitoring_channels(data)
-        #X, Y = data
-#
-        #pos = T.nnet.sigmoid(self.delta(data))
-        #neg = 1. - T.nnet.sigmoid((self.delta((X, self.get_noise()), self.k)))
-        #neg = neg.sum(axis=0)
-#
-        #rval['pos'] = -T.log(pos).mean()
-        #rval['neg'] = -T.log(neg).mean()
-        #rval['noise'] = T.cast(self.get_noise().sum(), config.floatX)
-        #return rval
+##### Self gated stuff #######
+
+class SelfGated(Layer):
+
+    def __init__(self, content, noise_type, **kwargs):
+
+        self.content = content
+        self.noise_type = noise_type
+        super(SelfGated, self).__init__(**kwargs)
+        self.layer_name = content.layer_name
+
+    def set_input_space(self, space):
+        self.content.mlp = self.mlp
+        self.content.set_input_space(space)
+        self.input_space = self.content.input_space
+        self.output_space = self.content.output_space
+
+        self.rng = RandomStreams(seed = self.mlp.rng.randint(2 ** 15))
+
+    def fprop(self, state_below):
+
+        state_below = self.content.fprop(state_below)
+
+        # select top k
+        # TODO it's only works with vector space now
+        #import ipdb
+        #ipdb.set_trace()
+        #ind = (-state_below).argsort(axis=1)
+        #rval = state_below[[[0], [1]], ind]
+
+        if self.noise_type == 'droput':
+            mean = state_below.mean(axis=1).dimshuffle(0, 'x')
+            rval = T.switch(T.ge(state_below, mean), state_below, 0.)
+        elif self.noise_type == 'sample':
+            mask = T.nnet.softmax(state_below)
+            mask = self.rng.binomial(p=mask)
+            rval = mask * state_below
+            rval = rval.astype(T.config.floatX)
+
+
+        return rval
+
+    def get_params(self):
+
+        return self.content.get_params()
+
