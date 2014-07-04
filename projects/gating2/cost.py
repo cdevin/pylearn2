@@ -104,3 +104,86 @@ class NCE_Noise(MLPDefaultCost):
                                 model.get_noise_space()])
         sources = (model.get_input_source(), model.get_target_source(), model.get_noise_source())
         return (spaces, sources)
+
+
+class StraightThrough(MLPDefaultCost):
+
+    def get_gradients(self, model, data, ** kwargs):
+        """
+        Provides the gradients of the cost function with respect to the model
+        parameters.
+
+        These are not necessarily those obtained by theano.tensor.grad
+        --you may wish to use approximate or even intentionally incorrect
+        gradients in some cases.
+
+        Parameters
+        ----------
+        model : a pylearn2 Model instance
+        data : a batch in cost.get_data_specs() form
+        kwargs : dict
+            Optional extra arguments, not used by the base class.
+
+        Returns
+        -------
+        gradients : OrderedDict
+            a dictionary mapping from the model's parameters
+            to their gradients
+            The default implementation is to compute the gradients
+            using T.grad applied to the value returned by expr.
+            However, subclasses may return other values for the gradient.
+            For example, an intractable cost may return a sampling-based
+            approximation to its gradient.
+        updates : OrderedDict
+            a dictionary mapping shared variables to updates that must
+            be applied to them each time these gradients are computed.
+            This is to facilitate computation of sampling-based approximate
+            gradients.
+            The parameters should never appear in the updates dictionary.
+            This would imply that computing their gradient changes
+            their value, thus making the gradient value outdated.
+        """
+
+        try:
+            cost = self.expr(model=model, data=data, **kwargs)
+        except TypeError, e:
+            # If anybody knows how to add type(self) to the exception message
+            # but still preserve the stack trace, please do so
+            # The current code does neither
+            e.message += " while calling " + str(type(self)) + ".expr"
+            logger.error(type(self))
+            logger.error(e.message)
+            raise e
+
+        if cost is None:
+            raise NotImplementedError(str(type(self)) +
+                                      " represents an intractable cost and "
+                                      "does not provide a gradient "
+                                      "approximation scheme.")
+
+        # we make the assumption that last layer grad is computable
+        params = model.layers[-1].get_params()
+        grads = T.grad(cost, params, disconnected_inputs='ignore')
+
+        for layer in model.layers[:-1][::-1]:
+            p = layer.get_params()
+            if hasattr(layer, "get_gradients"):
+                #g = layer.get_gradients(grads[-1])
+                g = layer.get_gradients(cost)
+            else:
+                g = T.grad(cost, p, disconnected_inputs='ignore')
+
+            grads.extend(g)
+            params.extend(p)
+
+
+        #params = list(model.get_params())
+
+        #grads = T.grad(cost, params, disconnected_inputs='ignore')
+
+        gradients = OrderedDict(izip(params, grads))
+
+        updates = OrderedDict()
+
+        return gradients, updates
+

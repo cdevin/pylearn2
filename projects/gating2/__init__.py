@@ -520,10 +520,11 @@ class vLBL_NCE(vLBL):
 
 class SelfGated(Layer):
 
-    def __init__(self, content, noise_type, **kwargs):
+    def __init__(self, content, noise_type, top_k = -1, group_size = 1, **kwargs):
 
         self.content = content
         self.noise_type = noise_type
+        self.group_size = group_size
         super(SelfGated, self).__init__(**kwargs)
         self.layer_name = content.layer_name
 
@@ -537,7 +538,7 @@ class SelfGated(Layer):
 
     def fprop(self, state_below):
 
-        state_below = self.content.fprop(state_below)
+        z = self.content.fprop(state_below)
 
         # select top k
         # TODO it's only works with vector space now
@@ -546,19 +547,49 @@ class SelfGated(Layer):
         #ind = (-state_below).argsort(axis=1)
         #rval = state_below[[[0], [1]], ind]
 
-        if self.noise_type == 'droput':
+        if self.noise_type == 'dropout':
             mean = state_below.mean(axis=1).dimshuffle(0, 'x')
             rval = T.switch(T.ge(state_below, mean), state_below, 0.)
+        elif self.noise_type == 'group_mean':
+            orig_shape = z.shape
+            num_groups = self.content.output_space.dim // self.group_size
+            z = z.reshape((z.shape[0] * num_groups, self.group_size))
+            m = z.mean(axis=1).dimshuffle(0, 'x')
+            z = T.switch(T.ge(z, m), z, 0.)
+            z = z.reshape(orig_shape)
+        elif self.noise_type == 'top_k':
+            ind = T.argsort(-state_below)
+            rval = state_below[[[0], [1]], ind[:,:self.top_k]]
         elif self.noise_type == 'sample':
-            mask = T.nnet.softmax(state_below)
-            mask = self.rng.binomial(p=mask)
-            rval = mask * state_below
-            rval = rval.astype(T.config.floatX)
+            mask = T.nnet.sigmoid(state_below)
+            mask = self.rng.binomial(p=mask).astype(T.config.floatX)
+            #mask = self.rng.binomial(p=0.5)
+
+            #rval = mask * state_below
+            rval = state_below
+            #rval = rval.astype(T.config.floatX)
+            self.mask = mask
+        else:
+            raise ValueError("Unknow noise_type: {}".format(self.noise_type))
 
 
-        return rval
+        return z
+
+    #def fprop_test(self.state_below)
 
     def get_params(self):
 
         return self.content.get_params()
 
+
+    def get_gradients(self, cost):
+
+        params = self.get_params()
+        grads = T.grad(cost=cost, wrt=params,
+                      disconnected_inputs='ignore')
+
+        # TODO what about b?
+        import ipdb
+        ipdb.set_trace()
+        grads[0] *= self.mask.T
+        return grads
