@@ -74,11 +74,11 @@ class H5Skipgram(H5Shuffle):
             IndexSpace(dim=1, max_labels=self.X_labels),
             IndexSpace(dim=1, max_labels=self.X_labels)]
         targets_source = tuple('target'+str(i) for i in range(len(targets_space)))
+        self._spaces = [features_space] + targets_space
+        space = CompositeSpace(self._spaces)
+        self._sources = (features_source,)+ targets_source
 
-        space = CompositeSpace([features_space]+ targets_space)
-        source = (features_source,)+ targets_source
-
-        self.data_specs = (space, source)
+        self.data_specs = (space, self._sources)
 
         def getFeatures(indexes):
             """

@@ -5,7 +5,7 @@ import theano.tensor as T
 from theano import config
 
 from pylearn2.models import mlp
-from pylearn2.models.mlp import Layer
+from pylearn2.models.mlp import Layer, Linear
 from pylearn2.space import IndexSpace
 from pylearn2.space import VectorSpace
 from pylearn2.utils import sharedX
@@ -145,3 +145,76 @@ class ProjectionLayer(Layer):
         assert W.name is not None
         params = [W]
         return params
+
+class NCE(Linear):
+
+    def __init__(self, num_samples=5, noise_p = None, max_labels=1, **kwargs):
+
+        super(NCE, self).__init__(**kwargs)
+        self.__dict__.update(locals())
+        del self.self
+
+        self._max_labels = max_labels
+        self.num_samples = num_samples
+        #self.noise = sharedX(np.zeros(batch_size * self.k), dtype = 'int64')
+
+        if noise_p is None:
+            self.uniform = True
+            self.noise_p = sharedX(1. / max_labels)
+        else:
+            self.uniform = False
+            self.noise_p = sharedX(noise_p)
+            self.theano_rng = MRG_RandomStreams(max(self.rng.randint(2 ** 15), 1))
+
+        self._target_space = IndexSpace(dim=1, max_labels=max_labels)
+        self._noise_space = IndexSpace(dim=num_samples, max_labels=max_labels)
+
+    def delta(self, Y, Y_hat, k = 1):
+
+        if Y.ndim != 1:
+            Y = Y.flatten().dimshuffle(0)
+
+        if self.uniform is True:
+            rval = Y_hat - T.log(self.k * self.noise_p)
+
+        # Not sure what score should be in this case 
+        # else:
+        #     rval = self.score(X, Y, k = k)
+        #     rval = rval - T.log(self.k * self.noise_p[Y]).reshape(rval.shape)
+        return T.cast(rval, config.floatX)
+
+    def get_noise(self):
+
+        if self.uniform:
+            if self.batch_size is None:
+                raise NameError("Since numpy random is faster, batch_size is required")
+            #noise = self.rng.randint(0, self.dict_size - 1, self.batch_size * self.k)
+            #self.noise.set_value(noise)
+            rval = self.theano_rng.random_integers(
+                low = 0, 
+                high = self.dict_size -1,
+                size = (self.batch_size * self.num_samples)
+            )
+        else:
+            #rval = self.rng.multinomial(n = 1, pvals = self.noise_p.get_value(), size = self.batch_size * self.k)
+            rval = self.theano_rng.multinomial(pvals = T.repeat(
+                self.noise_p.reshape((1, self.dict_size)),
+                repeats= self.k * self.batch_size, axis=0)
+            )
+            # !!! Why argmax here?
+            rval = T.argmax(rval, axis=1)
+        return rval
+
+    def cost(self, Y, Y_hat):
+        noise = self.get_noise()
+        pos = T.nnet.sigmoid(self.delta(Y_hat, Y))
+        neg = 1. - T.nnet.sigmoid((self.delta(Y_hat, noise, k = self.k)))
+        neg = neg.sum(axis=0)
+
+        rval = T.log(pos) + self.k * T.log(neg)
+        #rval = T.log(pos) + T.log(neg)
+        return -rval.mean()
+
+        
+        
+        
