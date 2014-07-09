@@ -7,7 +7,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from theano.compat.python2x import OrderedDict
 from pylearn2.models.mlp import MLP
 from pylearn2.models.mlp import Softmax
-from pylearn2.models.mlp import Layer
+from pylearn2.models.mlp import Layer, RectifiedLinear
 from pylearn2.monitor import get_monitor_doc
 from pylearn2.space import VectorSpace, IndexSpace, CompositeSpace
 from pylearn2.format.target_format import OneHotFormatter
@@ -16,6 +16,7 @@ from pylearn2.utils import sharedX
 from pylearn2.sandbox.nlp.linear.matrixmul import MatrixMul
 from pylearn2.models.model import Model
 from pylearn2.utils import as_floatX
+from theano.tensor.signal.conv import conv2d
 #import ipdb
 
 
@@ -593,3 +594,36 @@ class SelfGated(Layer):
         ipdb.set_trace()
         grads[0] *= self.mask.T
         return grads
+
+class SelfGatedRelu(RectifiedLinear):
+
+    # Note only works if input and output_dim are same
+    # and mod(dim, group_size) == 0
+
+    def __init__(self, group_size, **kwargs):
+        super(SelfGatedRelu, self).__init__(**kwargs)
+        self.group_size = group_size
+        mask_filter = np.ones((group_size, group_size))
+        self.mask_filter = sharedX(mask_filter)
+
+
+    def _linear_part(self, state_below):
+
+        self.input_space.validate(state_below)
+        if self.requires_reformat:
+            state_below = self.input_space.format_as(state_belpw,
+                                                     self.desired_space)
+        W, = self.transformer.get_params()
+        filter = conv2d(W, self.mask_filter, border_mode='valid', subsample=(self.group_size, self.group_size))
+        mask = T.switch(T.ge(filter, filter.mean()), filter, 0.)
+        #mask = T.switch(T.ge(filter, filter.mean() / self.group_size ** 2.), filter, 0.)
+        mask = T.extra_ops.repeat(mask, self.group_size, axis=0)
+        mask = T.extra_ops.repeat(mask, self.group_size, axis=1)
+        z = T.dot(state_below, W * mask)
+        if self.use_bias:
+            z += self.b
+
+        if self.layer_name is not None:
+            z.name = self.layer_name + '_z'
+
+        return z
