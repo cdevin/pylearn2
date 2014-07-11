@@ -1,0 +1,3 @@
+!obj:pylearn2.datasets.icml07.RectanglesImage {
+    which_set: 'train'
+}

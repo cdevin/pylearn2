@@ -1,0 +1,78 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.tiled.penntree.PennTree {
+        which_set: 'train',
+        seq_len: &seq_len 5
+    },
+    #model: !obj:noisylearn.projects.gating2.MLP {
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                !obj:noisylearn.projects.tiled.EmbeddingLinear {
+                    dim: 120,
+                    layer_name: 'h0',
+                    dict_dim: 10000,
+                    irange: 0.01,
+                    max_col_norm: 1.5,
+                    },
+                 !obj:pylearn2.models.maxout.Maxout {
+                     layer_name: 'h1',
+                     num_units: 200,
+                     num_pieces: 1,
+                     irange: 0.01,
+                     max_col_norm: 1.5,
+                 },
+                 !obj:noisylearn.projects.gating2.NCE {
+                     max_col_norm: 1.5,
+                     layer_name: 'y',
+                     n_classes: 10000,
+                     irange: 0.01,
+                 }
+                ],
+        nvis: *seq_len,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 256,
+        learning_rate: 0.01,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                'train' : *train,
+                'valid' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'valid',
+                    seq_len: *seq_len,
+                },
+                'test' : !obj:noisylearn.projects.tiled.penntree.PennTree {
+                    which_set: 'test',
+                    seq_len: *seq_len,
+                },
+            },
+        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            #input_include_probs: { 'h0' : .8 },
+            #input_scales: { 'h0': 1. }
+        #},
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_perplexity",
+            prop_decrease: 0,
+            N: 100
+        },
+    },
+    extensions: [
+        #!obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             #channel_name: 'valid_y_perplexity',
+             #save_path: "%(save_path)sbest.pkl"
+        #},
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 50,
+            final_momentum: 0.7
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 50,
+            decay_factor: 0.001
+        },
+    ],
+    #save_path: "last.pkl",
+    #save_freq: 1
+}

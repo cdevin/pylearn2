@@ -1,0 +1,128 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
+        which_set: 'splitted_train',
+        path: %(data_path)s
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        batch_size: 128,
+        layers: [
+                 !obj:galatea.remu.ConvReMU  {
+                     layer_name: 'h0',
+                     pad: 1,
+                     num_channels: %(h0_num_channels)i,
+                     num_pieces: %(h0_num_pieces)i,
+                     kernel_shape: [%(h0_kernel_shape)i, %(h0_kernel_shape)i],
+                     pool_shape: [%(h0_pool_shape)i, %(h0_pool_shape)i],
+                     pool_stride: [%(h0_pool_stride)i, %(h0_pool_stride)i],
+                     %(h0_init)s,
+                     islope: %(h0_islope)f,
+                 },
+                !obj:galatea.remu.ConvReMU  {
+                     layer_name: 'h1',
+                     pad: 1,
+                     num_channels: %(h1_num_channels)i,
+                     num_pieces: %(h1_num_pieces)i,
+                     kernel_shape: [%(h1_kernel_shape)i, %(h1_kernel_shape)i],
+                     pool_shape: [%(h1_pool_shape)i, %(h1_pool_shape)i],
+                     pool_stride: [%(h1_pool_stride)i, %(h1_pool_stride)i],
+                     %(h1_init)s,
+                     islope: %(h1_islope)f,
+                 },
+                !obj:galatea.remu.ConvReMU  {
+                     layer_name: 'h2',
+                     pad: 1,
+                     num_channels: %(h2_num_channels)i,
+                     num_pieces: %(h2_num_pieces)i,
+                     kernel_shape: [%(h2_kernel_shape)i, %(h2_kernel_shape)i],
+                     pool_shape: [%(h2_pool_shape)i, %(h2_pool_shape)i],
+                     pool_stride: [%(h2_pool_stride)i, %(h2_pool_stride)i],
+                     %(h2_init)s,
+                     islope: %(h2_islope)f,
+                 },
+                !obj:galatea.remu.RestrictedMaxout {
+                     layer_name: 'h3',
+                     num_units: %(h3_num_units)i,
+                     num_pieces: %(h3_num_pieces)i,
+                     %(h3_init)s,
+                     islope: %(h3_islope)f,
+                     W_lr_scale: %(h3_w_scale)f,
+                     slope_lr_scale: %(h3_slope_scale)f,
+                 },
+                !obj:galatea.remu.RestrictedMaxout {
+                     layer_name: 'h4',
+                     num_units: %(h4_num_units)i,
+                     num_pieces: %(h4_num_pieces)i,
+                     %(h4_init)s,
+                     islope: %(h4_islope)f,
+                     W_lr_scale: %(h4_w_scale)f,
+                     slope_lr_scale: %(h4_slope_scale)f,
+                 },
+
+                 !obj:pylearn2.models.mlp.Softmax {
+                     max_col_norm: %(y_max_col_norm)f,
+                     layer_name: 'y',
+                     n_classes: 10,
+                     %(y_init)s,
+                 }
+                ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [32, 32],
+            num_channels: 3,
+            axes: ['c', 0, 1, 'b'],
+        },
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        learning_rate: %(learning_rate)f,
+        init_momentum: .5,
+        train_iteration_mode: 'batchwise_shuffled_sequential',
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'valid',
+                              path: %(data_path)s,
+                          },
+                'test' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'test',
+                              path: %(data_path)s,
+                          }
+            },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8 },
+            input_scales: { 'h0': 1. }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.Or {
+            criteria: [
+                !obj:pylearn2.termination_criteria.MonitorBased {
+                    channel_name: "valid_y_misclass",
+                    prop_decrease: 0,
+                    N: 100
+                },
+                !obj:pylearn2.termination_criteria.ChannelInf {
+                    channel_name: 'valid_y_objective'
+                },
+            ],
+        },
+
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_misclass',
+             save_path: "%(save_path)sbest.pkl"
+        },
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: 1,
+            saturate: %(momentum_saturate)i,
+            final_momentum: %(final_momentum)f,
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: %(lr_sat)i,
+            decay_factor: %(lr_decay)f
+        },
+
+    ],
+    save_path: "%(save_path)slast.pkl",
+    save_freq: 1
+}
+

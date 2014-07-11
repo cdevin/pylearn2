@@ -1,0 +1,82 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
+        which_set: 'splitted_train',
+        path: "${SVHN_LOCAL_PATH}",
+        axes: ['c', 0, 1, 'b']
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        batch_size: 128,
+        layers: [
+            !obj:noisylearn.projects.columns.Columns_Connected {
+                layer_name: 'columns',
+                main_column: !pkl: "${PYLEARN2_EXP_RESULTS}/columns/svhn/maincol.pkl",
+                small_column: 'exp/svhn_small.yaml',
+                num_columns: 30,
+            },
+        !obj:pylearn2.models.mlp.Softmax {
+                         max_col_norm: 1.9365,
+                         layer_name: 'y',
+                         n_classes: 10,
+                         irange: .005
+                     },
+        ],
+    input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [32, 32],
+            num_channels: 3,
+            axes: ['c', 0, 1, 'b'],
+        },
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        train_iteration_mode: 'batchwise_shuffled_sequential',
+        #monitor_iteration_mode: 'batchwise_shuffled_sequential',
+        learning_rate: 0.200000,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: 0.5,
+        },
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'valid',
+                              path: "${SVHN_LOCAL_PATH}",
+                              axes: ['c', 0, 1, 'b'],
+                          },
+                'test' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'test',
+                              path: "${SVHN_LOCAL_PATH}",
+                              axes: ['c', 0, 1, 'b'],
+                          }
+            },
+        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            #input_include_probs: { 'h0' : .8 },
+            #input_scales: { 'h0': 1. }
+        #},
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_misclass",
+            prop_decrease: 0.,
+            N: 100
+        },
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_misclass',
+             save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/best.pkl",
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: .6
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 250,
+            decay_factor: 0.001000
+        },
+    ],
+    save_freq: 1,
+    save_path: "${PYLEARN2_EXP_RESULTS}/columns/svhn/last.pkl"
+}
+
+
+
+

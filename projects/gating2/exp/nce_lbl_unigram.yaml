@@ -1,0 +1,65 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+        which_set: 'train',
+        context_len: &context_len %(context_len)i,
+    },
+    model: !obj:noisylearn.projects.gating2.vLBL_NCE {
+        batch_size: &batch_size %(batch_size)i,
+        noise_p: !pkl: '${PYLEARN2_DATA_PATH}/PennTreebankCorpus/penntree_unigram.npy',
+        dict_size: 10000,
+        dim: %(dim)i,
+        context_length: *context_len,
+        k: %(nce_k)i,
+        %(irange)s,
+        max_col_norm: %(max_col_norm)f,
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: *batch_size,
+        train_iteration_mode: 'even_shuffled_sequential',
+        monitor_iteration_mode: 'even_shuffled_sequential',
+        learning_rate: %(learning_rate)f,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                        which_set: 'valid',
+                        context_len: *context_len
+                },
+                'test' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                        which_set: 'test',
+                        context_len: *context_len
+                },
+            },
+        #cost: !obj:noisylearn.projects.gating2.cost.NCE {}
+        cost: !obj:pylearn2.costs.mlp.Default {},
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_perplexity",
+            prop_decrease: 0.,
+            N: 100
+        },
+        #termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            #max_epochs: 1
+        #},
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_perplexity',
+             save_path: "%(save_path)sbest.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: %(momentum_saturate)i,
+            final_momentum: %(final_momentum)f
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: %(lr_saturate)i,
+            decay_factor: %(lr_decay)f,
+        },
+    ],
+    save_path: "%(save_path)slast.pkl",
+    save_freq: 1
+}

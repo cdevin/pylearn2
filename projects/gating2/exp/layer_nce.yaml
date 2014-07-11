@@ -1,0 +1,97 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.gating2.dataset.NoiseDataset {
+            dataset: !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                which_set: 'train',
+                context_len: &context_len 5
+            },
+            noise_p: &noise_p !pkl: 'penntree_unigram.npy',
+            num_noise: &num_noise 10,
+    },
+    model: !obj:noisylearn.projects.gating2.nce.MLP_NCE {
+        batch_size: &batch_size 100,
+        k: *num_noise,
+        layers: [
+                !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
+                        layer_name: 'projection',
+                        dim: &dim 100,
+                        irange: 0.01,
+                    },
+                 !obj:pylearn2.models.mlp.Linear {
+                     layer_name: 'h0',
+                     dim: 300,
+                     irange: .05,
+                     max_col_norm: 10,
+                     min_col_norm: -10,
+                 },
+                 !obj:pylearn2.models.mlp.Linear {
+                     layer_name: 'h1',
+                     dim: 500,
+                     irange: .05,
+                     max_col_norm: 10,
+                     min_col_norm: -10,
+                 },
+                 !obj:pylearn2.models.mlp.Linear {
+                     layer_name: 'h2',
+                     dim: 10000,
+                     irange: .05,
+                     max_col_norm: 10,
+                     min_col_norm: -10,
+                 },
+                 !obj:noisylearn.projects.gating2.nce.NCE {
+                    num_noise_samples: *num_noise,
+                    noise_prob: *noise_p,
+                     layer_name: 'nce',
+                     n_classes: &n_classes 10000,
+                 }
+                ],
+
+        input_space: !obj:pylearn2.space.IndexSpace {
+            dim: 5,
+            max_labels: 10000
+        }
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: *batch_size,
+        learning_rate: 1.,
+        #init_momentum: 0.5,
+        train_iteration_mode: 'even_shuffled_sequential',
+        monitor_iteration_mode: 'even_shuffled_sequential',
+        termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs: 1
+        },
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        # monitoring_dataset:
+        #     {
+        #         'valid' : &valid !obj:noisylearn.projects.gating2.dataset.NoiseDataset {
+        #                 dataset: !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+        #                     which_set: 'valid',
+        #                     context_len: *context_len
+        #                 },
+        #                 noise_p: *noise_p,
+        #                 num_noise: *num_noise,
+        #         },
+        #     },
+        cost: !obj:noisylearn.projects.gating2.nce.Cost_noise {},
+
+    },
+    extensions: [
+        # !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+        #      channel_name: 'valid_nce_perplexity',
+        #      save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+        # },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 50,
+            final_momentum: 0.7
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 100,
+            decay_factor: 0.0001
+        },
+    ],
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_last.pkl",
+    save_freq: 1
+}

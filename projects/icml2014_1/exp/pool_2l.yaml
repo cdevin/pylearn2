@@ -1,0 +1,132 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:noisylearn.projects.icml2014_1.gfd.GFD2 {
+        which_set: 'train',
+        axes: ['c', 0, 1, 'b'],
+        path: '${PYLEARN2_DATA_CUSTOM}/gfd/standard/'
+    },
+    model: !obj:noisylearn.projects.icml2014_1.mlp.BranchMLP {
+        batch_size: 128,
+        layers: [
+                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                     layer_name: 'h0',
+                     pad: 4,
+                     tied_b: 1,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: %(h0_channels)i,
+                     num_pieces: %(h0_pieces)i,
+                     kernel_shape: [8, 8],
+                     pool_shape: [4, 4],
+                     pool_stride: [2, 2],
+                     irange: .005,
+                     max_kernel_norm: .9,
+                 },
+                 #!obj:pylearn2.models.maxout.Maxout {
+                    #layer_name: 'h1',
+                    #irange: .005,
+                    #num_units: %(h1_units)i,
+                    #num_pieces: %(h1_pieces)i,
+                    #max_col_norm: 1.9
+                 #},
+                !obj:noisylearn.projects.icml2014_1.maxout.Maxout2 {
+                    layer_name: 'h2',
+                    irange: .005,
+                    num_units: %(h2_units)i,
+                    num_pieces: %(h2_pieces)i,
+                    pool_group_size: %(h2_pieces)i,
+                    max_col_norm: 1.9
+                 },
+                [
+                 !obj:noisylearn.projects.icml2014_1.mlp.NestedMLP {
+                    layers: [
+                        !obj:pylearn2.models.maxout.Maxout {
+                                layer_name: 'h1',
+                                irange: .005,
+                                num_units: %(yh0_units)i,
+                                num_pieces: %(yh0_pieces)i,
+                                max_col_norm: 1.9
+                             },
+                        !obj:noisylearn.projects.icml2014_1.mlp.Sigmoid {
+                             monitor_style: 'tagging',
+                             max_col_norm: 1.9365,
+                             layer_name: 'y',
+                             dim: 166,
+                             irange: .005
+                         },
+                    ],
+                    layer_name: 'y_mlp',
+                    nvis: %(h2_units)i
+                },
+                 !obj:noisylearn.projects.icml2014_1.mlp.NestedMLP {
+                    layers: [
+                       !obj:pylearn2.models.maxout.Maxout {
+                                layer_name: 'h1',
+                                irange: .005,
+                                num_units: %(y2h0_units)i,
+                                num_pieces: %(y2h0_pieces)i,
+                                max_col_norm: 1.9
+                             },
+                         !obj:noisylearn.projects.icml2014_1.mlp.Sigmoid {
+                             monitor_style: 'tagging',
+                             max_col_norm: 1.9365,
+                             layer_name: 'y2',
+                             dim: 8,
+                             irange: .005
+                         },
+                    ],
+                    layer_name: 'y2_mlp',
+                    nvis: %(h2_units)i
+                },
+                ],
+            ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [48, 48],
+            num_channels: 1,
+            axes: ['c', 0, 1, 'b'],
+        },
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        train_iteration_mode: 'batchwise_shuffled_sequential',
+        learning_rate: %(lr)f,
+        init_momentum: .5,
+        monitoring_dataset:
+            {
+                'valid' : !obj:noisylearn.projects.icml2014_1.gfd.GFD2 {
+                              axes: ['c', 0, 1, 'b'],
+                              which_set: 'valid',
+                              path: '${PYLEARN2_DATA_CUSTOM}/gfd/standard/'
+                          },
+            },
+        cost: !obj:noisylearn.projects.icml2014_1.missing_target_cost.MissingTargetCost {
+            dropout_args: {
+                input_include_probs: { 'h0' : .8 },
+                input_scales: { 'h0': 1. }
+            }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_mlp_y_mistagging",
+            prop_decrease: 0.,
+            N: 100
+        },
+        update_callbacks: !obj:pylearn2.training_algorithms.sgd.ExponentialDecay {
+            decay_factor: 1.00004,
+            min_lr: .000001
+        }
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_mlp_y_mistagging',
+             save_path: "%(save_path)sbest.pkl"
+        },
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: %(final_momentum)f
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 250,
+            decay_factor: %(lr_decay)f
+        }
+    ],
+}

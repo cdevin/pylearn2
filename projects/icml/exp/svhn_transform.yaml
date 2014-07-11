@@ -1,0 +1,127 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.datasets.svhn.SVHN {
+        which_set: 'splitted_train',
+        path: %(data_path)s,
+        axes: ['c', 0, 1, 'b']
+    },
+    model: !obj:pylearn2.models.mlp.MLP {
+        batch_size: 128,
+        layers: [
+                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                     layer_name: 'h0',
+                     pad: 4,
+                     tied_b: 1,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: %(num_channels_0)i,
+                     num_pieces: 2,
+                     kernel_shape: [5, 5],
+                     pool_shape: [3, 3],
+                     pool_stride: [2, 2],
+                     irange: %(irange)f,
+                     max_kernel_norm: .9,
+                 },
+                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                     layer_name: 'h1',
+                     pad: 3,
+                     tied_b: 1,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: %(num_channels_1)i,
+                     num_pieces: 2,
+                     kernel_shape: [5, 5],
+                     pool_shape: [3, 3],
+                     pool_stride: [2, 2],
+                     irange: %(irange)f,
+                     max_kernel_norm: 1.9365,
+                 },
+                 !obj:pylearn2.models.maxout.MaxoutConvC01B {
+                     pad: 3,
+                     layer_name: 'h2',
+                     tied_b: 1,
+                     W_lr_scale: .05,
+                     b_lr_scale: .05,
+                     num_channels: %(num_channels_2)i,
+                     num_pieces: 2,
+                     kernel_shape: [5, 5],
+                     pool_shape: [3, 3],
+                     pool_stride: [2, 2],
+                     irange: %(irange)f,
+                     max_kernel_norm: 1.9365,
+                 },
+                 !obj:pylearn2.models.maxout.Maxout {
+                    layer_name: 'h3',
+                    irange: .005,
+                    num_units: %(num_units_0)i,
+                    num_pieces: 5,
+                    max_col_norm: 1.9
+                 },
+                 !obj:pylearn2.models.mlp.Softmax {
+                     max_col_norm: 1.9365,
+                     layer_name: 'y',
+                     n_classes: 10,
+                     irange: %(irange)f
+                 }
+                ],
+        input_space: !obj:pylearn2.space.Conv2DSpace {
+            shape: [32, 32],
+            num_channels: 3,
+            axes: ['c', 0, 1, 'b'],
+        },
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        train_iteration_mode: 'batchwise_shuffled_equential',
+        learning_rate: %(learning_rate)f,
+        init_momentum: .5,
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'valid',
+                              path: %(data_path)s,
+                              axes: ['c', 0, 1, 'b'],
+                          },
+                'test' : !obj:pylearn2.datasets.svhn.SVHN {
+                              which_set: 'test',
+                              path: %(data_path)s,
+                              axes: ['c', 0, 1, 'b'],
+                          }
+            },
+        cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+            input_include_probs: { 'h0' : .8},
+            input_scales: { 'h0' : 1. }
+        },
+        termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            channel_name: "valid_y_misclass",
+            prop_decrease: 0.,
+            N: 100
+        },
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_y_misclass',
+             save_path: "%(save_path)sbest.%(file_type)s"
+        },
+        !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+            start: 1,
+            saturate: 250,
+            final_momentum: .6
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 250,
+            decay_factor: %(decay_factor)f
+        },
+        !obj:noisy_encoder.utils.best_params.MonitorBasedBest {
+            channel_name: 'valid_y_misclass',
+            save_channel_names: ['valid_y_misclass'],
+        },
+        !obj:pylearn2.train_extensions.window_flip.WindowAndFlipC01B {
+            window_shape: [28, 28],
+            randomize: [*train],
+            flip: False,
+        },
+    ],
+    save_path: "%(save_path)slast.%(file_type)s",
+    save_freq: 1
+}

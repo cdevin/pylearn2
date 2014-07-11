@@ -1,0 +1,38 @@
+
+!obj:pylearn2.train.Train {
+    "dataset": !pkl: /RQexec/mirzameh/data/faces/TFD/pylearn2/0/train.pkl,
+    "model": !obj:noisy_encoder.models.conv.LeNet {
+        "image_shape" : [48, 48],
+        "kernel_shapes" : [[7,7], [4, 4], [4, 4]],
+        "nchannels" : [1, 20, 50, 80],
+        "pool_shapes" : [[2,2], [2, 2], [2, 2]],
+        "batch_size" : 100,
+        "conv_act" : rectifier,
+        "mlp_act" : rectifier,
+        "mlp_input_corruption_levels" : [0.0, 0.0],
+        "mlp_hidden_corruption_levels" : [0.5, 0.5],
+        "mlp_nunits" : [1000, 500],
+        "n_outs" : 7,
+        "irange" : 0.100000,
+        "bias_init": 0.100000
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : 0.001000,
+        "batch_size" : 100,
+        "monitoring_dataset" : !pkl: /RQexec/mirzameh/data/faces/TFD/pylearn2/0/train.pkl,
+        "init_momentum" : 0.500000,
+        "monitoring_dataset" : {"train" : !pkl: /RQexec/mirzameh/data/faces/TFD/pylearn2/0/train.pkl,
+            "valid" : !pkl: /RQexec/mirzameh/data/faces/TFD/pylearn2/0/valid.pkl, "test" : !pkl: /RQexec/mirzameh/data/faces/TFD/pylearn2/0/test.pkl},
+        "cost" : !obj:pylearn2.costs.cost.MethodCost {"method" : "negative_log_likelihood" , "supervised" : True},
+        "termination_criterion" : !obj:pylearn2.training_algorithms.sgd.EpochCounter {
+            "max_epochs": 1000,
+        },
+    },
+    "extensions" : [!obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+                    "final_momentum" : 0.900000,
+                    "start" : 10.000000,
+                    "saturate" : 30.000000}],
+
+    "save_path": /RQexec/mirzameh/tmp/naenc/tfd/conv.pkl,
+    "save_freq": 100
+}

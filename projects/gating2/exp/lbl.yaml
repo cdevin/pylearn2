@@ -1,0 +1,61 @@
+!obj:pylearn2.train.Train {
+    dataset: &train !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+        which_set: 'train',
+        context_len: &context_len 5
+    },
+    model: !obj:noisylearn.projects.gating2.vLBL {
+        dict_size: 10000,
+        dim: 500,
+        context_length: *context_len,
+        k: 5
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 100,
+        train_iteration_mode: 'even_shuffled_sequential',
+        monitor_iteration_mode: 'even_shuffled_sequential',
+        learning_rate: 0.1,
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        monitoring_dataset:
+            {
+                #'train' : *train,
+                'valid' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                        which_set: 'valid',
+                        context_len: *context_len
+                },
+                'test' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                        which_set: 'test',
+                        context_len: *context_len
+                },
+            },
+        #cost: !obj:noisylearn.projects.gating2.cost.NCE {}
+        cost: !obj:pylearn2.costs.mlp.Default {}
+        #termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+            #channel_name: "valid_y_perplexity",
+            #prop_decrease: 0,
+            #N: 100
+        #},
+        #termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            #max_epochs: 1
+        #},
+    },
+    extensions: [
+        !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+             channel_name: 'valid_perplexity',
+             save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}best.pkl"
+        },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 50,
+            final_momentum: 0.7
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 100,
+            decay_factor: 0.001
+        },
+    ],
+    #save_path: "last.pkl",
+    #save_freq: 1
+}
