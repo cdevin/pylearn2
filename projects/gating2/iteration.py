@@ -151,6 +151,78 @@ class NoiseIterator(FiniteDatasetIterator):
         return rval
 
 
+class NoiseSequenceIterator(NoiseIterator):
+
+    def __init__(self, dataset, subset_iterator, noise_p=None, data_specs=None,
+            return_tuple=False, convert=None, num_noise=None):
+
+        super(NoiseSequenceIterator, self).__init__(dataset=dataset,
+                                            subset_iterator=subset_iterator,
+                                            noise_p = noise_p,
+                                            num_noise = num_noise,
+                                            data_specs=data_specs,
+                                            return_tuple=return_tuple,
+                                            convert=convert)
+
+    def get_seq(self, ind):
+        return format_sentence(data = self._raw_data[0],
+                        seq_len = self._dataset.seq_len,
+                        ind = ind ,
+                        begin = self._dataset.begin_sentence,
+                        end = self._dataset.end_sentence)
+
+
+    def next(self):
+        """
+        Retrieves the next batch of examples.
+
+        Returns
+        -------
+        next_batch : object
+            An object representing a mini-batch of data, conforming
+            to the space specified in the `data_specs` constructor
+            argument to this iterator. Will be a tuple if more
+            than one data source was specified or if the constructor
+            parameter `return_tuple` was `True`.
+
+        Raises
+        ------
+        StopIteration
+            When there are no more batches to return.
+        """
+        next_index = self._subset_iterator.next()
+        targets = False
+        aux_targets = False
+        y = self._raw_data[0][next_index].reshape((self.batch_size, 1))
+        
+	print "batch {}/{}".format(self.current, self.num_batches)    
+        self.current += 1
+
+        if 'noises' in self._source:
+            self._raw_data = list(self._raw_data)
+            self._raw_data[self._source.index('noises')] = self.get_noise()
+
+        rval = []
+        for data, fn, sc in safe_izip(self._raw_data, self._convert, self._source):
+            if sc == 'noises':
+                if fn:
+                    rval.append(fn(self.get_noise()))
+                else:
+                    rval.append(self.get_noise())
+            else:
+                if isinstance(next_index, slice):
+                        next_index = slice_to_list(next_index)
+                x = np.asarray([self.get_seq(next_index[i]) for i in xrange(self.batch_size)])
+                if fn:
+                    rval.append(fn(x))
+                    rval.append(fn(y))
+                else:
+                    rval.append(x)
+                    rval.append(y)
+        rval = tuple(rval)
+        if not self._return_tuple and len(rval) == 1:
+            rval, = rval
+        return rval
 
 #----
 # https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/

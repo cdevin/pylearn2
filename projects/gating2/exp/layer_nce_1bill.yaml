@@ -1,0 +1,96 @@
+
+<!-- saved from url=(0388)https://raw.githubusercontent.com/rahul003/noisylearn/ba92a1bf16445ab606d2f590ea3d8407e38e35c0/projects/gating2/exp/layer_nce_1bill.yaml?token=3457240__eyJzY29wZSI6IlJhd0Jsb2I6cmFodWwwMDMvbm9pc3lsZWFybi9iYTkyYTFiZjE2NDQ1YWI2MDZkMmY1OTBlYTNkODQwN2UzOGUzNWMwL3Byb2plY3RzL2dhdGluZzIvZXhwL2xheWVyX25jZV8xYmlsbC55YW1sIiwiZXhwaXJlcyI6MTQwNTcwOTEyM30%3D--4c00dd32e81be7e41976ca9630cfdcc1915f03fd -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style type="text/css"></style></head><body><div id="StayFocusd-infobar" style="display:none;">
+    <img src="chrome-extension://laankejkbhbdhmipfmgcngdelahlfoji/common/img/eye_19x19_red.png">
+    <span id="StayFocusd-infobar-msg"></span>
+    <span id="StayFocusd-infobar-links">
+        <a id="StayFocusd-infobar-never-show">hide forever</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+        <a id="StayFocusd-infobar-hide">hide once</a>
+    </span>
+</div><pre style="word-wrap: break-word; white-space: pre-wrap;">!obj:pylearn2.train.Train {
+    dataset: &amp;train !obj:noisylearn.projects.gating2.dataset.NoiseDataset {
+            dataset: !obj:noisylearn.projects.gating2.one_billion.OneBillionWord {
+                which_set: 'train',
+                context_len: &amp;context_len 5
+            },
+            noise_p: &amp;noise_p !pkl: '/data/lisatmp2/huilgolr/data/onebill_unigram.npy',
+            num_noise: &amp;num_noise 10,
+            X_labels: 793471,
+            Y_labels: 793471,
+            is_sequence_dataset: True,
+    },
+    model: !obj:noisylearn.projects.gating2.nce.MLP_NCE {
+        batch_size: &amp;batch_size 100,
+        k: *num_noise,
+        layers: [
+                !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
+                        layer_name: 'projection',
+                        dim: &amp;dim 100,
+                        irange: 0.01,
+                    },
+                 !obj:pylearn2.models.mlp.Linear {
+                     layer_name: 'h2',
+                     dim: 10000,
+                     irange: .05,
+                     max_col_norm: 10,
+                     min_col_norm: -10,
+                 },
+                 !obj:noisylearn.projects.gating2.nce.NCE {
+                    num_noise_samples: *num_noise,
+                    noise_prob: *noise_p,
+                     layer_name: 'nce',
+                     n_classes: &amp;n_classes 10000,
+                 }
+                ],
+
+        input_space: !obj:pylearn2.space.IndexSpace {
+            dim: 5,
+            max_labels: 10000
+        }
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: *batch_size,
+        learning_rate: 1.,
+        #init_momentum: 0.5,
+        train_iteration_mode: 'even_shuffled_sequential',
+        monitor_iteration_mode: 'even_shuffled_sequential',
+        termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs: 1
+        },
+        learning_rule: !obj:pylearn2.training_algorithms.learning_rule.Momentum {
+            init_momentum: .5,
+        },
+        # monitoring_dataset:
+        #     {
+        #         'valid' : &amp;valid !obj:noisylearn.projects.gating2.dataset.NoiseDataset {
+        #                 dataset: !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+        #                     which_set: 'valid',
+        #                     context_len: *context_len
+        #                 },
+        #                 noise_p: *noise_p,
+        #                 num_noise: *num_noise,
+        #         },
+        #     },
+        cost: !obj:noisylearn.projects.gating2.nce.Cost_noise {},
+
+    },
+    extensions: [
+        # !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+        #      channel_name: 'valid_nce_perplexity',
+        #      save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+        # },
+        !obj:pylearn2.training_algorithms.learning_rule.MomentumAdjustor {
+            start: 1,
+            saturate: 50,
+            final_momentum: 0.7
+        },
+        !obj:pylearn2.training_algorithms.sgd.LinearDecayOverEpoch {
+            start: 1,
+            saturate: 100,
+            decay_factor: 0.0001
+        },
+    ],
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_last.pkl",
+    save_freq: 1
+}
+</pre><span style="margin: 0px auto; border: 2px dotted rgb(255, 165, 0); position: absolute; z-index: 2147483647; visibility: hidden; left: 590px; width: 0px; top: 214px; height: 0px;"></span><span style="z-index: 2147483647; position: absolute; visibility: hidden; left: 575px; width: 50px; top: 199px; height: 20px; font-size: 10px; color: black;"></span></body></html>

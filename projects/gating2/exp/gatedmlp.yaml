@@ -1,0 +1,166 @@
+!obj:pylearn2.train.Train {
+    dataset: !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                which_set: 'train',
+                context_len: &context_len 6,
+            },
+    model: !obj:pylearn2.models.mlp.MLP {
+        layers: [
+                !obj:noisylearn.projects.gating2.gatedmlp.ProjectionLayerGater {
+                        layer_name: 'projection',
+                        dim: &dim 50,
+                        num_blocks: &projnum_blocks 6,
+                        block_size: 50,
+                        irange: 0.01,
+                    },
+                 !obj:noisylearn.projects.gating2.gatedmlp.MLP_GatedLinear_Op {
+                     layer_name: 'h0',
+                     #dim: 2000,
+                     num_blocks: &h0num_blocks 200,
+                     block_size: &h0block_size 16,
+                     irange: .005,
+                     #max_col_norm: 1.9365,
+                     gater: !obj:pylearn2.models.mlp.MLP {
+                            layers: [
+                                !obj:pylearn2.models.mlp.RectifiedLinear {
+                                    layer_name: 'h0.h0',
+                                    dim: 25,
+                                    max_col_norm: 2,
+                                    irange: .005
+                                },
+                                !obj:pylearn2.models.mlp.RectifiedLinear {
+                                    layer_name: 'h0.h1',
+                                    dim: *h0num_blocks,
+                                    max_col_norm: 2,
+                                    irange: .005
+                                },
+                            ],
+                            nvis: 300
+                        }
+                 },
+                 !obj:noisylearn.projects.gating2.gatedmlp.MLP_GatedLinear_Op {
+                     layer_name: 'h1',
+                     num_blocks: &h1num_blocks 200,
+                     block_size: &h1block_size 16,
+                     #dim: 2000,
+                     irange: .005,
+                     #max_col_norm: 1.9365,
+                     gater: !obj:pylearn2.models.mlp.MLP {
+                            layers: [
+                                !obj:pylearn2.models.mlp.RectifiedLinear {
+                                    layer_name: 'h1.h0',
+                                    dim: 25,
+                                    max_col_norm: 2,
+                                    irange: .005
+                                },
+                                !obj:pylearn2.models.mlp.RectifiedLinear {
+                                    layer_name: 'h1.h1',
+                                    dim: *h1num_blocks,
+                                    max_col_norm: 2,
+                                    irange: .005
+                                },
+                                 #     !obj:pylearn2.models.mlp.Softmax {
+                                 #     max_col_norm: 1.9365,
+                                 #     layer_name: 'yh0',
+                                 #     n_classes: *h0num_blocks,
+                                 #     irange: .005
+                                 # }
+                            ],
+                            nvis: 160
+                            #3200
+                        }
+                 },
+                 # !obj:noisylearn.projects.gating2.gatedmlp.MLP_GatedLinear_Op {
+                 #     layer_name: 'h2',
+                 #     num_blocks: &h2num_blocks 200,
+                 #     block_size: &h2block_size 16,
+                 #     #dim: 2000,
+                 #     irange: .005,
+                 #     #max_col_norm: 1.9365,
+                 #     gater: !obj:pylearn2.models.mlp.MLP {
+                 #            layers: [
+                 #                !obj:pylearn2.models.mlp.RectifiedLinear {
+                 #                    layer_name: 'h2.h0',
+                 #                    dim: 25,
+                 #                    max_col_norm: 2,
+                 #                    irange: .005
+                 #                },
+                 #                !obj:pylearn2.models.mlp.RectifiedLinear {
+                 #                    layer_name: 'h2.h1',
+                 #                    dim: *h2num_blocks,
+                 #                    max_col_norm: 2,
+                 #                    irange: .005
+                 #                },
+                 #                 #     !obj:pylearn2.models.mlp.Softmax {
+                 #                 #     max_col_norm: 1.9365,
+                 #                 #     layer_name: 'yh0',
+                 #                 #     n_classes: *h0num_blocks,
+                 #                 #     irange: .005
+                 #                 # }
+                 #            ],
+                 #            nvis: 3200
+                 #        }
+                 # },
+                 !obj:noisylearn.projects.gating2.gatedmlp.Softmax_flat {
+                     max_col_norm: 1.9365,
+                     layer_name: 'softmax',
+                     n_classes: 10000,
+                     irange: .005
+                 }
+                ],
+            input_space: !obj:pylearn2.space.IndexSpace {
+                dim: 6,
+                max_labels: 10000
+            }
+    },
+    algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
+        batch_size: 1,
+        learning_rate: 0.1,
+        #init_momentum: .5,
+        #monitoring_dataset:
+        #    {
+                #'train' : *train,
+                #'valid' : !obj:pylearn2.sandbox.nlp.datasets.penntree.PennTreebank {
+                #   which_set: 'valid',
+                #   context_len: *context_len,
+                #   },
+        #    },
+        #cost: !obj:pylearn2.costs.mlp.dropout.Dropout {
+        #             input_include_probs: { 'h0' : .8 },
+        #             input_scales: { 'h0': 1. }
+        #         },
+        cost: !obj:noisylearn.projects.gating2.gatedmlp.Cost {},
+
+        #cost: !obj:pylearn2.costs.cost.SumOfCosts {
+            #costs: [
+                #!obj:pylearn2.costs.mlp.dropout.Dropout {
+                    #input_include_probs: { 'h0' : .8 },
+                    #input_scales: { 'h0': 1. }
+                #},
+                #[0.1, !obj:pylearn2.costs.cost.MethodCost {
+                    #method: 'cost_sparsity'
+                #}],
+            #]
+        #},
+        termination_criterion: !obj:pylearn2.termination_criteria.EpochCounter {
+            max_epochs: 1
+        },
+        # termination_criterion: !obj:pylearn2.termination_criteria.MonitorBased {
+        #     channel_name: "valid_softmax_perplexity",
+        #     prop_decrease: 0.,
+        #     N: 100
+        # },
+    },
+    extensions: [
+        # !obj:pylearn2.train_extensions.best_params.MonitorBasedSaveBest {
+        #      channel_name: 'valid_softmax_perplexity',
+        #      save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_best.pkl"
+        # },
+        # !obj:pylearn2.training_algorithms.sgd.MomentumAdjustor {
+        #     start: 1,
+        #     saturate: 250,
+        #     final_momentum: .7
+        # },
+    ],
+    # save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}.pkl",
+    # save_freq: 1
+}

@@ -131,10 +131,12 @@ class NoiseDataset(DenseDesignMatrix):
     Sampling from multi-nomial is very expeo:
     """
 
-    def __init__(self, dataset, noise_p, num_noise):
-        super(NoiseDataset, self).__init__(X = dataset.X, y=dataset.y, X_labels = 10000, y_labels = 10000)
+    def __init__(self, dataset, noise_p, num_noise,is_sequence_dataset=False):
+        super(NoiseDataset, self).__init__(X = dataset.X, y=dataset.y)
+	#removed to also support 1-bill. also in 1-bill since y is None when initialized, check_labels has issues.
         self.noise_p = noise_p
         self.num_noise = num_noise
+	self.is_sequence_dataset = is_sequence_dataset
         spaces = CompositeSpace(components=(IndexSpace(dim=dataset.context_len, max_labels=10000, dtype='int64'),
                                 IndexSpace(dim=1, max_labels=10000, dtype='int64'),
                                 IndexSpace(dim=num_noise, max_labels=10000, dtype='int64')))
@@ -231,7 +233,8 @@ class NoiseDataset(DenseDesignMatrix):
             num_batches = getattr(self, '_iter_num_batches', None)
         if rng is None and mode.stochastic:
             rng = self.rng
-        return NoiseIterator(self,
+	if not self.is_sequence_dataset:
+	        return NoiseIterator(self,
                              mode(self.X.shape[0],
                                   batch_size,
                                   num_batches,
@@ -241,6 +244,20 @@ class NoiseDataset(DenseDesignMatrix):
                              convert=convert,
                              noise_p=self.noise_p,
                              num_noise=self.num_noise)
+	
+	else:
+		return NoiseSequenceIterator(self,
+				mode(self.X.shape[0],
+					batch_size,
+					num_batches,
+					rng),
+				data_specs = data_specs,
+				return_tuple=return_tuple,
+				convert = convert,
+				noise_p = self.noise_p,
+				num_noise=self.num_noise)
+
+
 
 
 
