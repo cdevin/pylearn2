@@ -21,6 +21,7 @@
         layer_name: 'linear_layer',
         dim: 300,
         irange: 0.01,
+        use_cosine_loss: True
       }
     ],
   },
@@ -34,6 +35,6 @@
       },
     },
   },
-  save_path: '/Tmp/devincol/mult_char_embeddings.pkl',
+  save_path: '/Tmp/devincol/mult_char_embeddings_cosine_nomask.pkl',
   save_freq: 1,
 }
