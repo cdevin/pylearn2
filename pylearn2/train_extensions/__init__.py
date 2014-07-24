@@ -115,34 +115,62 @@ class WordRelationship(TrainExtension):
     2 - 1 + 3 and 4
     """
     
-    def __init__(self, vocab, questions, vocab_size, UNK=1, n_batches=4):
+    def __init__(self, vocab, questions, vocab_size, UNK=1, n_batches=4,
+                 used_chars=False, char_dict_path=None
+    ):
         # Load the vocabulary and binarize the questions
         with open(vocab) as f:
             vocab = cPickle.load(f)
         binarized_questions = []
         categories = []
-        with open(questions) as f:
+        
+        self._used_chars = used_chars
+        if self._used_chars:
+            with open(char_dict_path) as f:
+                char_dict = cPickle.load(f)
+                
+            with open(questions) as f:
             for i, line in enumerate(f):
                 words = line.strip().lower().split()
                 if words[0] == ':':
                     categories.append((i, words[1]))
                     continue
-                binarized_questions.append([vocab.get(word, UNK)
-                                            for word in words])
+                char_words = [[char_dict[c] for c in word] for word in words]
+                char_questions.append(char_words)
+
+            self.questions = np.array(char_questions, dtype='int32')
+
+        else:
+            with open(questions) as f:
+                for i, line in enumerate(f):
+                    words = line.strip().lower().split()
+                    if words[0] == ':':
+                        categories.append((i, words[1]))
+                        continue
+                    binarized_questions.append([vocab.get(word, UNK)
+                                                for word in words])
+            self.questions = np.array(binarized_questions, dtype='int32')
+
 	self.n_batches = n_batches
         self.categories = categories
-        self.questions = np.array(binarized_questions, dtype='int32')
+
 	self.questions[self.questions >= vocab_size] = UNK
 	self.orig_n_questions = len(self.questions)
 	self.questions = self.questions[self.questions[:, 3] != UNK]
         self.n_questions = len(self.questions)
 	print self.orig_n_questions - self.n_questions, "question(s) removed due to clipped vocabulary"
+
+        
+            
 	
     @functools.wraps(TrainExtension.setup)
     def setup2(self, model, dataset, algorithm):
         # Create a Theano function that takes 3 words and returns
         # the word index with the largest cosine similarity
         word_indices = tensor.ivector('words')
+        if self._used_chars:
+            words = 
+
         embedding_matrix, = model.layers[0].transformer.get_params()
 	word_embeddings = embedding_matrix[word_indices]
         target = word_embeddings[1] - word_embeddings[0] + word_embeddings[2]
@@ -158,6 +186,7 @@ class WordRelationship(TrainExtension):
 
         self.similarity = function([word_indices],
                                    similarities[word_indices[3]])
+
 
     @functools.wraps(TrainExtension.on_monitor)
     def on_monitor2(self, model, dataset, algorithm):

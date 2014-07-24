@@ -17,11 +17,11 @@
         max_labels: 101,
         irange: 0.01,
       },
-      !obj:pylearn2.models.mlp.Tanh {
-        layer_name: 'tanh_layer',
-        dim: 300,
-        irange: 0.01
-      },
+      #!obj:pylearn2.models.mlp.Tanh {
+      #  layer_name: 'tanh_layer',
+      #  dim: 300,
+      #  irange: 0.01
+      #},
       !obj:pylearn2.models.mlp.Linear {
         layer_name: 'linear_layer',
         dim: 300,
@@ -44,6 +44,6 @@
       },
     },
   },
-  save_path: '/Tmp/devincol/mult_char_embeddings_cosine_tanh.pkl',
+  save_path: '/Tmp/devincol/mult_char_embeddings_cosine.pkl',
   save_freq: 1,
 }
