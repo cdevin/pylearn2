@@ -130,13 +130,13 @@ class WordRelationship(TrainExtension):
                 char_dict = cPickle.load(f)
                 
             with open(questions) as f:
-            for i, line in enumerate(f):
-                words = line.strip().lower().split()
-                if words[0] == ':':
-                    categories.append((i, words[1]))
-                    continue
-                char_words = [[char_dict[c] for c in word] for word in words]
-                char_questions.append(char_words)
+                for i, line in enumerate(f):
+                    words = line.strip().lower().split()
+                    if words[0] == ':':
+                        categories.append((i, words[1]))
+                        continue
+                    char_words = [[char_dict[c] for c in word] for word in words]
+                    char_questions.append(char_words)
 
             self.questions = np.array(char_questions, dtype='int32')
 
@@ -168,8 +168,8 @@ class WordRelationship(TrainExtension):
         # Create a Theano function that takes 3 words and returns
         # the word index with the largest cosine similarity
         word_indices = tensor.ivector('words')
-        if self._used_chars:
-            words = 
+        # if self._used_chars:
+        #     words = 
 
         embedding_matrix, = model.layers[0].transformer.get_params()
 	word_embeddings = embedding_matrix[word_indices]
