@@ -9,7 +9,6 @@ __copyright__ = "Copyright 2010-2014, Universite de Montreal"
 __license__ = "3-clause BSD"
 
 import warnings
-<<<<<<< HEAD
 import functools
 import numpy
 
