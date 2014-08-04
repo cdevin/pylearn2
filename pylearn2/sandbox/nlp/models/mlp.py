@@ -145,3 +145,58 @@ class ProjectionLayer(Layer):
         assert W.name is not None
         params = [W]
         return params
+
+class MixedWord(Layer):
+    """ 
+    A layer that is meant to follow a Projection layer with a SequenceDataSpace
+    input. It will output a VectorSpace whose dimension is 3 times the dimension
+    of the preceding layer (a concatenation of the first character, the weighted
+    sum of the middle characters, and the last character.
+    """
+    def __init__(self, layer_name):
+        self.__dict__.update(locals())
+        del self.self
+        super(MixedWord, self).__init__()
+
+    @wraps(Layer.set_input_space)
+    def set_input_space(self, space):
+        if (not isinstance(space, SequenceSpace) or
+                not isinstance(space.space, VectorSpace)):
+            raise ValueError("Recurrent layer needs a SequenceSpace("
+                             "VectorSpace) as input but received  %s instead"
+                             % (space))
+        self.input_space = space
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                raise ValueError("Only indices = [-1] is supported right now")
+                self.output_space = CompositeSpace(
+                    [VectorSpace(dim=self.dim) for _
+                     in range(len(self.indices))]
+                )
+            else:
+                assert self.indices == [-1], "Only indices = [-1] works now"
+                self.output_space = VectorSpace(dim=self.dim)
+        else:
+            self.output_space = SequenceSpace(VectorSpace(dim=self.dim))
+
+        # Initialize the parameters
+        rng = self.mlp.rng
+        if self.irange is None:
+            raise ValueError("Recurrent layer requires an irange value in "
+                             "order to initialize its weight matrices")
+
+        # U is the hidden-to-hidden transition matrix
+        U = rng.uniform(-self.irange, self.irange, (self.dim, self.dim))
+        if self.svd:
+            U = self.mlp.rng.randn(self.dim, self.dim)
+            U, s, V = np.linalg.svd(U, full_matrices=True, compute_uv=True)
+
+        # W is the input-to-hidden matrix
+        W = rng.uniform(-self.irange, self.irange,
+                        (self.input_space.dim, self.dim))
+
+        self._params = [sharedX(W, name=(self.layer_name + '_W')),
+                        sharedX(U, name=(self.layer_name + '_U')),
+                        sharedX(np.zeros(self.dim) + self.init_bias,
+                                name=self.layer_name + '_b')]
