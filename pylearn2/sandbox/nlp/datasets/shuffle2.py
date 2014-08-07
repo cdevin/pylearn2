@@ -209,7 +209,7 @@ class H5Shuffle(Dataset):
 
     def _load_data(self, which_set, startstop):
         """
-        Load the WMT14 data from disk.
+        Load the data from disk.
 
         Parameters
         ----------

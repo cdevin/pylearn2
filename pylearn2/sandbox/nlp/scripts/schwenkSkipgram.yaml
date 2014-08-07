@@ -22,7 +22,7 @@
     layers: [
       !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
         layer_name: 'projection',
-        dim: 620,
+        dim: 300,
         irange: 0.01
       },
       !obj:pylearn2.models.mlp.Linear {
@@ -122,6 +122,6 @@
  #        n_batches: 4, 
  #      }
  # ],
-  save_path: '/Tmp/devincol/schwenkSkipgram620_30000V_sharedParams_NoAda.pkl',
+  save_path: '/Tmp/devincol/schwenkSkipgram300_30000V_sharedParams_NoAda.pkl',
   save_freq: 1,
 }
