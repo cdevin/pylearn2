@@ -21,8 +21,9 @@ from pylearn2.datasets.dataset import Dataset
 from pylearn2.sandbox.nlp.datasets.shuffle2 import H5Shuffle
 from pylearn2.space import CompositeSpace, VectorSpace, IndexSpace, Conv2DSpace
 from pylearn2.utils import serial
-from pylearn2.utils import safe_zip
+from pylearn2.utils import safe_zip, safe_izip
 from pylearn2.utils.iteration import FiniteDatasetIterator
+from multiprocessing import Process, Queue
 
 def index_from_one_hot(one_hot):
     return numpy.where(one_hot == 1.0)[0][0]
@@ -75,16 +76,15 @@ class BilingSkipgram(H5Shuffle):
             non-sequentiality, but if cache_delta is equal to cache_size,
             then there will be no overlap between caches.
         """
-        super(H5Skipgram, self).__init__(source_path, '', which_set, frame_length,
+        self.source_path = source_path
+        self.target_path = target_path
+        assert schwenk == True, "Not implemented for other datasets"
+
+        super(BilingSkipgram, self).__init__(source_path, '', which_set, frame_length,
                  start=start, stop=stop, X_labels=X_labels,
 		 _iter_num_batches=_iter_num_batches, rng=rng, 
                  load_to_memory=False, cache_size=cache_size,
                  cache_delta=cache_delta, schwenk=schwenk)
-
-
-        self.source_path = source_path
-        self.target_path = target_path
-        assert schwenk == True, "Not implemented for other datasets"
 
         features_space = IndexSpace(
             dim=1,
@@ -109,9 +109,8 @@ class BilingSkipgram(H5Shuffle):
             .. todo::
                 Write me
             """
-            if self._load_to_memory:
-                source_sequences = [self.source_sequences[i] for i in indexes]
-                target_sequences = [self.target_sequences[i] for i in indexes]
+            source_sequences = [self.source_sequences[i] for i in indexes]
+            target_sequences = [self.target_sequences[i] for i in indexes]
 
             # Get random source word index for "ngram"
             source_i = [numpy.random.randint(self.frame_length/2 +1, len(s)-self.frame_length/2, 1)[0] 
@@ -133,12 +132,12 @@ class BilingSkipgram(H5Shuffle):
             #print y
             return X
 
-        def getTarget(source_index, indexes):
+        def getTarget(indexes):
             if numpy.array_equal(indexes, self.lastY[1]):
                 #y = numpy.transpose(self.lastY[0][:,source_index][numpy.newaxis])
                 #print y
                 #print y[-1]
-                return self.lastY
+                return self.lastY[0]
             else:
                 print "You can only ask for targets immediately after asking for those features"
                 return None
@@ -158,15 +157,11 @@ class BilingSkipgram(H5Shuffle):
         with tables.open_file(self.source_path) as f:
             table_name, index_name = '/phrases', '/biling_long_indices'
             indices = f.get_node(index_name)[start:stop]
-            first_word = indices[0]['pos']
-            last_word = indices[-1]['pos'] + indices[-1]['length']
             words = f.get_node(table_name)
             source_data = [words[i['pos']:i['pos']+i['length']] for i in indices]
         with tables.open_file(self.target_path) as f:
             table_name, index_name = '/phrases', '/biling_long_indices'
             indices = f.get_node(index_name)[start:stop]
-            first_word = indices[0]['pos']
-            last_word = indices[-1]['pos'] + indices[-1]['length']
             words = f.get_node(table_name)
             target_data = [words[i['pos']:i['pos']+i['length']] for i in indices]
         return (target_data, source_data)
@@ -193,4 +188,37 @@ class BilingSkipgram(H5Shuffle):
         print "Got", self.num_examples, "sentences"
         #self.samples_sequences = numpy.asarray(self.samples_sequences)
  
+    def _maybe_load_data(self):
+       # print "In maybe load data"
+        if self._num_since_last_load >= self._cache_delta and not self._loading:
+            print "need to load data"
+
+            # If we would go over the end of the dataset by loading more data,
+            # we start over from the beginning of the dataset.
+            if (self._next_cache_index + self._cache_delta > 
+                self._max_data_index):
+                start = self._start
+                stop = self._cache_delta + start
+            else:
+                start = self._next_cache_index
+                stop = self._cache_delta + start
+
+            self._next_cache_index = stop 
+            assert self._loading == False, "Cannot have 2 processes at once"
+            self._loading = True
+            p = Process(target=self._parallel_load_data, args=(start, stop, self._data_queue))
+            p.start()
+            #self._parallel_load_data(start, stop, self._data_queue)
+
+        if not self._data_queue.empty():
+            #print "queue has stuff"
+            new_source, new_target = self._data_queue.get()
+            self.source_sequences =  self.source_sequences[self._cache_delta:] + new_source
+            self.target_sequences =  self.target_sequences[self._cache_delta:] + new_target
+            #print "Queue is empty", self._data_queue.empty()
+            self._num_since_last_load = 0
+            assert self._data_queue.empty(), "Cannot have 2 things on queue at once"
+            self._loading = False
+            #print "got stuff from queue"
+
 

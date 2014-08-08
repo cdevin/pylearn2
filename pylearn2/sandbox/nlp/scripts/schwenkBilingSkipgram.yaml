@@ -3,7 +3,6 @@
   dataset: !obj:pylearn2.sandbox.nlp.datasets.biling_skipgram.BilingSkipgram {
     source_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.en.h5',
     target_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.fr.h5',
-    node: 'none', #('/phrases', '/indices'),
     which_set: 'train',
     frame_length: &n 7,
     stop: 10000000,
@@ -49,7 +48,6 @@
      'valid': !obj:pylearn2.sandbox.nlp.datasets.biling_skipgram.BilingSkipgram {
         source_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.en.h5',
         target_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.fr.h5',
-        node: 'none', # ('/phrases', '/indices'),
         which_set: 'valid',
         frame_length: *n,
         start: 10000000,
@@ -63,7 +61,6 @@
       'train': !obj:pylearn2.sandbox.nlp.datasets.biling_skipgram.BilingSkipgram {
         source_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.en.h5',
         target_path: '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/binarized_text.fr.h5',
-        node: 'none', # ('/phrases', '/indices'),
         which_set: 'train',
         frame_length: *n,
         start: 10000,
