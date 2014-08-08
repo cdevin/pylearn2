@@ -25,17 +25,18 @@
     },
     target_source: 'targets', #['target0', 'target1', 'target2', 'target3', 'target4', 'target5' ],
     layers: [
-     # !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
-     #   layer_name: 'projection',
-     #   dim: 256,
-     #   irange: 0.01
-     #  },
+      !obj:pylearn2.sandbox.nlp.models.mlp.ProjectionLayer {
+        layer_name: 'projection',
+        dim: 256,
+        irange: 0.01
+       },
      #!obj:pylearn2.sandbox.rnn.models.rnn.Recurrent {
-     !obj:pylearn2.sandbox.rnn.models.rnn.FactoredMultiplicativeRUGatedRecurrent {
-        layer_name: 'recurrent_layer',
-        proj_dim:  256,
+     !obj:pylearn2.sandbox.rnn.models.rnn.RecurrentLeakyNeurons_m {#FactoredMultiplicativeRUGatedRecurrent {
+        layer_name: 'leaky_layer',
+        num_modules: 3,
+        #proj_dim:  256,
         dim: 300,
-        max_labels: *c,
+        #max_labels: *c,
         irange: 0.01,
         indices: [-1]
       },
@@ -107,6 +108,6 @@
   #       char_dict_path: '/data/lisa/data/word2vec/char_vocab.pkl',
   #     }
   #],
-  save_path: '/Tmp/devincol/rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
+  save_path: '/Tmp/devincol/leaky_skipgram.pkl', #rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
   save_freq: 1,
 }

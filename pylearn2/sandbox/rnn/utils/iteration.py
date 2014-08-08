@@ -117,6 +117,7 @@ class SequenceDatasetIterator(FiniteDatasetIterator):
                                                    #self._raw_data,
                                                    raw_data,
                                                    self._convert):
+            #print "SOurce", source
             rval = data
             if isinstance(space, SequenceDataSpace):
                 # Add padding

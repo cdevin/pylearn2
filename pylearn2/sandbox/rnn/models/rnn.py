@@ -944,3 +944,1114 @@ class FactoredMultiplicativeRUGatedRecurrent(Recurrent):
         else:
             return (h, mask)
 
+class Words_And_FactoredMultiplicativeRUGatedRecurrent(Recurrent):
+    """
+    A recurrent neural network layer using the hyperbolic tangent
+    activation function, passing on all hidden states or a selection
+    of them to the next layer.
+
+    The hidden state is initialized to zeros.
+
+    Parameters
+    ----------
+    dim : int
+        The number of elements in the hidden layer
+    layer_name : str
+        The name of the layer. All layers in an MLP must have a unique name.
+    irange : float
+        Initializes each weight randomly in U(-irange, irange)
+    irange : float
+        The input-to-hidden weight matrix is initialized with weights in
+        the uniform interval (-irange, irange). The hidden-to-hidden
+        matrix weights are sampled in the same manner, unless the argument
+        svd is set to True (see below).
+    indices : slice, list of integers or integer, optional
+        If specified this layer will return only the given hidden
+        states. If an integer is given, it will not return a
+        SequenceSpace. Otherwise, it will return a SequenceSpace of
+        fixed length. Note that a SequenceSpace of fixed length
+        can be flattened by using the FlattenerLayer.
+        Note: For now only [-1] is supported.
+    init_bias : float, optional
+        Set an initial bias to be added at each time step. Defaults to 0.
+    svd : bool, optional
+        Use singular value decomposition to factorize the hidden-to-hidden
+        transition matrix with weights in U(-irange, irange) into matrices
+        U*s*V, where U is orthogonal. This orthogonal matrix is used to
+        initialize the weight matrix. Defaults to True.
+    nonlinearity : theano function, optional
+        Defaults to tensor.tanh, the non-linearity to be applied to the
+        hidden state after each update
+    """
+    def __init__(self,
+                 proj_dim,
+                 char_labels,
+                 word_labels,
+                 reset_gate_init_bias=0.,
+                 update_gate_init_bias=0.,
+                 **kwargs):
+        super(Words_And_FactoredMultiplicativeRUGatedRecurrent, self).__init__(**kwargs)
+        self.rnn_friendly = True
+        self._max_labels = char_labels # d
+        
+        self.__dict__.update(locals())
+        del self.self
+        
+    @wraps(Layer.set_input_space)
+    def set_input_space(self, space):
+        if (not isinstance(space, CompositeSpace) or
+                not isinstance(space.components[0].space, IndexSpace)):
+            raise ValueError("Multiplicative Recurrent layer needs a SequenceSpace("
+                             "IndexSpace) as input but received  %s instead"
+                             % (space))
+        self.input_space = space
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                raise ValueError("Only indices = [-1] is supported right now")
+                self.output_space = CompositeSpace(
+                    [VectorSpace(dim=self.dim) for _
+                     in range(len(self.indices))]
+                )
+            else:
+                assert self.indices == [-1], "Only indices = [-1] works now"
+                self.output_space = VectorSpace(dim=self.dim*2)
+        else:
+            self.output_space = SequenceSpace(VectorSpace(dim=self.dim))
+
+        # Initialize the parameters
+        rng = self.mlp.rng
+        if self.irange is None:
+            raise ValueError("Recurrent layer requires an irange value in "
+                             "order to initialize its weight matrices")
+
+        # P is the projection matrix to convert indices to vectors
+        P = rng.uniform(-self.irange, self.irange, 
+                        (self.char_labels, self.proj_dim))
+
+        # W is the input-to-hidden matrix
+        W = rng.uniform(-self.irange, self.irange,
+                        (self.proj_dim, self.proj_dim))
+
+
+        # U is the hidden-to-hidden transition tensor 
+        if self.svd:
+            U = self.mlp.rng.randn(self.dim, self.proj_dim)
+            
+            #U, _ , _ = np.linalg.svd(U, full_matrices=True, compute_uv=True)
+        else:
+            U = rng.uniform(-self.irange, self.irange, 
+                            (self.dim, self.proj_dim))
+
+        # V is the hidden-to-hidden transition tensor 
+        if self.svd:
+            V = self.mlp.rng.randn(self.proj_dim, self.dim)
+            
+            #V, _, _ = np.linalg.svd(V, full_matrices=True, compute_uv=True)
+        else:
+            V = rng.uniform(-self.irange, self.irange, 
+                            (self.proj_dim, self.dim))
+
+        # # W is the input-to-hidden matrix
+        # W = rng.uniform(-self.irange, self.irange,
+        #                 (self._proj_dim, self.dim))
+
+        # Following the notation in
+        # "Learning Phrase Representations using RNN Encoder-Decoder
+        # for Statistical Machine Translation", W weighs the input
+        # and U weighs the recurrent value.
+        # z is the update gate, and r is the reset gate.
+        W_z = rng.uniform(-self.irange, self.irange,
+                               (self.proj_dim, self.dim))
+        W_r = rng.uniform(-self.irange, self.irange,
+                               (self.proj_dim, self.dim))
+        U_z = rng.uniform(-self.irange, self.irange,
+                               (self.dim, self.dim))
+        U_r = rng.uniform(-self.irange, self.irange,
+                               (self.dim, self.dim))
+    
+
+        b_z = sharedX(np.zeros((self.dim,)), name=self.layer_name + '_b_z')
+        b_r = sharedX(np.zeros((self.dim,)), name=self.layer_name + '_b_r')
+
+        wordProj = rng.uniform(-self.irange, self.irange, (self.word_labels, self.dim))
+
+        self._parameters = {'P': sharedX(P, name=self.layer_name + '_P'),
+                            'W': sharedX(W, name=(self.layer_name + '_W')),
+                            'V': sharedX(V, name=(self.layer_name + '_V')),
+                            'U': sharedX(U, name=(self.layer_name + '_U')),
+                            'b': sharedX(np.zeros((self.dim,)) + self.init_bias,
+                                         name=self.layer_name + '_b'),
+                            'Wz': sharedX(W_z, name=(self.layer_name + '_Wz')),
+                            'Uz': sharedX(U_z, name=(self.layer_name + '_Uz')),
+                            'bz': b_z,
+                            'Wr': sharedX(W_r, name=(self.layer_name + '_Wr')),
+                            'Ur': sharedX(U_r, name=(self.layer_name + '_Ur')),
+                            'br': b_r,
+                            'WP' : sharedX(wordProj, name=(self.layer_name + '_WP')),
+        }
+
+        # for get_layer_monitoring channels
+        self._params = [self._parameters[key] for key in ['W', 'U', 'b']]
+
+    @wraps(Layer.get_params)
+    def get_params(self):
+        return self._parameters.values()
+        
+    @wraps(Layer.fprop)
+    def fprop(self, state_below):
+        import pdb
+        pdb.set_trace()
+        state_below, mask, words = state_below
+        shape = state_below.shape
+        state_below = state_below.reshape((shape[0]*shape[2], shape[1]))
+        proj = self._parameters['P'][state_below]
+        wordproj = self._parameters['WP'][words]
+
+        # h0 is the initial hidden state which is (batch size, output dim)
+        h0 = tensor.alloc(np.cast[config.floatX](0), shape[1], self.dim)
+
+        if self.dim == 1 or h0.broadcastable[1] == True:
+            # This should fix the bug described in Theano issue #1772
+            h0 = tensor.unbroadcast(h0, 1)
+
+        # It is faster to do the input-to-hidden matrix multiplications
+        # outside of scan
+        state_in = (tensor.dot(proj, self._parameters['W']))
+
+        state_z = (tensor.dot(proj, self._parameters['Wz']) 
+                         + self._parameters['bz'])
+        state_r = (tensor.dot(proj, self._parameters['Wr'])
+                         + self._parameters['br'])
+
+        def fprop_step(mask, state_in, state_z, state_r, 
+                       state_before, U, V, b, Uz, Ur):
+            z = tensor.nnet.sigmoid(state_z + tensor.dot(state_before, Uz))
+            r = tensor.nnet.sigmoid(state_r + tensor.dot(state_before, Ur))
+            
+            # The subset of recurrent weight matrices to use this batch
+            pre_h1 = tensor.dot(state_before, U)
+            pre_h2 = pre_h1 * state_in
+            h = self.nonlinearity(r*tensor.dot(pre_h2, V) +b)
+            h = z * state_before + (1. - z) * h
+            # Only update the state for non-masked data, otherwise
+            # just carry on the previous state until the end
+            h = mask[:, None] * h + (1 - mask[:, None]) * state_before
+            return h
+
+        h, updates = scan(fn=fprop_step, 
+                          sequences=[mask, state_in, 
+                                     state_z, 
+                                     state_r],
+                          outputs_info=[h0], 
+                          non_sequences=[self._parameters['U'],
+                                         self._parameters['V'],
+                                         self._parameters['b'],
+                                         self._parameters['Uz'],
+                                         self._parameters['Ur']]
+        )
+
+        self._scan_updates.update(updates)
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                charproj =  [h[i] for i in self.indices]
+            else:
+                charproj =  h[self.indices[0]]
+            return tensor.concatenate([charproj, wordproj], axis=1)
+        else:
+            return (tensor.concatenate([h, wordproj], axis=1), mask)
+
+class RecurrentLeakyNeurons(Recurrent):
+
+    def __init__(self,
+                 num_modules=2,
+                 update_gate_init_bias=0.,
+                 reset_gate_init_bias=0.,
+                 **kwargs):
+        super(RecurrentLeakyNeurons, self).__init__(**kwargs)
+        self.__dict__.update(locals())
+        del self.self
+
+    def set_input_space(self, space):
+
+        if (not isinstance(space, SequenceSpace) or
+                not isinstance(space.space, VectorSpace)):
+            raise ValueError("Recurrent layer needs a SequenceSpace("
+                             "VectorSpace) as input but received  %s instead"
+                             % (space))
+        self.input_space = space
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                raise ValueError("Only indices = [-1] is supported right now")
+                self.output_space = CompositeSpace(
+                    [VectorSpace(dim=self.dim) for _
+                     in range(len(self.indices))]
+                )
+            else:
+                assert self.indices == [-1], "Only indices = [-1] works now"
+                self.output_space = VectorSpace(dim=self.dim)
+        else:
+            self.output_space = SequenceSpace(VectorSpace(dim=self.dim))
+
+        # Initialize the parameters
+        rng = self.mlp.rng
+        if self.irange is None:
+            raise ValueError("Recurrent layer requires an irange value in "
+                             "order to initialize its weight matrices")
+
+        # So far size of each module should be same
+        # It's restricted to use same dimension for each module.
+        # It should be generalized.
+        # We will use transposed order which is different from
+        # the original paper but will give same result.
+        assert self.dim % self.num_modules == 0
+        self.module_dim = self.dim / self.num_modules
+
+        U = np.zeros((self.dim, self.dim), dtype=config.floatX)
+        for i in xrange(self.num_modules):
+            for j in xrange(self.num_modules):
+                if not((j >= i + 2) and (i < self.num_modules - 2)):
+                    if False: #self.istdev is not None:
+                        pass
+                        # u = rng.randn(self.module_dim,
+                        #               self.module_dim)
+                        # u *= self.istdev
+                    else:
+                        u = rng.uniform(-self.irange,
+                                        self.irange,
+                                        (self.module_dim,
+                                         self.module_dim))  #  *\
+                            # (rng.uniform(0., 1., (self.module_dim,
+                            #                       self.module_dim))
+                            #  < self.include_prob)
+                    if self.svd:
+                        u, s, v = np.linalg.svd(u,
+                                                full_matrices=True,
+                                                compute_uv=True)
+                    U[i*self.module_dim:(i+1)*self.module_dim,
+                      j*self.module_dim:(j+1)*self.module_dim] = u
+        if True: #self.use_bias:
+            self.b = sharedX(np.zeros((self.dim,)) + self.init_bias,
+                             name=(self.layer_name + '_b'))
+        else:
+            assert self.b_lr_scale is None
+        self.U = sharedX(U, name=(self.layer_name + '_U'))
+        nonzero_idx = np.nonzero(U)
+        mask_weights = np.zeros(shape=(U.shape), dtype=config.floatX)
+        mask_weights[nonzero_idx[0], nonzero_idx[1]] = 1.
+        self.mask = sharedX(mask_weights)
+
+        gate_dim = self.input_space.dim + self.module_dim * (self.num_modules - 1)
+        self.gdim = []
+        self.gdim.append(np.arange(self.input_space.dim))
+        start = self.input_space.dim
+        for i in xrange(self.num_modules - 1):
+            self.gdim.append(np.arange(start, start + self.module_dim))
+            start += self.module_dim
+
+        if self.irange is not None:
+            #assert self.istdev is None
+            W = rng.uniform(-self.irange,
+                            self.irange,
+                            (gate_dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (gate_dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     W = rng.randn(gate_dim,
+        #                   self.module_dim) * self.istdev
+        self.W = sharedX(W, name=(self.layer_name + '_W'))
+        if self.irange is not None:
+            #assert self.istdev is None
+            S = rng.uniform(-self.irange,
+                            self.irange,
+                            (self.num_modules - 1,
+                             self.input_space.dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (self.num_modules - 1,
+                #                       self.input_space.dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     S = rng.randn(self.num_modules - 1,
+        #                   self.input_space.dim,
+        #                   self.module_dim) * self.istdev
+        self.S = sharedX(S, name=(self.layer_name + '_S'))
+
+        # Reset gate switch
+        R_s = rng.uniform(-self.irange,
+                          self.irange,
+                          (self.num_modules - 1,
+                           self.input_space.dim,
+                           self.module_dim))
+        R_x = rng.uniform(-self.irange,
+                          self.irange,
+                          (gate_dim,
+                           self.module_dim))
+        R_h = rng.uniform(-self.irange,
+                          self.irange,
+                          (self.num_modules,
+                           self.dim,
+                           self.module_dim))
+        self.R_b = sharedX(np.zeros((self.num_modules,
+                                     self.module_dim)) +
+                           self.reset_gate_init_bias,
+                           name=(self.layer_name + '_R_b'))
+        self.R_s = sharedX(R_s, name=(self.layer_name + '_R_s'))
+        self.R_x = sharedX(R_x, name=(self.layer_name + '_R_x'))
+        self.R_h = sharedX(R_h, name=(self.layer_name + '_R_h'))
+        # Update gate switch
+        U_s = rng.uniform(-self.irange,
+                          self.irange,
+                          (self.num_modules - 1,
+                           self.input_space.dim,
+                           self.module_dim))
+        U_x = rng.uniform(-self.irange,
+                          self.irange,
+                          (self.num_modules - 1,
+                           self.module_dim,
+                           self.module_dim))
+        U_h = rng.uniform(-self.irange,
+                          self.irange,
+                          (self.num_modules - 1,
+                           self.dim,
+                           self.module_dim))
+        self.U_b = sharedX(np.zeros((self.num_modules - 1,
+                                     self.module_dim)) +
+                           self.update_gate_init_bias,
+                           name=(self.layer_name + '_U_b'))
+        self.U_s = sharedX(U_s, name=(self.layer_name + '_U_s'))
+        self.U_x = sharedX(U_x, name=(self.layer_name + '_U_x'))
+        self.U_h = sharedX(U_h, name=(self.layer_name + '_U_h'))
+        self._params = [self.U, self.W, self.b]
+
+    def get_params(self):
+        rval = super(RecurrentLeakyNeurons, self).get_params()
+        rval += [self.R_s, self.R_x, self.R_h, self.R_b]
+        rval += [self.U_s, self.U_x, self.U_h, self.U_b]
+        rval += [self.S]
+
+        return rval
+
+    def _modify_updates(self, updates):
+
+        # if self.max_row_norm is not None:
+        #     if self.W in updates:
+        #         updated_W = updates[self.W]
+        #         row_norms = tensor.sqrt(tensor.sum(tensor.sqr(updated_W), axis=1))
+        #         desired_norms = tensor.clip(row_norms, 0, self.max_row_norm)
+        #         scales = desired_norms / (1e-7 + row_norms)
+        #         updates[self.W] = updated_W * scales.dimshuffle(0, 'x')
+        # if self.max_col_norm is not None or self.min_col_norm is not None:
+        #     assert self.max_row_norm is None
+        #     if self.max_col_norm is not None:
+        #         max_col_norm = self.max_col_norm
+        #     if self.min_col_norm is None:
+        #         self.min_col_norm = 0
+        #     if self.W in updates:
+        #         updated_W = updates[self.W]
+        #         col_norms = tensor.sqrt(tensor.sum(tensor.sqr(updated_W), axis=0))
+        #         if self.max_col_norm is None:
+        #             max_col_norm = col_norms.max()
+        #         desired_norms = tensor.clip(col_norms,
+        #                                     self.min_col_norm,
+        #                                     max_col_norm)
+        #         updates[self.W] = updated_W * desired_norms/(1e-7 + col_norms)
+
+        if self.U in updates:
+            updates[self.U] = updates[self.U] * self.mask
+
+    def fprop(self, state_below):
+        state_below, mask = state_below
+
+        # z0 is the initial hidden state which is (batch size, output dim)
+        z0 = tensor.alloc(np.cast[config.floatX](0), state_below.shape[1],
+                          self.dim)
+        if self.dim == 1:
+            # This should fix the bug described in Theano issue #1772
+            z0 = tensor.unbroadcast(z0, 1)
+
+        # Later we will add a noise function
+        W = self.W
+        U = self.U
+
+        def fprop_step(state_below, mask, state_before, W, U):
+
+            r = tensor.dot(state_before, U)
+            h, z = self.first_step(state_below, state_before, r, W, 0)
+            h, z = self.gated_step(state_below, h, z, r, W, 1)
+            h, z = self.gated_step(state_below, h, z, r, W, 2)
+
+            # Only update the state for non-masked data, otherwise
+            # just carry on the previous state until the end
+            z = mask[:, None] * z + (1 - mask[:, None]) * state_before
+            return z
+
+        z, updates = scan(fn=fprop_step,
+                          sequences=[state_below, mask],
+                          outputs_info=[z0],
+                          non_sequences=[W, U])
+
+        self._scan_updates.update(updates)
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                return [z[i] for i in self.indices]
+            else:
+                return z[self.indices[0]]
+        else:
+            return (z, mask)
+
+    def first_step(self, state_below, state_before, r, W, clk):
+
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+
+        r_on = tensor.nnet.sigmoid(tensor.dot(state_below,
+                                              self.R_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                                   tensor.dot(state_before, self.R_h[clk]) +
+                                   self.R_b[clk])
+        pre_h = r_on * r[:, c0:c1] +\
+            tensor.dot(state_below,
+                       W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1]
+
+        h = tensor.tanh(pre_h)
+        z = tensor.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
+
+    def gated_step(self, input_t, state_below, state_before, r, W, clk):
+
+        cm1 = (clk - 1) * self.module_dim
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+
+        r_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.R_s[clk - 1]) +
+                                   tensor.dot(state_below,
+                                   self.R_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                                   tensor.dot(state_before[:, cm1:], self.R_h[clk][cm1:, :]) +
+                                   self.R_b[clk])
+        pre_h = r_on * r[:, c0:c1] +\
+            tensor.dot(state_below,
+                       W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1] + tensor.dot(input_t, self.S[clk - 1])
+
+        u_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.U_s[clk - 1]) +
+                                   tensor.dot(state_below, self.U_x[clk - 1]) +
+                                   tensor.dot(state_before[:, cm1:], self.U_h[clk - 1][cm1:, :]) +
+                                   self.U_b[clk - 1])
+
+        h = u_on * state_before[:, c0:c1] + (1. - u_on) * tensor.tanh(pre_h)
+        z = tensor.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
+
+class RecurrentLeakyNeurons_m(Recurrent):
+
+    def __init__(self,
+                 num_modules=2,
+                 update_gate_init_bias=0.,
+                 reset_gate_init_bias=0.,
+                 **kwargs):
+        super(RecurrentLeakyNeurons_m, self).__init__(**kwargs)
+        self.__dict__.update(locals())
+        del self.self
+
+    def set_input_space(self, space):
+
+        if (not isinstance(space, SequenceSpace) or
+                not isinstance(space.space, VectorSpace)):
+            raise ValueError("Recurrent layer needs a SequenceSpace("
+                             "VectorSpace) as input but received  %s instead"
+                             % (space))
+        self.input_space = space
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                raise ValueError("Only indices = [-1] is supported right now")
+                self.output_space = CompositeSpace(
+                    [VectorSpace(dim=self.dim) for _
+                     in range(len(self.indices))]
+                )
+            else:
+                assert self.indices == [-1], "Only indices = [-1] works now"
+                self.output_space = VectorSpace(dim=self.dim)
+        else:
+            self.output_space = SequenceSpace(VectorSpace(dim=self.dim))
+
+        # Initialize the parameters
+        rng = self.mlp.rng
+        if self.irange is None:
+            raise ValueError("Recurrent layer requires an irange value in "
+                             "order to initialize its weight matrices")
+
+        # So far size of each module should be same
+        # It's restricted to use same dimension for each module.
+        # It should be generalized.
+        # We will use transposed order which is different from
+        # the original paper but will give same result.
+        assert self.dim % self.num_modules == 0
+        self.module_dim = self.dim / self.num_modules
+
+        U = np.zeros((self.dim, self.dim), dtype=config.floatX)
+        for i in xrange(self.num_modules):
+            for j in xrange(self.num_modules):
+                if not((j >= i + 2) and (i < self.num_modules - 2)):
+                    if False: #self.istdev is not None:
+                        pass
+                        # u = rng.randn(self.module_dim,
+                        #               self.module_dim)
+                        # u *= self.istdev
+                    else:
+                        u = rng.uniform(-self.irange,
+                                        self.irange,
+                                        (self.module_dim,
+                                         self.module_dim))  #  *\
+                            # (rng.uniform(0., 1., (self.module_dim,
+                            #                       self.module_dim))
+                            #  < self.include_prob)
+                    if self.svd:
+                        u, s, v = np.linalg.svd(u,
+                                                full_matrices=True,
+                                                compute_uv=True)
+                    U[i*self.module_dim:(i+1)*self.module_dim,
+                      j*self.module_dim:(j+1)*self.module_dim] = u
+        if True: #self.use_bias:
+            self.b = sharedX(np.zeros((self.dim,)) + self.init_bias,
+                             name=(self.layer_name + '_b'))
+        else:
+            assert self.b_lr_scale is None
+        self.U = sharedX(U, name=(self.layer_name + '_U'))
+        nonzero_idx = np.nonzero(U)
+        mask_weights = np.zeros(shape=(U.shape), dtype=config.floatX)
+        mask_weights[nonzero_idx[0], nonzero_idx[1]] = 1.
+        self.mask = sharedX(mask_weights)
+
+        gate_dim = self.input_space.dim + self.module_dim * (self.num_modules - 1)
+        self.gdim = []
+        self.gdim.append(np.arange(self.input_space.dim))
+        start = self.input_space.dim
+        for i in xrange(self.num_modules - 1):
+            self.gdim.append(np.arange(start, start + self.module_dim))
+            start += self.module_dim
+
+        if self.irange is not None:
+            #assert self.istdev is None
+            W = rng.uniform(-self.irange,
+                            self.irange,
+                            (gate_dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (gate_dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     W = rng.randn(gate_dim,
+        #                   self.module_dim) * self.istdev
+        self.W = sharedX(W, name=(self.layer_name + '_W'))
+        if self.irange is not None:
+            #assert self.istdev is None
+            S = rng.uniform(-self.irange,
+                            self.irange,
+                            (self.num_modules - 1,
+                             self.input_space.dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (self.num_modules - 1,
+                #                       self.input_space.dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     S = rng.randn(self.num_modules - 1,
+        #                   self.input_space.dim,
+        #                   self.module_dim) * self.istdev
+        self.S = sharedX(S, name=(self.layer_name + '_S'))
+
+        # Reset gate switch
+        R_s = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.input_space.dim,
+                                    self.module_dim))
+        R_x = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.module_dim,
+                                    self.module_dim))
+        R_h = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.dim,
+                                    self.module_dim))
+        self.R_b = sharedX(np.zeros((self.num_modules - 1,
+                                     self.module_dim)) +
+                           self.reset_gate_init_bias,
+                           name=(self.layer_name + '_R_b'))
+        self.R_s = sharedX(R_s, name=(self.layer_name + '_R_s'))
+        self.R_x = sharedX(R_x, name=(self.layer_name + '_R_x'))
+        self.R_h = sharedX(R_h, name=(self.layer_name + '_R_h'))
+        # Update gate switch
+        U_s = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.input_space.dim,
+                                    self.module_dim))
+        U_x = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.module_dim,
+                                    self.module_dim))
+        U_h = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.dim,
+                                    self.module_dim))
+        self.U_b = sharedX(np.zeros((self.num_modules - 1,
+                                     self.module_dim)) +
+                           self.update_gate_init_bias,
+                           name=(self.layer_name + '_U_b'))
+        self.U_s = sharedX(U_s, name=(self.layer_name + '_U_s'))
+        self.U_x = sharedX(U_x, name=(self.layer_name + '_U_x'))
+        self.U_h = sharedX(U_h, name=(self.layer_name + '_U_h'))
+        self._params = [self.U, self.W, self.b]
+
+    def get_params(self):
+        rval = super(RecurrentLeakyNeurons_m, self).get_params()
+        rval += [self.R_s, self.R_x, self.R_h, self.R_b]
+        rval += [self.U_s, self.U_x, self.U_h, self.U_b]
+        rval += [self.S]
+
+        return rval
+
+    def _modify_updates(self, updates):
+
+        # if self.max_row_norm is not None:
+        #     if self.W in updates:
+        #         updated_W = updates[self.W]
+        #         row_norms = tensor.sqrt(tensor.sum(tensor.sqr(updated_W), axis=1))
+        #         desired_norms = tensor.clip(row_norms, 0, self.max_row_norm)
+        #         scales = desired_norms / (1e-7 + row_norms)
+        #         updates[self.W] = updated_W * scales.dimshuffle(0, 'x')
+        # if self.max_col_norm is not None or self.min_col_norm is not None:
+        #     assert self.max_row_norm is None
+        #     if self.max_col_norm is not None:
+        #         max_col_norm = self.max_col_norm
+        #     if self.min_col_norm is None:
+        #         self.min_col_norm = 0
+        #     if self.W in updates:
+        #         updated_W = updates[self.W]
+        #         col_norms = tensor.sqrt(tensor.sum(tensor.sqr(updated_W), axis=0))
+        #         if self.max_col_norm is None:
+        #             max_col_norm = col_norms.max()
+        #         desired_norms = tensor.clip(col_norms,
+        #                                     self.min_col_norm,
+        #                                     max_col_norm)
+        #         updates[self.W] = updated_W * desired_norms/(1e-7 + col_norms)
+
+        if self.U in updates:
+            updates[self.U] = updates[self.U] * self.mask
+
+    def fprop(self, state_below):
+        state_below, mask = state_below
+
+        # z0 is the initial hidden state which is (batch size, output dim)
+        z0 = tensor.alloc(np.cast[config.floatX](0), state_below.shape[1],
+                          self.dim)
+        if self.dim == 1:
+            # This should fix the bug described in Theano issue #1772
+            z0 = tensor.unbroadcast(z0, 1)
+
+        # Later we will add a noise function
+        W = self.W
+        U = self.U
+
+        def fprop_step(state_below, mask, state_before, W, U):
+
+            r = tensor.dot(state_before, U)
+            h, z = self.first_step(state_below, state_before, r, W, 0)
+            h, z = self.gated_step(state_below, h, z, r, W, 1)
+            h, z = self.gated_step(state_below, h, z, r, W, 2)
+
+            # Only update the state for non-masked data, otherwise
+            # just carry on the previous state until the end
+            z = mask[:, None] * z + (1 - mask[:, None]) * state_before
+            return z
+
+        z, updates = scan(fn=fprop_step,
+                          sequences=[state_below, mask],
+                          outputs_info=[z0],
+                          non_sequences=[W, U])
+
+        self._scan_updates.update(updates)
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                return [z[i] for i in self.indices]
+            else:
+                return z[self.indices[0]]
+        else:
+            return (z, mask)
+
+    def first_step(self, state_below, state_before, r, W, clk):
+
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+        pre_h = r[:, c0:c1] +\
+            tensor.dot(state_below,
+                       W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1]
+
+        h = tensor.tanh(pre_h)
+        z = tensor.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
+
+    def gated_step(self, input_t, state_below, state_before, r, W, clk):
+
+        cm1 = (clk - 1) * self.module_dim
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+
+        r_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.R_s[clk - 1]) +
+                                   tensor.dot(state_below, self.R_x[clk - 1]) +
+                                   tensor.dot(state_before[:, cm1:], self.R_h[clk - 1][cm1:, :]) +
+                                   self.R_b[clk - 1])
+        pre_h = r_on * r[:, c0:c1] +\
+            tensor.dot(state_below,
+                       W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1] + tensor.dot(input_t, self.S[clk - 1])
+
+        u_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.U_s[clk - 1]) +
+                                   tensor.dot(state_below, self.U_x[clk - 1]) +
+                                   tensor.dot(state_before[:, cm1:], self.U_h[clk - 1][cm1:, :]) +
+                                   self.U_b[clk - 1])
+
+        h = u_on * state_before[:, c0:c1] + (1. - u_on) * tensor.tanh(pre_h)
+        z = tensor.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
+
+
+class HierarchicalGatedRecurrent(Recurrent):
+
+    def __init__(self,
+                 num_modules=2,
+                 update_gate_init_bias=0.,
+                 reset_gate_init_bias=0.,
+                 global_update_gate_init_bias=0.,
+                 global_reset_gate_init_bias=0.,
+                 **kwargs):
+        super(HierarchicalGatedRecurrent, self).__init__(**kwargs)
+        self.__dict__.update(locals())
+        del self.self
+
+    def set_input_space(self, space):
+
+        if (not isinstance(space, SequenceSpace) or
+                not isinstance(space.space, VectorSpace)):
+            raise ValueError("Recurrent layer needs a SequenceSpace("
+                             "VectorSpace) as input but received  %s instead"
+                             % (space))
+        self.input_space = space
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                raise ValueError("Only indices = [-1] is supported right now")
+                self.output_space = CompositeSpace(
+                    [VectorSpace(dim=self.dim) for _
+                     in range(len(self.indices))]
+                )
+            else:
+                assert self.indices == [-1], "Only indices = [-1] works now"
+                self.output_space = VectorSpace(dim=self.dim)
+        else:
+            self.output_space = SequenceSpace(VectorSpace(dim=self.dim))
+
+        # Initialize the parameters
+        rng = self.mlp.rng
+        if self.irange is None:
+            raise ValueError("Recurrent layer requires an irange value in "
+                             "order to initialize its weight matrices")
+
+        # So far size of each module should be same
+        # It's restricted to use same dimension for each module.
+        # It should be generalized.
+        # We will use transposed order which is different from
+        # the original paper but will give same result.
+        assert self.dim % self.num_modules == 0
+        self.module_dim = self.dim / self.num_modules
+
+        U = np.zeros((self.dim, self.dim), dtype=config.floatX)
+        for i in xrange(self.num_modules):
+            for j in xrange(self.num_modules):
+                if not((j >= i + 2) and (i < self.num_modules - 2)):
+                    if False: #self.istdev is not None:
+                        pass
+                        # u = rng.randn(self.module_dim,
+                        #               self.module_dim)
+                        # u *= self.istdev
+                    else:
+                        u = rng.uniform(-self.irange,
+                                        self.irange,
+                                        (self.module_dim,
+                                         self.module_dim))  #  *\
+                            # (rng.uniform(0., 1., (self.module_dim,
+                            #                       self.module_dim))
+                            #  < self.include_prob)
+                    if self.svd:
+                        u, s, v = np.linalg.svd(u,
+                                                full_matrices=True,
+                                                compute_uv=True)
+                    U[i*self.module_dim:(i+1)*self.module_dim,
+                      j*self.module_dim:(j+1)*self.module_dim] = u
+        if True: #self.use_bias:
+            self.b = sharedX(np.zeros((self.dim,)) + self.init_bias,
+                             name=(self.layer_name + '_b'))
+        else:
+            assert self.b_lr_scale is None
+        self.U = sharedX(U, name=(self.layer_name + '_U'))
+        nonzero_idx = np.nonzero(U)
+        mask_weights = np.zeros(shape=(U.shape), dtype=config.floatX)
+        mask_weights[nonzero_idx[0], nonzero_idx[1]] = 1.
+        self.mask = sharedX(mask_weights)
+
+        gate_dim = self.input_space.dim + self.module_dim * (self.num_modules - 1)
+        self.gdim = []
+        self.gdim.append(np.arange(self.input_space.dim))
+        start = self.input_space.dim
+        for i in xrange(self.num_modules - 1):
+            self.gdim.append(np.arange(start, start + self.module_dim))
+            start += self.module_dim
+
+        if self.irange is not None:
+            #assert self.istdev is None
+            W = rng.uniform(-self.irange,
+                            self.irange,
+                            (gate_dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (gate_dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     W = rng.randn(gate_dim,
+        #                   self.module_dim) * self.istdev
+        self.W = sharedX(W, name=(self.layer_name + '_W'))
+        if self.irange is not None:
+            #assert self.istdev is None
+            S = rng.uniform(-self.irange,
+                            self.irange,
+                            (self.num_modules - 1,
+                             self.input_space.dim,
+                             self.module_dim))#  *\
+                # (rng.uniform(0., 1., (self.num_modules - 1,
+                #                       self.input_space.dim,
+                #                       self.module_dim))
+                #  < self.include_prob)
+        # elif self.istdev is not None:
+        #     S = rng.randn(self.num_modules - 1,
+        #                   self.input_space.dim,
+        #                   self.module_dim) * self.istdev
+        self.S = sharedX(S, name=(self.layer_name + '_S'))
+
+        # Reset gate switch
+        R_s = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.input_space.dim,
+                                    self.module_dim))
+        R_x = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (gate_dim,
+                                    self.module_dim))
+        R_h = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules,
+                                    self.dim,
+                                    self.module_dim))
+        self.R_b = sharedX(np.zeros((self.num_modules,
+                                     self.module_dim)) +
+                           self.reset_gate_init_bias,
+                           name=(self.layer_name + '_R_b'))
+        self.R_s = sharedX(R_s, name=(self.layer_name + '_R_s'))
+        self.R_x = sharedX(R_x, name=(self.layer_name + '_R_x'))
+        self.R_h = sharedX(R_h, name=(self.layer_name + '_R_h'))
+        # Update gate switch
+        U_s = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules - 1,
+                                    self.input_space.dim,
+                                    self.module_dim))
+        U_x = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (gate_dim,
+                                    self.module_dim))
+        U_h = self.mlp.rng.uniform(-self.irange,
+                                   self.irange,
+                                   (self.num_modules,
+                                    self.dim,
+                                    self.module_dim))
+        self.U_b = sharedX(np.zeros((self.num_modules,
+                                     self.module_dim)) +
+                           self.update_gate_init_bias,
+                           name=(self.layer_name + '_U_b'))
+        self.U_s = sharedX(U_s, name=(self.layer_name + '_U_s'))
+        self.U_x = sharedX(U_x, name=(self.layer_name + '_U_x'))
+        self.U_h = sharedX(U_h, name=(self.layer_name + '_U_h'))
+        # Global reset gate switch
+        gR_s = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.input_space.dim, 1))
+        gR_x = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.module_dim, 1))
+        gR_h = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.dim, 1))
+        self.gR_b = sharedX(np.zeros((self.num_modules - 1, 1)) +
+                            self.global_reset_gate_init_bias,
+                            name=(self.layer_name + '_gR_b'))
+        self.gR_s = sharedX(gR_s, name=(self.layer_name + '_gR_s'))
+        self.gR_x = sharedX(gR_x, name=(self.layer_name + '_gR_x'))
+        self.gR_h = sharedX(gR_h, name=(self.layer_name + '_gR_h'))
+        # Global update gate switch
+        gU_s = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.input_space.dim, 1))
+        gU_x = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.module_dim, 1))
+        gU_h = self.mlp.rng.uniform(-self.irange,
+                                    self.irange,
+                                    (self.num_modules - 1,
+                                     self.dim, 1))
+        self.gU_b = sharedX(np.zeros((self.num_modules - 1, 1)) +
+                            self.global_update_gate_init_bias,
+                            name=(self.layer_name + '_gU_b'))
+        self.gU_s = sharedX(gU_s, name=(self.layer_name + '_gU_s'))
+        self.gU_x = sharedX(gU_x, name=(self.layer_name + '_gU_x'))
+        self.gU_h = sharedX(gU_h, name=(self.layer_name + '_gU_h'))
+        self._params = [self.U, self.W, self.b]
+
+    def get_params(self):
+        rval = super(HierarchicalGatedRecurrent, self).get_params()
+        rval += [self.R_s, self.R_x, self.R_h, self.R_b]
+        rval += [self.gR_s, self.gR_x, self.gR_h, self.gR_b]
+        rval += [self.U_s, self.U_x, self.U_h, self.U_b]
+        rval += [self.gU_s, self.gU_x, self.gU_h, self.gU_b]
+        rval += [self.S]
+
+        return rval
+
+    def _modify_updates(self, updates):
+
+        if self.U in updates:
+            updates[self.U] = updates[self.U] * self.mask
+
+    def fprop(self, state_below):
+        state_below, mask = state_below
+
+        # z0 is the initial hidden state which is (batch size, output dim)
+        z0 = tensor.alloc(np.cast[config.floatX](0), state_below.shape[1],
+                          self.dim)
+        if self.dim == 1:
+            # This should fix the bug described in Theano issue #1772
+            z0 = tensor.unbroadcast(z0, 1)
+
+        # Later we will add a noise function
+        W = self.W
+        U = self.U
+
+        def fprop_step(state_below, mask, state_before, W, U):
+
+            r = tensor.dot(state_before, U)
+            h, z = self.first_step(state_below, state_before, r, W, 0)
+            h, z = self.gated_step(state_below, h, z, r, W, 1)
+            h, z = self.gated_step(state_below, h, z, r, W, 2)
+
+            # Only update the state for non-masked data, otherwise
+            # just carry on the previous state until the end
+            z = mask[:, None] * z + (1 - mask[:, None]) * state_before
+            return z
+
+        z, updates = scan(fn=fprop_step,
+                          sequences=[state_below, mask],
+                          outputs_info=[z0],
+                          non_sequences=[W, U])
+
+        self._scan_updates.update(updates)
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                return [z[i] for i in self.indices]
+            else:
+                return z[self.indices[0]]
+        else:
+            return (z, mask)
+
+    def first_step(self, state_below, state_before, r, W, clk):
+
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+
+        r_on = T.nnet.sigmoid(T.dot(state_below,
+                                    self.R_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                              T.dot(state_before, self.R_h[clk]) +
+                              self.R_b[clk])
+        pre_h = r_on * r[:, c0:c1] +\
+            T.dot(state_below, W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1]
+
+        u_on = T.nnet.sigmoid(T.dot(state_below,
+                                    self.U_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                              T.dot(state_before, self.U_h[clk]) +
+                              self.U_b[clk])
+
+        h = u_on * state_before[:, c0:c1] + (1. - u_on) * tensor.tanh(pre_h)
+        z = T.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
+
+    def gated_step(self, input_t, state_below, state_before, r, W, clk):
+
+        cm1 = (clk - 1) * self.module_dim
+        c0 = clk * self.module_dim
+        c1 = (clk + 1) * self.module_dim
+
+        r_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.R_s[clk - 1]) +
+                                   tensor.dot(state_below,
+                                              self.R_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                                   tensor.dot(state_before[:, cm1:], self.R_h[clk][cm1:, :]) +
+                                   self.R_b[clk])
+        gr_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.gR_s[clk - 1]) +
+                                    tensor.dot(state_below, self.gR_x[clk - 1]) +
+                                    tensor.dot(state_before[:, cm1:], self.gR_h[clk - 1][cm1:, :]) +
+                                    self.gR_b[clk - 1])
+        gr_on = tensor.addbroadcast(gr_on, 1)
+        pre_h = gr_on * r_on * r[:, c0:c1] +\
+            tensor.dot(state_below, W[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +\
+            self.b[c0:c1] + tensor.dot(input_t, self.S[clk - 1])
+
+        u_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.U_s[clk - 1]) +
+                                   tensor.dot(state_below,
+                                              self.U_x[self.gdim[clk][0]:self.gdim[clk][-1] + 1, :]) +
+                                   tensor.dot(state_before[:, cm1:], self.U_h[clk][cm1:, :]) +
+                                   self.U_b[clk])
+
+        gu_on = tensor.nnet.sigmoid(tensor.dot(input_t, self.gU_s[clk - 1]) +
+                                    tensor.dot(state_below, self.gU_x[clk - 1]) +
+                                    tensor.dot(state_before[:, cm1:], self.gU_h[clk - 1][cm1:, :]) +
+                                    self.gU_b[clk - 1])
+        gu_on = tensor.addbroadcast(gu_on, 1)
+
+        h = u_on * state_before[:, c0:c1] + (1. - u_on) * tensor.tanh(pre_h)
+        h = gu_on * state_before[:, c0:c1] + (1. - gu_on) * h
+        z = tensor.set_subtensor(state_before[:, c0:c1], h)
+
+        return h, z
