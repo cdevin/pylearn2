@@ -25,18 +25,12 @@
         dim: 300,
         irange: 0.01
       },
-      !obj:pylearn2.models.mlp.Linear {
-        layer_name: 'outputEmbedding',
-        dim: *l,
-        irange: 0.01
-      },
-      
       !obj:pylearn2.sandbox.nlp.models.mlp.Softmax {
         n_classes: *l,
         layer_name: 'h5',
         irange: 0.01,
         binary_target_dim: 1,
-        no_affine: True,
+        no_affine: False,
       }
     ],
   },
@@ -82,6 +76,6 @@
  #        n_batches: 4, 
  #      }
  # ],
-  save_path: '/Tmp/devincol/schwenkRealSkipgram300_30000V_sharedParams_noAda.pkl',
+  save_path: '/Tmp/chokyun/schwenkRealSkipgram300_30000V_sharedParams_noAda.pkl',
   save_freq: 1,
 }
