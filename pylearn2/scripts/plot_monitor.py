@@ -119,6 +119,7 @@ def main():
 
         x_axis = 'example'
         print 'set x_axis to example'
+        y_log = False
 
         if len(channels.values()) == 0:
             print "there are no channels to plot"
@@ -138,6 +139,7 @@ def main():
 
             print "Put e, b, s or h in the list somewhere to plot " + \
                     "epochs, batches, seconds, or hours, respectively."
+            print "Put l to use logarithmic scale on y axis"
             response = raw_input('Enter a list of channels to plot ' + \
                     '(example: A, C,F-G, h, <test_err>) or q to quit' + \
                     ' or o for options: ')
@@ -181,6 +183,8 @@ def main():
                     x_axis = 'second'
                 elif code == 'h':
                     x_axis = 'hour'
+                elif code == 'l':
+                    y_log = True
                 elif code.startswith('<'):
                     assert code.endswith('>')
                     final_codes.add(code)
@@ -229,6 +233,11 @@ def main():
         fig = plt.figure()
         ax = plt.subplot(1,1,1)
 
+        if y_log:
+            plot_fn = ax.semilogy
+        else:
+            plot_fn = ax.plot
+
         # plot the requested channels
         for idx, code in enumerate(sorted(final_codes)):
 
@@ -261,14 +270,15 @@ def main():
                 assert False
 
 
-            ax.plot( x,
+            plot_fn(x,
                       y,
                       styles[idx % len(styles)],
                       marker = '.', # add point margers to lines
                       label = channel_name)
 
         plt.xlabel('# '+x_axis+'s')
-        ax.ticklabel_format( scilimits = (-3,3), axis = 'both')
+        if not y_log:
+            ax.ticklabel_format( scilimits = (-3,3), axis = 'both')
 
         handles, labels = ax.get_legend_handles_labels()
         lgd = ax.legend(handles, labels, loc='upper center',
