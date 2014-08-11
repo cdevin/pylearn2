@@ -3,7 +3,7 @@ import numpy as np
 from charModel import CharModel
 from wordModel import WordModel
 
-model_path = '../pkls/schwenkRealSkipgram300_NoAda.pkl' 
+model_path = '../pkls/full_vocabrnnLEAKY.pkl' 
 #model_path = '../pkls/rnn_realskipgram_factored_schwenk_256_300_Ada.pkl'
 chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
 vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
@@ -35,12 +35,15 @@ print "embeddings", len(embeddings), embeddings[0].shape
 
 print "Building Model"
 # Change this to WordModel or CharModel depending on whther you are using word or character -based embeddings
-#model = CharModel(pylearn2_model, char_dict, embeddings=embeddings, fprop=pylearn2_model.layers[0].fprop, words=words)
-model = WordModel(pylearn2_model, vocab, embeddings)
+fpropNoProjLayer = pylearn2_model.layers[0].fprop
+fpropProjLayer = lambda state_below: pylearn2_model.layers[1].fprop(pylearn2_model.layers[0](state_below))
+model = CharModel(pylearn2_model, char_dict, embeddings=embeddings, 
+                  fprop=fpropProjLayer, words=words)
+#model = WordModel(pylearn2_model, vocab, embeddings)
 
 print "Calculating Closest Words"
 if __name__ == "__main__":
-   #map(model.displayStringRun, ['cat', 'dog', 'France', 'france', 'Canada', 'Paris', 'paris', 'brother', 'mother',
+   map(model.displayStringRun, ['cat', 'dog', 'France', 'france', 'Canada', 'Paris', 'paris', 'brother', 'mother',
    #                             'sister', 'dad', 'mom', 'pharmacy', 'farm', 'quite', 'quiet', 'quit', 'like',
    #                             'love', 'city', 'town'])
     #map(model.displayStringRun, ['monarch', 'democracy', 'political', 'raspberry', 'blueberry', 'accomplishment', 'applying', 'application'])
