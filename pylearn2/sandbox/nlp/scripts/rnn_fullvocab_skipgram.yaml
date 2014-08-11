@@ -10,7 +10,7 @@
     stop: 10000000,
     load_to_memory: True,
     _iter_num_batches: 300000,
-    word_labels: &w 1821898,
+    word_labels: &w 1821900,
     char_labels: &c 145,
     cache_size: 10000000,
     cache_delta: 1000000,
@@ -31,8 +31,8 @@
      #   irange: 0.01
      #  },
      #!obj:pylearn2.sandbox.rnn.models.rnn.Recurrent {
-     !obj:pylearn2.sandbox.rnn.models.rnn.FactoredMultiplicativeRUGatedRecurrent {
-        layer_name: 'leaky_layer',
+     !obj:pylearn2.sandbox.rnn.models.rnn.MultiplicativeRUGatedRecurrent {
+        layer_name: 'Recurrent_layer',
         #num_modules: 3,
         proj_dim:  256,
         dim: 300,
@@ -88,7 +88,6 @@
         word_labels: *w,
         char_labels: *c,
         schwenk: True,
-      
      },
     },
     cost: !obj:pylearn2.sandbox.rnn.costs.gradient_clipping.GradientClipping {
@@ -108,6 +107,6 @@
   #       char_dict_path: '/data/lisa/data/word2vec/char_vocab.pkl',
   #     }
   #],
-  save_path: '/Tmp/devincol/full_vocabrnn.pkl', #rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
+  save_path: '/Tmp/devincol/full_vocabrnn_notFactored.pkl', #rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
   save_freq: 1,
 }

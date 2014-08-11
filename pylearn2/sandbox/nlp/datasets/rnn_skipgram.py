@@ -78,7 +78,7 @@ class H5RnnSkipgram(H5Shuffle):
         features_space = SequenceDataSpace(IndexSpace(dim=1, max_labels=char_labels))
         features_source = 'features'
         
-        targets_space = IndexSpace(dim=1, max_labels=self.word_labels)
+        targets_space = IndexSpace(dim=1, max_labels=30000)
         targets_source = 'targets'
 
         if self._use_words:
@@ -113,7 +113,7 @@ class H5RnnSkipgram(H5Shuffle):
                 string = self._inv_words[word]
                 #if len(string) < 1:
                     #print "Word index", word, "Returns empty word"
-                seq = map(lambda c: [self._char_labels[c]], self._inv_words[word])
+                seq = map(lambda c: [self._char_labels.get(c, 0)], self._inv_words[word])
                 #if len(seq) < 1:
                    # print "Word index", word, "Returns empty sequence", string
                 seq.append([self._eow])
@@ -123,8 +123,11 @@ class H5RnnSkipgram(H5Shuffle):
                 X.append(make_sequence(word))
             X = numpy.asarray(X)
             y = [numpy.asarray([s[i]]) for i, s in safe_izip(target_i, sequences)]
-            y[y>=self.X_labels] = numpy.asarray([1])
+            #y[y>=30000] = numpy.asarray([1])
             y = numpy.asarray(y)
+            bad_is = numpy.where(y >= 30000)
+            y[bad_is] =  numpy.asarray([1])
+            
             # Target Words mapped to integers greater than input max are set to 
             # 1 (unknown)
 
