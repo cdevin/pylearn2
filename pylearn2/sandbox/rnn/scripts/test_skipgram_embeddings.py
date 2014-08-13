@@ -3,13 +3,13 @@ import numpy as np
 from charModel import CharModel
 from wordModel import WordModel
 
-model_path = '../pkls/full_vocabrnnLEAKY.pkl' 
+model_path = '../pkls/full_vocabrnn_notFactored.pkl' #'../pkls/full_vocabrnnLEAKY.pkl' 
 #model_path = '../pkls/rnn_realskipgram_factored_schwenk_256_300_Ada.pkl'
 chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
 vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
 words_path = '/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl'
-#embeddings_path = '/data/lisatmp3/devincol/embeddings/rnnSkipgram300.pkl'
-embeddings_path = '/data/lisatmp3/devincol/embeddings/skipgram300.pkl'
+embeddings_path = '/data/lisatmp3/devincol/embeddings/multiplicative_rnnSkipgram300.pkl'
+#embeddings_path = '/data/lisatmp3/devincol/embeddings/skipgram300.pkl'
 
 print "Loading Data"
 with open(vocab_path) as f:
@@ -36,15 +36,15 @@ print "embeddings", len(embeddings), embeddings[0].shape
 print "Building Model"
 # Change this to WordModel or CharModel depending on whther you are using word or character -based embeddings
 fpropNoProjLayer = pylearn2_model.layers[0].fprop
-fpropProjLayer = lambda state_below: pylearn2_model.layers[1].fprop(pylearn2_model.layers[0](state_below))
+fpropProjLayer = lambda state_below: pylearn2_model.layers[1].fprop(pylearn2_model.layers[0].fprop(state_below))
 model = CharModel(pylearn2_model, char_dict, embeddings=embeddings, 
-                  fprop=fpropProjLayer, words=words)
+                  fprop=fpropNoProjLayer, words=words)
 #model = WordModel(pylearn2_model, vocab, embeddings)
 
 print "Calculating Closest Words"
 if __name__ == "__main__":
-   map(model.displayStringRun, ['cat', 'dog', 'France', 'france', 'Canada', 'Paris', 'paris', 'brother', 'mother',
-   #                             'sister', 'dad', 'mom', 'pharmacy', 'farm', 'quite', 'quiet', 'quit', 'like',
-   #                             'love', 'city', 'town'])
+    map(model.displayStringRun, ['cat', 'dog', 'France', 'france', 'Canada', 'Paris', 'paris', 'brother', 'mother',
+                                 'sister', 'dad', 'mom', 'pharmacy', 'farm', 'quite', 'quiet', 'quit', 'like',
+                                 'love', 'city', 'town'])
     #map(model.displayStringRun, ['monarch', 'democracy', 'political', 'raspberry', 'blueberry', 'accomplishment', 'applying', 'application'])
     map(model.displayIndexRun, range(100, 150))

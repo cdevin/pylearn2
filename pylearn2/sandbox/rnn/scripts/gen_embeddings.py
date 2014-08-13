@@ -1,7 +1,7 @@
 import cPickle
 from embeddingsModel import CharModel
 
-model_path = '../pkls/full_vocabrnnLEAKY.pkl'
+model_path = '../pkls/full_vocabrnn_notFactored.pkl'
 chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
 vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
 words_path = '/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl'
@@ -26,7 +26,7 @@ unknown =  inv_dict[0]
 print "Building Model"
 fpropNoProjLayer = pylearn2_model.layers[0].fprop
 fpropProjLayer = lambda state_below: pylearn2_model.layers[1].fprop(pylearn2_model.layers[0].fprop(state_below))
-model = CharModel(pylearn2_model, char_dict, fprop=fpropProjLayer)
+model = CharModel(pylearn2_model, char_dict, fprop=fpropNoProjLayer)
 
 model.genEmbeddings(ivocab)
 
@@ -41,5 +41,5 @@ model.genEmbeddings(ivocab)
 
  
    
-with open("/data/lisatmp3/devincol/embeddings/leakyneuron_rnnSkipgram300.pkl", 'w') as f:
+with open("/data/lisatmp3/devincol/embeddings/multiplicative_rnnSkipgram300.pkl", 'w') as f:
     cPickle.dump(model.embeddings, f)

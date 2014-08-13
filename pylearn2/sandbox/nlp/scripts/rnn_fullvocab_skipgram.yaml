@@ -9,11 +9,11 @@
     char_dict: '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl',
     stop: 10000000,
     load_to_memory: True,
-    _iter_num_batches: 150000,
+    _iter_num_batches: 65000,
     word_labels: &w 1821900,
     char_labels: &c 145,
-    cache_size: 10000000,
-    cache_delta: 1000000,
+    cache_size: 5000000,
+    cache_delta: 500000,
     schwenk: True,
   },
   model: !obj:pylearn2.models.mlp.MLP {
@@ -45,7 +45,17 @@
       #  dim: 30000,
       #  irange: 0.01
       #},
-      !obj:pylearn2.sandbox.nlp.models.mlp.NoisySoftmax {
+      !obj:pylearn2.models.mlp.Tanh {
+        layer_name: 'h1',
+        dim: 256,
+        irange: 0.01,
+      },
+      !obj:pylearn2.models.mlp.Tanh {
+        layer_name: 'h2',
+        dim: 256,
+        irange: 0.01,
+      },
+      !obj:pylearn2.sandbox.nlp.models.mlp.Softmax {
         n_classes: 30000,
         layer_name: 'h0',
         irange: 0.01,
@@ -107,6 +117,6 @@
   #       char_dict_path: '/data/lisa/data/word2vec/char_vocab.pkl',
   #     }
   #],
-  save_path: '/Tmp/devincol/full_vocabrnn_NCE.pkl', #rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
+  save_path: '/Tmp/devincol/full_vocabrnn_2Tanh.pkl', #rnn_realskipgram_factored_schwenk_256_300_Ada.pkl',
   save_freq: 1,
 }

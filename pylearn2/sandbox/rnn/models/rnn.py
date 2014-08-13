@@ -98,6 +98,11 @@ class Recurrent(Layer):
         W = rng.uniform(-self.irange, self.irange,
                         (self.input_space.dim, self.dim))
 
+        if hasattr(self.nonlinearity, 'setup_rng'):
+            self.nonlinearity.rng = self.mlp.rng
+        if hasattr(self.nonlinearity, 'set_input_space'):
+            self.nonlinearity.set_input_space(VectorSpace(self.dim))
+
         self._params = [sharedX(W, name=(self.layer_name + '_W')),
                         sharedX(U, name=(self.layer_name + '_U')),
                         sharedX(np.zeros(self.dim) + self.init_bias,
@@ -184,9 +189,14 @@ class Recurrent(Layer):
         # outside of scan
         state_below = tensor.dot(state_below, W) + b
 
+        if hasattr(self.nonlinearity, 'fprop'):
+            nonlinearity = self.nonlinearity.fprop
+        else:
+            nonlinearity = self.nonlinearity
+
         def fprop_step(state_below, mask, state_before, U):
-            z = self.nonlinearity(state_below +
-                                  tensor.dot(state_before, U))
+            z = nonlinearity(state_below +
+                             tensor.dot(state_before, U))
 
             # Only update the state for non-masked data, otherwise
             # just carry on the previous state until the end
@@ -205,6 +215,12 @@ class Recurrent(Layer):
         else:
             return (z, mask)
 
+    @wraps(Layer.get_params)
+    def get_params(self):
+        if hasattr(self.nonlinearity, 'get_params'):
+            return self._params + self.nonlinearity.get_params()
+        else:
+            return self._params
 
 class LSTM(Recurrent):
     """
@@ -660,14 +676,22 @@ class MultiplicativeRUGatedRecurrent(Recurrent):
                         'Ur': sharedX(U_r, name=(self.layer_name + '_Ur')),
                         'br': b_r}
 
+        if hasattr(self.nonlinearity, 'setup_rng'):
+            self.nonlinearity.rng = self.mlp.rng
+        if hasattr(self.nonlinearity, 'set_input_space'):
+            self.nonlinearity.set_input_space(VectorSpace(self.dim))
+
         # for get_layer_monitoring channels
         self._params = [self._parameters[key] for key in ['W', 'U', 'b']]
         self._all_params = self._parameters.values()
 
     @wraps(Layer.get_params)
     def get_params(self):
-        return self._all_params
-        
+        if hasattr(self.nonlinearity, 'get_params'):
+            return self._all_params + self.nonlinearity.get_params()
+        else:
+            return self._all_params
+
     @wraps(Layer.fprop)
     def fprop(self, state_below):
         state_below, mask = state_below
@@ -692,6 +716,11 @@ class MultiplicativeRUGatedRecurrent(Recurrent):
         state_r = (tensor.dot(proj, self._parameters['Wr'])
                    + self._parameters['br'])
 
+        if hasattr(self.nonlinearity, 'fprop'):
+            nonlinearity = self.nonlinearity.fprop
+        else:
+            nonlinearity = self.nonlinearity
+
         def fprop_step(state_below, mask, state_in, state_z, state_r, 
                        state_before, U, b, Uz, Ur):
             z = tensor.nnet.sigmoid(state_z + tensor.dot(state_before, Uz))
@@ -701,10 +730,10 @@ class MultiplicativeRUGatedRecurrent(Recurrent):
             U_i = U[state_below]
             b_i = b[state_below]
 
-            pre_h = self.nonlinearity(state_in 
-                                      + r * tensor.batched_dot(state_before, U_i)
-                                      + b_i
-                                  )
+            pre_h = nonlinearity(state_in 
+                                 + r * tensor.batched_dot(state_before, U_i)
+                                 + b_i
+            )
             h = z * state_before + (1. - z) * pre_h
             # Only update the state for non-masked data, otherwise
             # just carry on the previous state until the end
@@ -1001,8 +1030,8 @@ class Words_And_FactoredMultiplicativeRUGatedRecurrent(Recurrent):
     def set_input_space(self, space):
         if (not isinstance(space, CompositeSpace) or
                 not isinstance(space.components[0].space, IndexSpace)):
-            raise ValueError("Multiplicative Recurrent layer needs a SequenceSpace("
-                             "IndexSpace) as input but received  %s instead"
+            raise ValueError("Multiplicative Recurrent layer needs a CompositeSpace(SequenceSpace("
+                             "IndexSpace), IndexSpace) as input but received  %s instead"
                              % (space))
         self.input_space = space
 
