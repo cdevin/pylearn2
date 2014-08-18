@@ -111,7 +111,8 @@ class Recurrent(Layer):
     @wraps(Layer.get_layer_monitoring_channels)
     def get_layer_monitoring_channels(self, state_below=None, state=None,
                                       targets=None):
-        W, U, b = self._params
+        params = self._params
+        W, U, b = params[:3]
         sq_W = tensor.sqr(W)
         sq_U = tensor.sqr(U)
         row_norms = tensor.sqrt(sq_W.sum(axis=1))
@@ -2084,3 +2085,75 @@ class HierarchicalGatedRecurrent(Recurrent):
         z = tensor.set_subtensor(state_before[:, c0:c1], h)
 
         return h, z
+
+class GatedRecurrent(Recurrent):
+    @wraps(Layer.set_input_space)
+    def set_input_space(self, space):
+        super(GatedRecurrent, self).set_input_space(space)
+
+        rng = self.mlp.rng
+        # Ug is the hidden-to-gate matrix
+        Ug = rng.uniform(-self.irange, self.irange, (self.dim, 2 * self.dim))
+        # Wg is the input-to-gate matrix
+        Wg = rng.uniform(-self.irange, self.irange, (self.input_space.dim, 2 * self.dim))
+
+        self._params += [sharedX(Wg, name=(self.layer_name + '_Wg')),
+                        sharedX(Ug, name=(self.layer_name + '_Ug')),
+                        sharedX(np.zeros(2 * self.dim),
+                                name=self.layer_name + '_bg')]
+
+    @wraps(Layer.fprop)
+    def fprop(self, state_below):
+        state_below, mask = state_below
+
+        # z0 is the initial hidden state which is (batch size, output dim)
+        z0 = tensor.alloc(np.cast[config.floatX](0), state_below.shape[1], self.dim)
+        if self.dim == 1:
+            # This should fix the bug described in Theano issue #1772
+            z0 = tensor.unbroadcast(z0, 1)
+
+        # Later we will add a noise function
+        W, U, b, Wg, Ug, bg = self._params
+
+        # It is faster to do the input-to-hidden matrix multiplications
+        # outside of scan
+        state_below_g = tensor.dot(state_below, Wg) + bg
+        state_below = tensor.dot(state_below, W) + b
+
+        if hasattr(self.nonlinearity, 'fprop'):
+            nonlinearity = self.nonlinearity.fprop
+        else:
+            nonlinearity = self.nonlinearity
+
+        def fprop_step(state_below, state_below_g, mask, state_before):
+            g = tensor.nnet.sigmoid(state_below_g + 
+                                    tensor.dot(state_before, Ug))
+            if g.ndim == 3:
+                r = g[:,:,:self.dim]
+                u = g[:,:,self.dim:]
+            else:
+                r = g[:,:self.dim]
+                u = g[:,self.dim:]
+
+            new_z = nonlinearity(state_below +
+                             r * tensor.dot(state_before, U))
+            z = (1. - u) * state_before + u * new_z
+
+            # Only update the state for non-masked data, otherwise
+            # just carry on the previous state until the end
+            z = mask[:, None] * z + (1 - mask[:, None]) * state_before
+            return z, g
+
+        z, updates = scan(fn=fprop_step, sequences=[state_below, state_below_g, mask],
+                          outputs_info=[z0, None])
+        z = z[0]
+        self._scan_updates.update(updates)
+
+        if self.indices is not None:
+            if len(self.indices) > 1:
+                return [z[i] for i in self.indices]
+            else:
+                return z[self.indices[0]]
+        else:
+            return (z, mask)
+
