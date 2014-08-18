@@ -1,7 +1,7 @@
 import cPickle
 from embeddingsModel import CharModel
 
-model_path = '../pkls/full_vocabrnn_notFactored.pkl'
+model_path = '../pkls/full_vocabrnn_2tanh.pkl'
 chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
 vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
 words_path = '/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl'
@@ -41,5 +41,5 @@ model.genEmbeddings(ivocab)
 
  
    
-with open("/data/lisatmp3/devincol/embeddings/multiplicative_rnnSkipgram300.pkl", 'w') as f:
+with open("/data/lisatmp3/devincol/embeddings/deepoutput_rnnSkipgram300.pkl", 'w') as f:
     cPickle.dump(model.embeddings, f)

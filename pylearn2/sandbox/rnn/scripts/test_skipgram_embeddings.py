@@ -3,12 +3,12 @@ import numpy as np
 from charModel import CharModel
 from wordModel import WordModel
 
-model_path = '../pkls/full_vocabrnn_notFactored.pkl' #'../pkls/full_vocabrnnLEAKY.pkl' 
+model_path = '../pkls/full_vocabrnn_2tanh.pkl' #'../pkls/full_vocabrnnLEAKY.pkl' 
 #model_path = '../pkls/rnn_realskipgram_factored_schwenk_256_300_Ada.pkl'
 chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
 vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
 words_path = '/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl'
-embeddings_path = '/data/lisatmp3/devincol/embeddings/multiplicative_rnnSkipgram300.pkl'
+embeddings_path = '/data/lisatmp3/devincol/embeddings/deepoutput_rnnSkipgram300.pkl'
 #embeddings_path = '/data/lisatmp3/devincol/embeddings/skipgram300.pkl'
 
 print "Loading Data"
