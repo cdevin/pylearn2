@@ -13,6 +13,11 @@ from pylearn2.utils import wraps
 from pylearn2.sandbox.nlp.linear.matrixmul import MatrixMul
 from theano.compat.python2x import OrderedDict
 
+from theano.compat.python2x import OrderedDict
+from pylearn2.sandbox.rnn.space import SequenceSpace
+from theano import scan
+from theano.printing import Print
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 class Softmax(mlp.Softmax):
     """
@@ -146,3 +151,66 @@ class ProjectionLayer(Layer):
         assert W.name is not None
         params = [W]
         return params
+
+class NoisySoftmax(Softmax):
+    """
+    An extension of the Softmax layer which computes noisy contrastive cost
+    """
+    def __init__(self, exact_q=False, **kwargs):
+        super(NoisySoftmax, self).__init__(**kwargs)
+
+        # use the exact distribution to sample from
+        self.exact_q = exact_q
+
+
+    def _cost(self, Y, Y_hat):
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+           assert len(owner.inputs) == 1
+           Y_hat, = owner.inputs
+           owner = Y_hat.owner
+           op = owner.op
+        assert isinstance(op, T.nnet.Softmax)
+        z, = owner.inputs
+        assert z.ndim == 2
+
+        assert self._has_binary_target
+        assert not self.no_affine
+
+        theano_rng = MRG_RandomStreams(max(self.mlp.rng.randint(2 ** 15), 1))
+
+        # state_below
+        state_below = z.owner.inputs[0].owner.inputs[0]
+
+        def _grab_probs(W, b, state_below, S):
+            S = S.flatten()
+            return T.nnet.sigmoid((W[:,S].T * state_below).sum(1) + b[S])
+
+        cost_pos = T.log(_grab_probs(self.W, self.b, state_below, Y))
+        # a single negative sample for each training sample
+        if self.exact_q:
+            Y_neg = theano_rng.multinomial(pvals=Y_hat).argmax(-1)
+        else:
+            Y_neg = T.cast(theano_rng.uniform(state_below.shape[0].reshape([1])) * self.W.shape[1], 'int64')
+        cost_neg = T.cast(state_below.shape[0], 'float32') * T.log(1. - _grab_probs(self.W, self.b, state_below, Y_neg))
+
+        log_prob_of = cost_pos + cost_neg
+
+        return log_prob_of
+        
+
+    @wraps(Layer.cost)
+    def cost(self, Y, Y_hat):
+
+        log_prob_of = self._cost(Y, Y_hat)
+        rval = log_prob_of.mean()
+        return - rval
+
+    @wraps(Layer.cost_matrix)
+    def cost_matrix(self, Y, Y_hat):
+        log_prob_of = self._cost(Y, Y_hat)
+        return -log_prob_of
