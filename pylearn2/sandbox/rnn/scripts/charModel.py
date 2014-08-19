@@ -35,7 +35,7 @@ class CharModel():
    def closest(self, vec, n):
       assert (self.embeddings is not None), "You probably need to run genEmbeddings"
       words_ = []
-      dists = [(cosine(vec, self.embeddings[i]), i) for i in range(30000)]
+      dists = [(cosine(vec, self.embeddings[i]).astype('float64'), i) for i in range(30000)]
       for k in range(n):
          index = min(dists)[1]
          dists[index] = (float("inf"),index)

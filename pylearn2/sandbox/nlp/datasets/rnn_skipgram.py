@@ -105,23 +105,33 @@ class H5RnnSkipgram(H5Shuffle):
             # Get random source word index for "ngram"
             source_i = [numpy.random.randint(self.frame_length/2 +1, len(s)-self.frame_length/2, 1)[0] 
                         for s in sequences]
-            target_i = [min(abs(int(numpy.random.normal(s_i, self.frame_length/3.0))), len(s)-1)
+            target_i = [min(max(s_i + numpy.random.choice([1, -1])*int(
+                numpy.random.uniform(1, self.frame_length/2)), 0), len(s)-1)
                         for s_i, s in safe_izip(source_i, sequences)]
+            # target_i = [min(abs(int(numpy.random.normal(s_i, self.frame_length/3.0))), len(s)-1)
+            #             for s_i, s in safe_izip(source_i, sequences)]
             preX = [s[i] for i, s in safe_izip(source_i, sequences)]
             X = []
+            # def make_sequence(word):
+            #     string = self._inv_words[word]
+            #     #if len(string) < 1:
+            #         #print "Word index", word, "Returns empty word"
+            #     seq = map(lambda c: [self._char_labels.get(c, 0)], self._inv_words[word])
+            #     #if len(seq) < 1:
+            #        # print "Word index", word, "Returns empty sequence", string
+            #     seq.append([self._eow])
+            #     rval = numpy.asarray(seq)
+            #     print rval.shape, rval.dtype, type(rval), rval
+            #     return rval
             def make_sequence(word):
-                string = self._inv_words[word]
-                #if len(string) < 1:
-                    #print "Word index", word, "Returns empty word"
-                seq = map(lambda c: [self._char_labels.get(c, 0)], self._inv_words[word])
-                #if len(seq) < 1:
-                   # print "Word index", word, "Returns empty sequence", string
-                seq.append([self._eow])
-                return numpy.asarray(seq)
+                rval =  self._vocab_aschar[word][:, numpy.newaxis]
+                #print rval.shape, rval.dtype, type(rval), rval
+                return rval
 
             for word in preX:
                 X.append(make_sequence(word))
             X = numpy.asarray(X)
+            #print "X[0]", X[0].shape, X[0]
             y = [numpy.asarray([s[i]]) for i, s in safe_izip(target_i, sequences)]
             #y[y>=30000] = numpy.asarray([1])
             y = numpy.asarray(y)
@@ -170,6 +180,10 @@ class H5RnnSkipgram(H5Shuffle):
         with open(self._char_dict_path) as f:
             self._char_labels = cPickle.load(f)
         self._eow = len(self._char_labels)
+        
+        with open('/data/lisatmp3/devincol/data/translation/vocab.unlimited/vocab.aschars_subs.unpadded.en.pkl') as f:
+            self._vocab_aschar = cPickle.load(f)
+
 
     def _create_subset_iterator(self, mode, batch_size=None, num_batches=None,
                                 rng=None):
