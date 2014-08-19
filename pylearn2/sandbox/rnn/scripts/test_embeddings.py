@@ -1,113 +1,87 @@
 import cPickle
-import tables
+import argparse
+
 import numpy as np
-from scipy.spatial import cKDTree
-from scipy.spatial.distance import cosine
-import theano as t
 
-path = '../pkls/mult_char_embeddings_cosine2.pkl'
-embeddings_path = '/data/lisa/data/word2vec/embeddings.h5'
-chars_path = '/data/lisa/data/word2vec/char_vocab.pkl'
-_path = '/data/lisa/data/word2vec/characters.pkl'
+from charModel import CharModel
+from wordModel import WordModel
 
-print "Loading data"
-with open(path) as f:
-    model = cPickle.load(f)
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--chars",  default="/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl", help="")
+    parser.add_argument("--words",  default="/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl", help="")
+    parser.add_argument("--vocab",  default="/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl", help="")
+    parser.add_argument("--model", default="", help="pickled model")
+    parser.add_argument("--test", default="", help="test vocabulary")
+    parser.add_argument("--character-based", action="store_true",
+        help="character-based embedding")
+    parser.add_argument("--emb-layer", default=0, help="The number of layers for the embedding", type=int)
+    parser.add_argument("--reuse-emb", action="store_true",
+        help="reuse embedding from the character-based model")
+    parser.add_argument("embeddings", help="embedding path")
+    return parser.parse_args()
 
-with open(chars_path) as f:
-    char_dict = cPickle.load(f)
-inv_dict = {v:k for k,v in char_dict.items()}
-inv_dict[0] = inv_dict[len(inv_dict.keys())-1]
-print "unknown", inv_dict[0]
+def main():
+    model_path = '../pkls/schwenkRealSkipgram300_NoAda.pkl' 
+    chars_path = '/data/lisatmp3/devincol/data/translation_char_vocab.en.pkl'
+    vocab_path = '/data/lisatmp3/chokyun/mt/vocab.30k/bitexts.selected/vocab.en.pkl'
+    words_path = '/data/lisatmp3/devincol/data/translation_vocab_aschar.en.pkl'
+    embeddings_path = '/data/lisatmp3/devincol/embeddings/skipgram300.pkl'
 
-with tables.open_file('/data/lisa/data/word2vec/characters.h5') as f:
-    node1 = f.get_node('/characters_valid')
-    valid_chars = [char_sequence for char_sequence in node1]
-    node2 = f.get_node('/characters_train')
-    train_chars = [char_sequence for char_sequence in node2]
-print len(valid_chars), "valid chars"
-print len (train_chars), "train chars"
+    args = parse_args()
 
-all_chars = valid_chars + train_chars
-#all_chars = train_chars
-print len(all_chars), "all chars"
+    print "Loading Data"
+    with open(args.vocab) as f:
+       vocab = cPickle.load(f)
+    ivocab = {v:k for k,v in vocab.iteritems()}
+       
+    with open(args.words) as f:
+       words = cPickle.load(f)
 
-with tables.open_file(embeddings_path) as f:
-    node1 = f.get_node('/embeddings_valid')
-    valid_embeddings = node1[:]
-    node2 = f.get_node('/embeddings_train')
-    train_embeddings = node2[:]
-all_embeddings = np.concatenate((valid_embeddings, train_embeddings))
-#all_embeddings = train_embeddings
-print all_embeddings.shape
-with open('normalization.pkl') as f:
-    (means, stds) = cPickle.load(f)
+    with open(args.chars) as f:
+       char_dict = cPickle.load(f)
+    inv_dict = {v:k for k,v in char_dict.items()}
+    inv_dict[0] = inv_dict[len(inv_dict.keys())-1]
+    unknown =  inv_dict[0]
 
-print "Normalizing"
-all_embeddings = (all_embeddings - means)/stds
+    if args.model != "":
+        with open(args.model) as f:
+           pylearn2_model = cPickle.load(f)
+        if not args.character_based:
+            embeddings = pylearn2_model.layers[args.emb_layer].get_params()[0].get_value() 
+            np.save(args.embeddings, embeddings)
+    else:
+        embeddings = np.load(args.embeddings)
+    if not args.character_based:
+        print "embeddings", len(embeddings), embeddings[0].shape
 
-# words = []
+    print "Building Model"
+    # Change this to WordModel or CharModel depending on whther you are using word or character -based embeddings
+    if args.character_based:
+        fprop = [pylearn2_model.layers[ll].fprop for ll in xrange(args.emb_layer)]
 
-# print "Making words"
-# for x in all_chars:
-#     #print x
-#     w = np.asarray(map(lambda n: inv_dict[n], x))
-#     #print w
-#     words.append(w)
-# print "Have", len(words), "words"
-# print "have", len(all_embeddings), "embeddings"
+        model = CharModel(pylearn2_model, char_dict, embeddings=None, fprop=fprop, words=words)
+        print "Generating embeddings"
+        if args.reuse_emb:
+            embeddings = np.load(args.embeddings)
+            model.embeddings = embeddings
+        else:
+            model.genEmbeddings(ivocab)
+            embeddings = model.embeddings
+            np.save(args.embeddings, embeddings)
+    else:
+        model = WordModel(None, vocab, embeddings)
 
-#print "Making KDTree"
-#tree = cKDTree(all_embeddings)
-
-space = model.get_input_space()
-batch_var = space.make_theano_batch(batch_size=1)
-fprop = t.function([batch_var], model.fprop(batch_var))
-#print "Batch_var shape", batch_var.eval().shape
-
-print "Calculating projections"
-
-
-def arrToString(arr):
-    return reduce(lambda x,y: x+y, arr.view('S2')[::2])
-
-def makeWord(i):
-    w = np.asarray(map(lambda n: inv_dict[n], all_chars[i]))
-    return arrToString(w)
-
-def stringToArr(string):
-    return [char_dict[c] for c in string]
-
-def closest(vec, n):
-    words = []
-    dists = [(cosine(vec,all_embeddings[i]), i) for i in range(100000)]
-    for k in range(n):
-        index = min(dists)[1]
-        dists[index] = (float("inf"),index)
-        words.append(index)
-    return words
-    
-def run_example(example):
-    batch = np.asarray([np.asarray([np.asarray([char])]) for char in example])
-    batch = space.np_format_as(batch, space)
-    wordvec = fprop(batch)[0]
-    return wordvec
-
-def findClose(wordvec): 
-    indices = closest(wordvec, 4)
-    #(d, indices) = tree.query(wordvec, k=4)
-    close = [makeWord(i) for i in indices]
-    return close
-
-def run_string(word):
-    L = stringToArr(word)
-    close = findClose(run_example(L))
-    print word, ":", close
-
-def run_index(index):
-    close = findClose(run_example(all_chars[index]))
-    print makeWord(index), ":", close
+    print "Calculating Closest Words"
+    if __name__ == "__main__":
+        if args.test != "":
+            map(model.displayStringRun, args.test.split(','))
+            #map(model.displayStringRun, ['cat', 'dog', 'France', 'france', 'Canada', 'Paris', 'paris', 'brother', 'mother',
+            #                             'sister', 'dad', 'mom', 'pharmacy', 'farm', 'quite', 'quiet', 'quit', 'like',
+            #                             'love', 'city', 'town'])
+            #map(model.displayStringRun, ['monarch', 'democracy', 'political', 'raspberry', 'blueberry', 'accomplishment', 'applying', 'application'])
+        else:
+            map(model.displayIndexRun, range(100, 150))
 
 if __name__ == "__main__":
-    map(run_string, ['monarch', 'democracy', 'political', 'raspberry', 'blueberry', 'accomplishment', 'applying', 'application'])
-    map(run_index, range(150, 200))
+    main()
