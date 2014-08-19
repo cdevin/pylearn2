@@ -6,15 +6,12 @@ class CharModel():
    def __init__(self, model, char_dict, embeddings=None, fprop=None, words=None):
       space = model.get_input_space()
       data, mask = space.make_theano_batch(batch_size=1)
-      self.fprop = t.function([data, mask], fprop((data,mask)))
-      # if isinstance(batch, tuple):
-      #    x = [b for b in batch]
-      # else:
-      #    x = [batch]
-      # if fprop is not None:
-      #    self.fprop = t.function([batch[0], batch[1]], fprop(batch))
-      # else:
-      #    self.fprop = t.function(x, model.fprop(batch))
+      fprop_path = (data, mask)
+      if type(fprop) != 'list':
+          fprop = [fprop]
+      for fp in fprop:
+          fprop_path = fp(fprop_path)
+      self.fprop = t.function([data, mask], fprop_path)
       self.words = words
       self.embeddings = embeddings
       self.char_dict = char_dict
@@ -23,7 +20,9 @@ class CharModel():
    def genEmbeddings(self, ivocab):
       self.embeddings = []
       for i in range(len(ivocab)):
-         self.embeddings.append(self.runString(ivocab[i]))
+          emb = self.runString(ivocab[i])
+          emb = emb / np.sqrt(np.sum(emb ** 2))
+          self.embeddings.append(emb)
 
    def arrToString(self, arr):
       return reduce(lambda x,y: x+y, arr)
@@ -35,17 +34,17 @@ class CharModel():
    def closest(self, vec, n):
       assert (self.embeddings is not None), "You probably need to run genEmbeddings"
       words_ = []
-      dists = [(cosine(vec, self.embeddings[i]), i) for i in range(30000)]
-      for k in range(n):
-         index = min(dists)[1]
-         dists[index] = (float("inf"),index)
-         words_.append(index)
-      return words_
+      dists = [cosine(vec.astype('float64'),
+          self.embeddings[i].astype('float64')) for i in
+          xrange(len(self.embeddings))]
+      sidx = np.argsort(dists)[:n]
+      return sidx
          
    def run_example(self, example):
       data = np.asarray([np.asarray([np.asarray([char])]) for char in example])
       mask = np.ones((data.shape[0], data.shape[1]), dtype='float32')    
       wordvec = self.fprop(data, mask)[0]
+      wordvec = wordvec / np.sqrt(np.sum(wordvec ** 2))
       return wordvec
 
    def findClose(self, wordvec): 
@@ -58,7 +57,8 @@ class CharModel():
 
    def displayStringRun(self,word):
       L = self.stringToArr(word)
-      close = self.findClose(self.run_example(L))
+      Lemb = self.run_example(L)
+      close = self.findClose(Lemb)
       print word, ":", close
 
    def displayIndexRun(self, index):
