@@ -103,16 +103,27 @@ class Skipgram(H5_WMT14):
         def getFeatures(indexes):
             """
             .. todo::
-                Write me
+            Write me
             """
             sequences = [self.samples_sequences[i] for i in indexes]
             # Get random source word index for "ngram"
             source_i = [numpy.random.randint(self.context_distance , 
                                              len(s)-self.context_distance, 1)[0] 
                         for s in sequences]
-            target_i = [min(max(s_i + numpy.random.choice([1, -1])*int(
-                numpy.random.uniform(1, self.context_distance)), 0), len(s)-1)
-                        for s_i, s in safe_izip(source_i, sequences)]
+                            
+            # Mikolov's implementation picks a random frame length for each input word and
+            # then uses all words within this frame as outputs. To simulate this with only
+            # one target word per input, we pick a random frame length and then pick a random
+            # context word within that frame.
+            frame_lengths = numpy.random.random_integers(1, self.context_distance, len(sequences))
+            distances = [(numpy.random.choice([1, -1]) * 
+                          numpy.random.random_integers(1, f)) for f in frame_lengths]
+
+            source_i = [numpy.random.randint(f , len(s)-self.context_distance, 1)[0] 
+                        for s, f in safe_izip(sequences, frame_lengths)]
+
+            target_i = [min(max(s_i + d_i, 0), len(s)-1)
+                        for s_i, d_i, s in safe_izip(source_i, distances, sequences)]
                         
             # Words mapped to integers greater than input max are set to 1 (unknown)
             X = numpy.asarray([numpy.asarray([s[i]]) for i, s in safe_izip(source_i, sequences)])
