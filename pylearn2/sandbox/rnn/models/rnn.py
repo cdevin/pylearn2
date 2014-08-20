@@ -6,7 +6,7 @@ from functools import wraps
 import numpy as np
 from theano import tensor
 from pylearn2.models.mlp import Layer
-from pylearn2.space import CompositeSpace, VectorSpace
+from pylearn2.space import CompositeSpace, VectorSpace, IndexSpace
 from pylearn2.sandbox.rnn.space import SequenceSpace
 from pylearn2.utils import sharedX
 from theano import config, scan
