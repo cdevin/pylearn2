@@ -103,12 +103,18 @@ class Recurrent(Layer):
                         sharedX(np.zeros(self.dim) + self.init_bias,
                                 name=self.layer_name + '_b')]
 
-        # # If the nonlinearity is an MLP, need to set it up
-        # if hasattr(self.nonlinearity, 'setup_rng'):
-        #     self.nonlinearity.rng = self.mlp.rng
-        # if hasattr(self.nonlinearity, 'set_input_space'):
-        #     self.nonlinearity.set_input_space(VectorSpace(self.dim))
+        # If the nonlinearity is an MLP, need to set it up
+        if hasattr(self.nonlinearity, 'setup_rng'):
+            self.nonlinearity.rng = self.mlp.rng
+        if hasattr(self.nonlinearity, 'set_input_space'):
+            self.nonlinearity.set_input_space(VectorSpace(self.dim))
 
+    @wraps(Layer.get_params)
+    def get_params(self):
+        if hasattr(self.nonlinearity, 'get_params'):
+            return self._params + self.nonlinearity.get_params()
+        else:
+            return self._params
 
 
     @wraps(Layer.get_layer_monitoring_channels)
@@ -192,9 +198,15 @@ class Recurrent(Layer):
         # outside of scan
         state_below = tensor.dot(state_below, W) + b
 
+        if hasattr(self.nonlinearity, 'fprop'):
+            nonlinearity = self.nonlinearity.fprop
+        else:
+            nonlinearity = self.nonlinearity
+
+
         def fprop_step(state_below, mask, state_before, U):
-            z = self.nonlinearity(state_below +
-                                  tensor.dot(state_before, U))
+            z = nonlinearity(state_below +
+                             tensor.dot(state_before, U))
 
             # Only update the state for non-masked data, otherwise
             # just carry on the previous state until the end
