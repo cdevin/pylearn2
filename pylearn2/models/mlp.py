@@ -41,6 +41,9 @@ from pylearn2.utils import safe_zip
 from pylearn2.utils import safe_izip
 from pylearn2.utils import sharedX
 from pylearn2.utils import wraps
+from pylearn2.utils import contains_nan
+from pylearn2.utils import contains_inf
+from pylearn2.utils import isfinite
 from pylearn2.utils.data_specs import DataSpecsMapping
 
 from pylearn2.expr.nnet import (elemwise_kl, kl, compute_precision,
@@ -3779,7 +3782,7 @@ def max_pool(bc01, pool_shape, pool_stride, image_shape):
     required_c = last_pool_c + pc
 
     for bc01v in get_debug_values(bc01):
-        assert not np.any(np.isinf(bc01v))
+        assert not contains_inf(bc01v)
         assert bc01v.shape[2] == image_shape[0]
         assert bc01v.shape[3] == image_shape[1]
 
@@ -3812,8 +3815,7 @@ def max_pool(bc01, pool_shape, pool_stride, image_shape):
     mx.name = 'max_pool('+name+')'
 
     for mxv in get_debug_values(mx):
-        assert not np.any(np.isnan(mxv))
-        assert not np.any(np.isinf(mxv))
+        assert isfinite(mxv)
 
     return mx
 
@@ -3874,7 +3876,7 @@ def max_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
     required_c = last_pool_c + pc
 
     for c01bv in get_debug_values(c01b):
-        assert not np.any(np.isinf(c01bv))
+        assert not contains_inf(c01bv)
         assert c01bv.shape[1] == r
         assert c01bv.shape[2] == c
 
@@ -3910,8 +3912,7 @@ def max_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
     mx.name = 'max_pool('+name+')'
 
     for mxv in get_debug_values(mx):
-        assert not np.any(np.isnan(mxv))
-        assert not np.any(np.isinf(mxv))
+        assert isfinite(mxv)
 
     return mx
 
@@ -3965,7 +3966,7 @@ def mean_pool(bc01, pool_shape, pool_stride, image_shape):
     required_c = last_pool_c + pc
 
     for bc01v in get_debug_values(bc01):
-        assert not np.any(np.isinf(bc01v))
+        assert not contains_inf(bc01v)
         assert bc01v.shape[2] == image_shape[0]
         assert bc01v.shape[3] == image_shape[1]
 
@@ -4014,8 +4015,7 @@ def mean_pool(bc01, pool_shape, pool_stride, image_shape):
     mx.name = 'mean_pool('+name+')'
 
     for mxv in get_debug_values(mx):
-        assert not np.any(np.isnan(mxv))
-        assert not np.any(np.isinf(mxv))
+        assert isfinite(mxv)
 
     return mx
 
