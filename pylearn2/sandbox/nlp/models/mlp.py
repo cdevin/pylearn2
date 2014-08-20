@@ -251,7 +251,8 @@ class NoisySoftmax(Softmax):
         cost_pos = T.log(_grab_probs(self.W, self.b, state_below, Y))
         # a single negative sample for each training sample
         Y_neg = T.cast(theano_rng.uniform(state_below.shape[0].reshape([1])) * self.W.shape[1], 'int64')
-        cost_neg = T.log(1. - _grab_probs(self.W, self.b, state_below, Y_neg))
+        cost_neg = T.cast(state_below.shape[0], 'float32') * \
+                   T.log(1. - _grab_probs(self.W, self.b, state_below, Y_neg))
 
         log_prob_of = cost_pos + cost_neg
 
