@@ -14,7 +14,6 @@ from pylearn2.sandbox.nlp.linear.matrixmul import MatrixMul
 from theano.compat.python2x import OrderedDict
 
 from theano.compat.python2x import OrderedDict
-from pylearn2.sandbox.rnn.space import SequenceSpace
 from theano import scan
 from theano.printing import Print
 from theano.sandbox.rng_mrg import MRG_RandomStreams
