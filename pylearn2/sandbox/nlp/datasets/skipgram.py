@@ -14,13 +14,6 @@ __email__ = "devincol@iro"
 import os.path
 import functools
 import numpy
-
-try:
-    from numpy.random import choice
-except ImportError:
-    # numpy version < 1.7
-    from random import choice
-
 import tables
 from pylearn2.utils.iteration import resolve_iterator_class
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
@@ -123,7 +116,7 @@ class Skipgram(H5_WMT14):
             # one target word per input, we pick a random frame length and then pick a random
             # context word within that frame.
             frame_lengths = numpy.random.random_integers(1, self.context_distance, len(sequences))
-            distances = [(choice([1, -1]) * 
+            distances = [(numpy.random.choice([1, -1]) * 
                           numpy.random.random_integers(1, f)) for f in frame_lengths]
 
             source_i = [numpy.random.randint(f , len(s)-self.context_distance, 1)[0] 
