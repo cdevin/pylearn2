@@ -35,6 +35,5 @@
       },
     },
   },
-  save_path: '/Tmp/devincol/gated_char_embeddings.pkl',
   save_freq: 1,
 }

@@ -11,7 +11,7 @@ from pylearn2.sandbox.rnn.space import SequenceSpace
 from pylearn2.utils import sharedX
 from theano import config, scan
 from theano.compat.python2x import OrderedDict
-#from pylearn2.sandbox.rnn.models.rnn import Recurrent
+
 
 class BagOfParts(Layer):
     """ A layer that takes a sequence of vectors, sums them , and passes the 
@@ -33,7 +33,7 @@ class BagOfParts(Layer):
         hidden state after each update
     """
     
-    def __init__(self, dim, layer_name, irange, init_bias,
+    def __init__(self, dim, layer_name, irange, init_bias=0.,
                  nonlinearity=tensor.tanh):
                  
         self.rnn_friendly = True
@@ -66,9 +66,10 @@ class BagOfParts(Layer):
                         sharedX(np.zeros(self.dim) + self.init_bias,
                                 name=self.layer_name + '_b')]
 
-    def fprop(self, state_below, mask=None):
-        W, b = self._params
-        
-        sum_ = TT.sum(state_below, axis=1)
-        rval = self.nonlinearity(TT.dot(sum_, W) + b)
+    def fprop(self, state_below):
+        """ TODO: Figure out how to use mask here """
+        state_below, mask = state_below
+        W, b = self._params        
+        sum_ = tensor.sum(state_below, axis=0)
+        rval = self.nonlinearity(tensor.dot(sum_, W) + b)
         return rval
