@@ -220,20 +220,6 @@ class NoisySoftmax(Softmax):
         log_prob_of = self._cost(Y, Y_hat)
         return -log_prob_of
 
-import logging
-logger = logging.getLogger("skfh")
-logger.setLevel(logging.DEBUG)
-
-def dbg_hook(hook, x):
-    if not isinstance(x, T.TensorVariable):
-        return x
-    else:
-        return Print(global_fn=hook)(x)
-
-def dbg_shape(string, var):
-    return dbg_hook(lambda _, x: #logger.warning("{} {}".format(string, x.shape)), var)
-                    print("{} {}".format(string, x.shape)), var)
-
 
 class HierarchicalSoftmax(Layer):
     """
@@ -351,7 +337,7 @@ class HierarchicalSoftmax(Layer):
         print("fprop")
         print("state_below " + str(state_below.ndim))
         print("n_groups, group size " + str(self.n_groups) + " " + str(self.group_size))
-        dbg_shape("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", state_below)
+      
         self.input_space.validate(state_below)
         if self.needs_reformat:
             state_below = self.input_space.format_as(state_below,
@@ -367,7 +353,7 @@ class HierarchicalSoftmax(Layer):
         #     group_vals = T.dot(state_below, self.W1) + b1
 
         group_vals = T.dot(state_below, self.W1) + self.b1
-        dbg_shape("!!!!!!!!!!!group_vals", group_vals)
+   
         if self.full_softmax:
             groups_vec = T.arange(self.n_groups)
             
@@ -407,7 +393,6 @@ class HierarchicalSoftmax(Layer):
         return rval
 
     def _cost(self, Y, Y_hat):
-        dbg_shape("!!!!!!!!!!!!!!!!!! Y_hat", Y_hat)
         target = Y.flatten()
         target_groups = target // self.group_size  # need to be int/int
         target_indices = target % self.group_size
@@ -460,8 +445,7 @@ class HierarchicalSoftmax(Layer):
             #log_prob = log_prob.flatten()
             # Not sure why cast is needed
             #log_prob = (Y * log_prob).astype('float32')
-        dbg_shape("Y", Y)
-        
+           
         return log_prob
         
 
