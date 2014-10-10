@@ -430,7 +430,7 @@ class HierarchicalSoftmax(Layer):
         log_prob = z - T.log(T.exp(z).dimshuffle(0, 'x'))
         # # we use sum and not mean because this is really one variable per row
 
-        if True: #self._has_binary_target:
+        if False: #self._has_binary_target:
             # The following code is the equivalent of accessing log_prob by the
             # indices in Y, but it is written such that the computation can 
             # happen on the GPU rather than CPU.
