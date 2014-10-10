@@ -1,13 +1,16 @@
 """
 Sandbox multilayer perceptron layers for natural language processing (NLP)
 """
+# TODO: Remove this line
+from __future__ import print_function
+
 import numpy as np
 import theano.tensor as T
 from theano import config
 
 from pylearn2.models import mlp
 from pylearn2.models.mlp import Layer
-from pylearn2.space import IndexSpace
+from pylearn2.space import IndexSpace, Space
 from pylearn2.space import VectorSpace
 from pylearn2.utils import sharedX
 from pylearn2.utils import wraps
@@ -16,8 +19,10 @@ from theano.compat.python2x import OrderedDict
 
 from theano.compat.python2x import OrderedDict
 from theano import scan
-from theano.printing import Print
+from theano.printing import Print, debugprint
 from theano.sandbox.rng_mrg import MRG_RandomStreams
+from theano.sandbox.cuda.blocksparse import sparse_block_dot_SS
+
 
 class Softmax(mlp.Softmax):
     """
@@ -215,6 +220,21 @@ class NoisySoftmax(Softmax):
         log_prob_of = self._cost(Y, Y_hat)
         return -log_prob_of
 
+import logging
+logger = logging.getLogger("skfh")
+logger.setLevel(logging.DEBUG)
+
+def dbg_hook(hook, x):
+    if not isinstance(x, T.TensorVariable):
+        return x
+    else:
+        return Print(global_fn=hook)(x)
+
+def dbg_shape(string, var):
+    return dbg_hook(lambda _, x: #logger.warning("{} {}".format(string, x.shape)), var)
+                    print("{} {}".format(string, x.shape)), var)
+
+
 class HierarchicalSoftmax(Layer):
     """
     A GPU implementation of the hierarchichal softmax. Uses a two level tree.
@@ -255,23 +275,22 @@ class HierarchicalSoftmax(Layer):
                  istdev=None, no_affine=False,
                  binary_target_dim=None, full_softmax=False):
 
-        super(Softmax, self).__init__()
+        super(HierarchicalSoftmax, self).__init__()
 
         self.__dict__.update(locals())
         del self.self
-        del self.init_bias_target_marginals
-
-        assert isinstance(n_classes, py_integer_types)
-
         if binary_target_dim is not None:
-            assert isinstance(binary_target_dim, py_integer_types)
             self._has_binary_target = True
             self._target_space = IndexSpace(dim=binary_target_dim, 
-                                            max_labels=n_classes)
+                                            max_labels=n_words)
         else:
             self._has_binary_target = False
-    
-        self.output_space = VectorSpace(n_classes)
+
+        if self.full_softmax:
+            self.output_space = VectorSpace(n_words)
+        else: 
+            # Return an index space of the most likely words
+            self.output_space = IndexSpace(n_words, 1)
 
     @wraps(Layer.set_input_space)
     def set_input_space(self, space):
@@ -317,18 +336,22 @@ class HierarchicalSoftmax(Layer):
                 W1 = rng.randn(self.input_dim, self.n_groups) * self.istdev
                 W2 = rng.randn(self.iBlocks, self.n_groups, self.input_dim, 
                                self.group_size) * self.istdev
-
+                
             self.W1 = sharedX(W1,  '%s_W1'%self.layer_name)
             self.b1 = sharedX(np.zeros((self.n_groups,)), name='%s_b1'%self.layer_name)
             self.W2 = sharedX(W2,  '%s_W2'%self.layer_name)
-            self.b1 = sharedX(np.zeros((self.n_groups, self.group_size)), 
+            self.b2 = sharedX(np.zeros((self.n_groups, self.group_size)), 
                               name='%s_b1'%self.layer_name)
 
             self._params = [self.b1, self.W1, self.b2, self.W2]
-            
+
 
     @wraps(Layer.fprop)
     def fprop(self, state_below):
+        print("fprop")
+        print("state_below " + str(state_below.ndim))
+        print("n_groups, group size " + str(self.n_groups) + " " + str(self.group_size))
+        dbg_shape("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", state_below)
         self.input_space.validate(state_below)
         if self.needs_reformat:
             state_below = self.input_space.format_as(state_below,
@@ -336,19 +359,16 @@ class HierarchicalSoftmax(Layer):
 
         self.desired_space.validate(state_below)
         assert state_below.ndim == 2
-
-        if not hasattr(self, 'no_affine'):
-            self.no_affine = False
-
+        batch_size = state_below.shape[0]
         # if self.no_affine:
         #     group_vals = state_below;
         # else:
         #     assert self.W1.ndim == 2
         #     group_vals = T.dot(state_below, self.W1) + b1
 
-
+        group_vals = T.dot(state_below, self.W1) + self.b1
+        dbg_shape("!!!!!!!!!!!group_vals", group_vals)
         if self.full_softmax:
-            group_vals = T.dot(state_below, self.W1) + b1
             groups_vec = T.arange(self.n_groups)
             
             
@@ -363,14 +383,107 @@ class HierarchicalSoftmax(Layer):
                               groups_vec, 
                               None, 
                               name='compute_ingroup')
-            print val.ndim
-            all_word_val = val[0].reshape([val[0].shape[0]*val[0].shape[1], val[0].shape[2]]).T
-            all_word_val = all_word_val[:,:self.n_out]
-            emb_val = all_word_val
 
-        for value in get_debug_values(rval):
-            if self.mlp.batch_size is not None:
-                assert value.shape[0] == self.mlp.batch_size
+            all_word_val = val[0].reshape([val[0].shape[0]*val[0].shape[1], val[0].shape[2]]).T
+            all_word_val = all_word_val[:,:self.n_words]
+            rval = all_word_val
+
+        else:
+            max_groups = T.argmax(group_vals, axis=1)
+            word_val = T.nnet.softmax(sparse_block_dot_SS(
+                self.W2, state_below[:, None, :], 
+                T.zeros((batch_size, 1), dtype='int64'), 
+                self.b2, max_groups[:, None])[:, 0, :])
+            print("word_val " + str(word_val.ndim))
+            group_vals = group_vals[T.arange(batch_size), max_groups]
+            #word_val = word_val[T.arange(batch_size), word_val]
+            emb_val = group_vals * word_val
+            word_indices = T.argmax(emb_val, axis=1)
+            rval = word_indices#.astype('float32')
+        # for value in get_debug_values(rval):
+        #     if self.mlp.batch_size is not None:
+        #         assert value.shape[0] == self.mlp.batch_size
 
         return rval
 
+    def _cost(self, Y, Y_hat):
+        dbg_shape("!!!!!!!!!!!!!!!!!! Y_hat", Y_hat)
+        target = Y.flatten()
+        target_groups = target // self.group_size  # need to be int/int
+        target_indices = target % self.group_size
+
+        assert hasattr(Y_hat, 'owner')
+        owner = Y_hat.owner
+        assert owner is not None
+        op = owner.op
+        if isinstance(op, Print):
+           assert len(owner.inputs) == 1
+           Y_hat, = owner.inputs
+           owner = Y_hat.owner
+           op = owner.op
+        # assert isinstance(op, T.nnet.Softmax)
+        emb_vals, axis = owner.inputs#[0].owner.inputs
+
+        max_group_vals, word_val = emb_vals.owner.inputs
+
+        group_vals, = max_group_vals.owner.inputs
+
+        group_vals, batch_range, max_groups = group_vals.owner.inputs
+        batch_size = batch_range.size
+
+        dot, _ = group_vals.owner.inputs
+        state_below, _ = dot.owner.inputs
+
+        word_val = T.nnet.softmax(sparse_block_dot_SS(
+            self.W2, state_below[:, None, :], 
+            T.zeros((batch_range.shape[0], 1), dtype='int64'), 
+            self.b2, target_groups[:, None])[:, 0, :])
+
+        group_vals = group_vals#[T.arange(batch_size), target_groups]
+        emb_vals = group_vals * word_val
+        z = emb_vals[T.arange(batch_size), target_indices]
+        log_prob = z - T.log(T.exp(z).dimshuffle(0, 'x'))
+        # # we use sum and not mean because this is really one variable per row
+
+        if True: #self._has_binary_target:
+            # The following code is the equivalent of accessing log_prob by the
+            # indices in Y, but it is written such that the computation can 
+            # happen on the GPU rather than CPU.
+            
+            flat_Y = Y.flatten()
+            flat_log_prob = log_prob.flatten()
+            flat_indices = flat_Y + T.arange(Y.shape[0])*self.n_words
+            log_prob_of = flat_log_prob[flat_indices].dimshuffle(0, 'x')
+
+       # else:
+            #Y = Y.flatten()
+            #log_prob = log_prob.flatten()
+            # Not sure why cast is needed
+            #log_prob = (Y * log_prob).astype('float32')
+        dbg_shape("Y", Y)
+        
+        return log_prob
+        
+
+    @wraps(Layer.cost)
+    def cost(self, Y, Y_hat):
+
+        log_prob_of = self._cost(Y, Y_hat).sum(axis=1)
+        assert log_prob_of.ndim == 1
+
+        rval = log_prob_of.mean()
+        return - rval
+
+    @wraps(Layer.cost_matrix)
+    def cost_matrix(self, Y, Y_hat):
+
+        log_prob_of = self._cost(Y, Y_hat)
+        if self._has_binary_target:
+            flat_Y = Y.flatten()
+            flat_matrix = T.alloc(0, (Y.shape[0]*log_prob_of.shape[1]))
+            flat_indices = flat_Y + T.extra_ops.repeat(
+                T.arange(Y.shape[0])*log_prob_of.shape[1], Y.shape[1]
+            )
+            log_prob_of = T.set_subtensor(flat_matrix[flat_indices], flat_Y)
+
+        return -log_prob_of
